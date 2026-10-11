@@ -41,7 +41,11 @@ class BaralhoDeCidades {
         
         // Saca as 3 cidades iniciais para a preparação do jogo
         for (int i = 0; i < 3; i++) {
-        	cidadesIniciais.add(sacarCidadeDoTopo());
+            Cidade cidade = sacarCidadeDoTopo();
+            if (cidade == null) {
+                break;
+            }
+            cidadesIniciais.add(cidade);
         }
         return cidadesIniciais;
     }
