@@ -98,7 +98,7 @@ public class TabuleiroTest {
         tabuleiro.adicionarParada(1, false);
         tabuleiro.conectarParadas(0, 1);
 
-        Peao peao = new Peao(Cor.AZUL, "Karakorum");
+        Peao peao = new Peao(Cor.AZUL);
 
         assertTrue("testeMovimentacaoValida: tabuleiro.posicionarPeaoInicial(peao) deve ser verdadeiro", tabuleiro.posicionarPeaoInicial(peao));
         assertTrue("testeMovimentacaoValida: tabuleiro.moverPeao(peao, 1) deve ser verdadeiro", tabuleiro.moverPeao(peao, 1));
@@ -120,12 +120,12 @@ public class TabuleiroTest {
         tabuleiro.conectarParadas(0, 1);
         tabuleiro.conectarParadas(1, 2);
 
-        Peao peao = new Peao(Cor.AZUL, "Karakorum");
+        Peao peao = new Peao(Cor.AZUL);
 
         tabuleiro.posicionarPeaoInicial(peao);
 
         assertFalse("testeMovimentacaoNaoAdjacente: tabuleiro.moverPeao(peao, 2) deve ser falso", tabuleiro.moverPeao(peao, 2));
-        assertEquals("Karakorum", peao.getLocalizacaoAtual());
+        assertEquals(TipoParada.KARAKORUM, peao.getParadaAtual());
 
         // O peão deve continuar em Karakorum
         assertEquals("testeMovimentacaoNaoAdjacente: peao.getParadaAtual().getId() deve corresponder ao valor esperado", 0, peao.getParadaAtual().getId());
@@ -159,8 +159,8 @@ public class TabuleiroTest {
     public void testeNaoEntrarEmParadaSimplesOcupada() {
         tabuleiro.adicionarParada(1, false);
         tabuleiro.conectarParadas(0, 1);
-        Peao a = new Peao(Cor.AZUL, "Karakorum");
-        Peao b = new Peao(Cor.VERDE, "Karakorum");
+        Peao a = new Peao(Cor.AZUL);
+        Peao b = new Peao(Cor.VERDE);
         assertTrue("testeNaoEntrarEmParadaSimplesOcupada: tabuleiro.posicionarPeaoInicial(a) deve ser verdadeiro", tabuleiro.posicionarPeaoInicial(a));
         assertTrue("testeNaoEntrarEmParadaSimplesOcupada: tabuleiro.posicionarPeaoInicial(b) deve ser verdadeiro", tabuleiro.posicionarPeaoInicial(b));
         assertTrue("testeNaoEntrarEmParadaSimplesOcupada: tabuleiro.moverPeao(a, 1) deve ser verdadeiro", tabuleiro.moverPeao(a, 1));
@@ -180,9 +180,9 @@ public class TabuleiroTest {
     public void testeCapacidadeDaParadaDupla() {
         tabuleiro.adicionarParada(1, true);
         tabuleiro.conectarParadas(0, 1);
-        Peao a = new Peao(Cor.AZUL, "Karakorum");
-        Peao b = new Peao(Cor.VERDE, "Karakorum");
-        Peao c = new Peao(Cor.PRETO, "Karakorum");
+        Peao a = new Peao(Cor.AZUL);
+        Peao b = new Peao(Cor.VERDE);
+        Peao c = new Peao(Cor.PRETO);
         for (Peao peao : new Peao[] { a, b, c }) {
             assertTrue("testeCapacidadeDaParadaDupla: tabuleiro.posicionarPeaoInicial(peao) deve ser verdadeiro", tabuleiro.posicionarPeaoInicial(peao));
         }
@@ -201,7 +201,7 @@ public class TabuleiroTest {
     public void testeKarakorumSemLimiteDeOcupacaoDosJogadores() {
         int inicial = tabuleiro.getOcupacao(0);
         for (Cor cor : new Cor[]{Cor.AZUL, Cor.VERDE, Cor.PRETO, Cor.AMARELO, Cor.LARANJA}) {
-            assertTrue("testeKarakorumSemLimiteDeOcupacaoDosJogadores: tabuleiro.posicionarPeaoInicial(new Peao(cor, \"Karakorum\")) deve ser verdadeiro", tabuleiro.posicionarPeaoInicial(new Peao(cor, "Karakorum")));
+            assertTrue("testeKarakorumSemLimiteDeOcupacaoDosJogadores: tabuleiro.posicionarPeaoInicial(new Peao(cor, \"Karakorum\")) deve ser verdadeiro", tabuleiro.posicionarPeaoInicial(new Peao(cor)));
         }
         assertEquals("testeKarakorumSemLimiteDeOcupacaoDosJogadores: tabuleiro.getOcupacao(0) deve corresponder ao valor esperado", inicial + 5, tabuleiro.getOcupacao(0));
     }
@@ -216,7 +216,7 @@ public class TabuleiroTest {
         tabuleiro.adicionarParada(1, false);
         tabuleiro.adicionarParada(2, false);
         tabuleiro.conectarParadas(1, 2);
-        Peao jogador = new Peao(Cor.AZUL, "Karakorum");
+        Peao jogador = new Peao(Cor.AZUL);
         tabuleiro.posicionarPeaoInicial(jogador);
         tabuleiro.conectarParadas(0, 1);
         assertTrue("testeEntradaDoKhanEProtecaoDaCapacidade: tabuleiro.moverPeao(jogador, 1) deve ser verdadeiro", tabuleiro.moverPeao(jogador, 1));

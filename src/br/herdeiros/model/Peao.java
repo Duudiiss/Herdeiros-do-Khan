@@ -3,24 +3,19 @@ package br.herdeiros.model;
 /** Representa um peão; o tabuleiro coordena a validação de seus movimentos. */
 class Peao {
     private final Cor cor;
-    private String localizacaoAtual;
     private Parada paradaAtual;
 
-    public Peao(Cor cor, String localizacaoInicial) {
+    public Peao(Cor cor) {
         if (cor == null) {
             throw new IllegalArgumentException("Cor obrigatória");
         }
 
         this.cor = cor;
-        this.localizacaoAtual = localizacaoInicial;
+        this.paradaAtual = new Parada(0, TipoParada.KARAKORUM);
     }
 
     public Cor getCor() {
         return cor;
-    }
-
-    public String getLocalizacaoAtual() {
-        return localizacaoAtual;
     }
 
     public Parada getParadaAtual() {
@@ -29,13 +24,5 @@ class Peao {
 
     void posicionarEm(Parada novaParada) {
         this.paradaAtual = novaParada;
-
-        if (novaParada == null) {
-            this.localizacaoAtual = "Fora do tabuleiro";
-        } else if (novaParada.getTipo() == TipoParada.KARAKORUM) {
-            this.localizacaoAtual = "Karakorum";
-        } else {
-            this.localizacaoAtual = "Parada " + novaParada.getId();
-        }
     }
 }

@@ -20,7 +20,7 @@ class Tabuleiro {
             throw new IllegalArgumentException("Lista de cidades obrigatória");
         }
 
-        this.peaoDoKhan = new Peao(Cor.BRANCO, "Fora do tabuleiro");
+        this.peaoDoKhan = new Peao(Cor.BRANCO);
         this.cidadesDisponiveis = new ArrayList<>(cidadesIniciaisSorteadas);
         this.paradas.put(0, new Parada(0, TipoParada.KARAKORUM));
     }
@@ -85,8 +85,7 @@ class Tabuleiro {
 
     /** Registra o peão de um jogador em Karakorum somente uma vez. */
     public boolean posicionarPeaoInicial(Peao peao) {
-        if (peao == null || peao == peaoDoKhan || peao.getCor() == Cor.BRANCO
-                || peao.getParadaAtual() != null || peoes.contains(peao)) {
+        if (peao == null || peao == peaoDoKhan || peao.getCor() == Cor.BRANCO || peoes.contains(peao)) {
             return false;
         }
 

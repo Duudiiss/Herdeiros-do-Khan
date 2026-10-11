@@ -20,7 +20,7 @@ class Jogador {
         this.nome = nome;
         this.cor = cor;
         this.quantidadeDescendentes = quantidadeDescendentes;
-        this.meuPeao = new Peao(cor, "Karakorum");
+        this.meuPeao = new Peao(cor);
 
         for (TipoTributo tipo : TipoTributo.values()) {
             tributos.put(tipo, 0);

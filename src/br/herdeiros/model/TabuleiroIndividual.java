@@ -34,7 +34,7 @@ public class TabuleiroIndividual {
         this.melhoriasAdquiridas.add(melhoria);
     }
 
-    public List<Tributo> getTributosArmazenados() {
+    public  List<Tributo> getTributosArmazenados() {
         return tributosArmazenados;
     }
 
