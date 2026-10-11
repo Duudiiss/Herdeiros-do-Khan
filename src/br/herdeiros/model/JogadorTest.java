@@ -67,4 +67,38 @@ public class JogadorTest {
         assertFalse("testeRecursosNaoAceitamValoresInvalidos: j.receberTributos(TipoTributo.ESPADA, 0) deve ser falso", j.receberTributos(TipoTributo.ESPADA, 0));
         assertEquals("testeRecursosNaoAceitamValoresInvalidos: j.quantidadeTributo(TipoTributo.ESPADA) deve corresponder ao valor esperado", antes, j.quantidadeTributo(TipoTributo.ESPADA));
     }
+
+    @Test(timeout = 2000)
+    public void testeGanharVotosIgnoraQuantidadesNaoPositivas() {
+        Jogador jogador = new Jogador("A", Cor.AZUL, 3);
+
+        jogador.ganharVotos(0);
+        jogador.ganharVotos(-2);
+
+        assertEquals("Valores não positivos não devem alterar a pontuação",
+                0, jogador.getVotosKurultai());
+
+        jogador.ganharVotos(4);
+        assertEquals("Votos positivos devem ser acumulados",
+                4, jogador.getVotosKurultai());
+    }
+
+    @Test(timeout = 2000)
+    public void testeSaqueEmCidadeConquistadaNaoConsomeRecursos() {
+        Jogador jogador = new Jogador("A", Cor.AZUL, 3);
+        Cidade cidade = new Cidade(NomeCidade.SAMARCANDA, Regiao.PERSIA);
+        jogador.receberTributos(TipoTributo.ESPADA, 4);
+
+        for (int i = 0; i < 4; i++) {
+            assertTrue("Os quatro saques iniciais devem ser válidos",
+                    jogador.saquearCidade(cidade, 0));
+        }
+
+        assertTrue("A cidade deve estar conquistada após esgotar seus tesouros",
+                cidade.isConquistada());
+        assertFalse("Uma cidade conquistada não pode ser saqueada novamente",
+                jogador.saquearCidade(cidade, 0));
+        assertEquals("A tentativa inválida não deve consumir espadas",
+                0, jogador.quantidadeTributo(TipoTributo.ESPADA));
+    }
 }

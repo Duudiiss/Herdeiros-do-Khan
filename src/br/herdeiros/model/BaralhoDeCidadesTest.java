@@ -134,4 +134,21 @@ public class BaralhoDeCidadesTest {
 
         assertNull("testeDistribuicaoReduzBaralho: baralho.sacarCidadeDoTopo() deve ser nulo", baralho.sacarCidadeDoTopo());
     }
+
+    @Test(timeout = 2000)
+    public void testeDistribuicaoInicialComMenosDeTresCidades() {
+        for (int i = 0; i < NomeCidade.values().length - 1; i++) {
+            assertNotNull("As cidades disponíveis devem ser retiradas",
+                    baralho.sacarCidadeDoTopo());
+        }
+
+        List<Cidade> cidadesRestantes = baralho.sacarCidadesIniciais();
+
+        assertEquals("Deve distribuir somente as cidades ainda disponíveis",
+                1, cidadesRestantes.size());
+        assertNotNull("A distribuição não deve incluir cidades nulas",
+                cidadesRestantes.get(0));
+        assertTrue("Uma segunda distribuição sem cartas deve ser vazia",
+                baralho.sacarCidadesIniciais().isEmpty());
+    }
 }

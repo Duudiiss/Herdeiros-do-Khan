@@ -242,4 +242,33 @@ public class TabuleiroTest {
         assertEquals("testeYurtNaoPodeSerDuplicadoNemEstarEmKarakorum: tabuleiro.getDonoYurt(1) deve corresponder ao valor esperado", Cor.AZUL, tabuleiro.getDonoYurt(1));
     }
 
+    @Test(timeout = 2000)
+    public void testeSubstituirCidadeConquistada() {
+        Cidade antiga = new Cidade(NomeCidade.MOSCOU, Regiao.RUSSIA);
+        Cidade nova = new Cidade(NomeCidade.SAMARCANDA, Regiao.PERSIA);
+        Tabuleiro tabuleiroComCidade = new Tabuleiro(java.util.Arrays.asList(antiga));
+
+        tabuleiroComCidade.substituirCidadeConquistada(antiga, nova);
+
+        assertEquals("A cidade conquistada deve ser substituída",
+                1, tabuleiroComCidade.getCidadesDisponiveis().size());
+        assertSame("A nova cidade deve ficar disponível",
+                nova, tabuleiroComCidade.getCidadesDisponiveis().get(0));
+    }
+
+    @Test(timeout = 2000)
+    public void testeSubstituicaoDeCidadeAusenteNaoAlteraLista() {
+        Cidade existente = new Cidade(NomeCidade.MOSCOU, Regiao.RUSSIA);
+        Cidade ausente = new Cidade(NomeCidade.KAZAN, Regiao.RUSSIA);
+        Cidade substituta = new Cidade(NomeCidade.SAMARCANDA, Regiao.PERSIA);
+        Tabuleiro tabuleiroComCidade = new Tabuleiro(java.util.Arrays.asList(existente));
+
+        tabuleiroComCidade.substituirCidadeConquistada(ausente, substituta);
+
+        assertEquals("Cidade ausente não deve ser substituída",
+                1, tabuleiroComCidade.getCidadesDisponiveis().size());
+        assertSame("A cidade original deve permanecer disponível",
+                existente, tabuleiroComCidade.getCidadesDisponiveis().get(0));
+    }
+
 }
