@@ -35,10 +35,10 @@ public class TabuleiroIndividual {
     }
 
     public List<Tributo> getTributosArmazenados() {
-        return tributosArmazenados;
+        return new ArrayList<>(tributosArmazenados);
     }
 
     public List<Melhoria> getMelhoriasAdquiridas() {
-        return melhoriasAdquiridas;
+        return new ArrayList<>(melhoriasAdquiridas);
     }
 }
