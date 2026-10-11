@@ -1,6 +1,6 @@
 package br.herdeiros.model;
 
-public enum Regiao {
+enum Regiao {
 	RUSSIA,
     CHINA,
     PERSIA;

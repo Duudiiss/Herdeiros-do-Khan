@@ -1,6 +1,6 @@
 package br.herdeiros.model;
 
-public enum NomeCidade {
+enum NomeCidade {
 	MOSCOU("Moscou"),
     KAZAN("Kazan"),
     NOVGOROD("Novgorod"),

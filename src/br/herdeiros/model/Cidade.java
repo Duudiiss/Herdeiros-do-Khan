@@ -1,6 +1,6 @@
 package br.herdeiros.model;
 
-public class Cidade {
+class Cidade {
 	private NomeCidade nome;
     private Regiao regiao;
     private int quantidadeTesouros;

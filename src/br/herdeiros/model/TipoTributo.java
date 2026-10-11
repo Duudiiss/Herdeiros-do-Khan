@@ -1,6 +1,6 @@
 package br.herdeiros.model;
 
-public enum TipoTributo {
+enum TipoTributo {
 	ESPADA,
     YURT,
     MOEDA;
