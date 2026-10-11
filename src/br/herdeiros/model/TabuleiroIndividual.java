@@ -34,11 +34,16 @@ public class TabuleiroIndividual {
         this.melhoriasAdquiridas.add(melhoria);
     }
 
+<<<<<<< HEAD
     public  List<Tributo> getTributosArmazenados() {
         return tributosArmazenados;
+=======
+    public List<Tributo> getTributosArmazenados() {
+        return new ArrayList<>(tributosArmazenados);
+>>>>>>> ef454980088f6740f351dcb305cfbad99bd9b912
     }
 
     public List<Melhoria> getMelhoriasAdquiridas() {
-        return melhoriasAdquiridas;
+        return new ArrayList<>(melhoriasAdquiridas);
     }
 }
