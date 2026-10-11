@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class BaralhoDeCidades {
+class BaralhoDeCidades {
 	private Stack<Cidade> pilha;
 
 	public BaralhoDeCidades() {

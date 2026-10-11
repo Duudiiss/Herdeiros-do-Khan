@@ -1,6 +1,6 @@
 package br.herdeiros.model;
 
-public enum Cor {
+enum Cor {
 	AMARELO,
 	VERDE,
 	AZUL,
