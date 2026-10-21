@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayDeque;
+import java.util.Queue;
 
 /** Armazena as posições, conexões e peças e verifica movimentação e ocupação. */
 class Tabuleiro {
@@ -142,6 +144,58 @@ class Tabuleiro {
 
         peao.posicionarEm(destino);
         return true;
+    }
+
+    /**
+     * Calcula um trajeto com até movimentosDisponiveis conexões.
+     * Paradas ocupadas podem ser atravessadas, mas não usadas como destino final
+     * caso tenham atingido sua capacidade. Esta operação não altera o peão.
+     */
+    public boolean podeMoverAte(Peao peao, int idDestino, int movimentosDisponiveis) {
+        if (peao == null || !peoes.contains(peao) || movimentosDisponiveis <= 0) {
+            return false;
+        }
+
+        Parada origem = peao.getParadaAtual();
+        Parada destino = paradas.get(idDestino);
+        if (origem == null || destino == null || origem == destino) {
+            return false;
+        }
+        if (ocupacao(destino, peao) >= destino.capacidade()) {
+            return false;
+        }
+
+        Queue<Parada> fila = new ArrayDeque<>();
+        HashMap<Integer, Integer> distancias = new HashMap<>();
+        fila.add(origem);
+        distancias.put(origem.getId(), 0);
+
+        while (!fila.isEmpty()) {
+            Parada atual = fila.remove();
+            int distancia = distancias.get(atual.getId());
+            if (distancia < movimentosDisponiveis) {
+                for (Parada vizinha : atual.getAdjacentes()) {
+                    if (!distancias.containsKey(vizinha.getId())) {
+                        int proximaDistancia = distancia + 1;
+                        if (vizinha == destino) {
+                            return true;
+                        }
+                        distancias.put(vizinha.getId(), proximaDistancia);
+                        fila.add(vizinha);
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Valida a rota completa antes de alterar a posição do peão. */
+    public boolean moverPeaoAte(Peao peao, int idDestino, int movimentosDisponiveis) {
+        boolean permitido = podeMoverAte(peao, idDestino, movimentosDisponiveis);
+        if (permitido) {
+            peao.posicionarEm(paradas.get(idDestino));
+        }
+        return permitido;
     }
 
     /** O Khan pode entrar a partir de fora; movimentos seguintes exigem conexão. */
