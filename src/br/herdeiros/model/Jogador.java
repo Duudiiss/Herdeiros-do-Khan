@@ -1,7 +1,5 @@
 package br.herdeiros.model;
 
-import java.util.HashMap;
-
 /** Representa um jogador, seus recursos e os votos acumulados. */
 class Jogador {
     private final String nome;
@@ -9,7 +7,7 @@ class Jogador {
     private final Peao meuPeao;
     private final int quantidadeDescendentes;
     private int votosKurultai;
-    private final HashMap<TipoTributo, Integer> tributos = new HashMap<>();
+    private final TabuleiroIndividual tabuleiroIndividual = new TabuleiroIndividual();
 
     public Jogador(String nome, Cor cor, int quantidadeDescendentes) {
         if (nome == null || nome.trim().isEmpty() || cor == null || cor == Cor.BRANCO
@@ -20,11 +18,8 @@ class Jogador {
         this.nome = nome;
         this.cor = cor;
         this.quantidadeDescendentes = quantidadeDescendentes;
-        this.meuPeao = new Peao(cor, "Karakorum");
+        this.meuPeao = new Peao(cor);
 
-        for (TipoTributo tipo : TipoTributo.values()) {
-            tributos.put(tipo, 0);
-        }
     }
 
     public void ganharVotos(int quantidade) {
@@ -53,11 +48,15 @@ class Jogador {
         return meuPeao;
     }
 
+    public TabuleiroIndividual getTabuleiroIndividual() {
+        return tabuleiroIndividual;
+    }
+
     public int quantidadeTributo(TipoTributo tipo) {
         if (tipo == null) {
             return 0;
         }
-        return tributos.getOrDefault(tipo, 0);
+        return tabuleiroIndividual.quantidadeTributo(tipo);
     }
 
     public boolean receberTributos(TipoTributo tipo, int quantidade) {
@@ -65,7 +64,9 @@ class Jogador {
             return false;
         }
 
-        tributos.put(tipo, quantidadeTributo(tipo) + quantidade);
+        for (int i = 0; i < quantidade; i++) {
+            tabuleiroIndividual.adicionarTributo(new Tributo(tipo));
+        }
         return true;
     }
 
@@ -96,8 +97,7 @@ class Jogador {
             return false;
         }
 
-        int espadasRestantes = quantidadeTributo(TipoTributo.ESPADA) - custo;
-        tributos.put(TipoTributo.ESPADA, espadasRestantes);
+        tabuleiroIndividual.removerTributosPorTipo(TipoTributo.ESPADA, custo);
         return true;
     }
 }

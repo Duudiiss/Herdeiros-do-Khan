@@ -1,18 +1,16 @@
 package br.herdeiros.model;
 
-/** Representa um peão; o tabuleiro coordena a validação de seus movimentos. */
+/** Representa um peão e mantém a referência à sua única posição atual. */
 class Peao {
     private final Cor cor;
-    private String localizacaoAtual;
     private Parada paradaAtual;
 
-    public Peao(Cor cor, String localizacaoInicial) {
+    public Peao(Cor cor) {
         if (cor == null) {
             throw new IllegalArgumentException("Cor obrigatória");
         }
 
         this.cor = cor;
-        this.localizacaoAtual = localizacaoInicial;
     }
 
     public Cor getCor() {
@@ -20,7 +18,17 @@ class Peao {
     }
 
     public String getLocalizacaoAtual() {
-        return localizacaoAtual;
+        String localizacao;
+
+        if (paradaAtual == null) {
+            localizacao = "Fora do tabuleiro";
+        } else if (paradaAtual.getTipo() == TipoParada.KARAKORUM) {
+            localizacao = "Karakorum";
+        } else {
+            localizacao = "Parada " + paradaAtual.getId();
+        }
+
+        return localizacao;
     }
 
     public Parada getParadaAtual() {
@@ -29,13 +37,5 @@ class Peao {
 
     void posicionarEm(Parada novaParada) {
         this.paradaAtual = novaParada;
-
-        if (novaParada == null) {
-            this.localizacaoAtual = "Fora do tabuleiro";
-        } else if (novaParada.getTipo() == TipoParada.KARAKORUM) {
-            this.localizacaoAtual = "Karakorum";
-        } else {
-            this.localizacaoAtual = "Parada " + novaParada.getId();
-        }
     }
 }
