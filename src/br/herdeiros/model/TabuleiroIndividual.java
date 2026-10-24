@@ -19,22 +19,18 @@ public class TabuleiroIndividual {
     }
 
     public boolean removerTributoPorTipo(TipoTributo tipo) {
-        boolean removido = false;
-
-        for (int i = 0; i < tributosArmazenados.size(); i++) {
-            Tributo tributo = tributosArmazenados.get(i);
-
-            if (tributo.getTipo() == tipo) {
-                tributosArmazenados.remove(i);
-                removido = true;
-                break;
+        for (Tributo tributo : tributosArmazenados) {
+        	Boolean tributoEncontrado = tributo.getTipo() == tipo;
+        	
+            if (tributoEncontrado) {
+                tributosArmazenados.remove(tributo);
+                return true;
             }
         }
-
-        return removido;
+        return false;
     }
 
-    public int quantidadeTributo(TipoTributo tipo) {
+    public int getQuantidadeTributoDoTipo(TipoTributo tipo) {
         int quantidade = 0;
 
         for (Tributo tributo : tributosArmazenados) {
@@ -42,14 +38,13 @@ public class TabuleiroIndividual {
                 quantidade++;
             }
         }
-
         return quantidade;
     }
 
     public boolean removerTributosPorTipo(TipoTributo tipo, int quantidade) {
         boolean removidos = false;
 
-        if (tipo != null && quantidade > 0 && quantidadeTributo(tipo) >= quantidade) {
+        if (tipo != null && quantidade > 0 && getQuantidadeTributoDoTipo(tipo) >= quantidade) {
             for (int i = 0; i < quantidade; i++) {
                 removerTributoPorTipo(tipo);
             }
