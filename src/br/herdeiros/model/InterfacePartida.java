@@ -10,9 +10,17 @@ public class InterfacePartida {
     private final List<Jogador> participantes;
 
     public InterfacePartida() {
+        this(new String[] {"Azul", "Vermelho"}, new Cor[] {Cor.AZUL, Cor.VERMELHO});
+    }
+
+    public InterfacePartida(String[] nomes, Cor[] cores) {
+        if (nomes == null || cores == null || nomes.length == 0 || nomes.length != cores.length) {
+            throw new IllegalArgumentException("Cada jogador deve ter nome e cor");
+        }
         participantes = new ArrayList<>();
-        participantes.add(new Jogador("Azul", Cor.AZUL, 0));
-        participantes.add(new Jogador("Vermelho", Cor.VERMELHO, 0));
+        for (int i = 0; i < nomes.length; i++) {
+            participantes.add(new Jogador(nomes[i], cores[i], 0));
+        }
         jogo = new Jogo(participantes);
     }
 
@@ -96,6 +104,13 @@ public class InterfacePartida {
 
     public String getNomeJogador(int indice) {
         return participantes.get(indice).getNome();
+    }
+
+    public Cor getCorJogador(int indice) {
+        if (indice < 0 || indice >= participantes.size()) {
+            return null;
+        }
+        return participantes.get(indice).getCor();
     }
 
     public int getOcupacao(int id) {

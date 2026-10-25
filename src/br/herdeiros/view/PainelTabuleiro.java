@@ -34,8 +34,10 @@ public class PainelTabuleiro extends JPanel {
         this.mapa = mapa;
         this.controlador = controlador;
         imagem = ImageIO.read(new File("assets/tabuleiro.jpg"));
-        imagemPeoes = new BufferedImage[] {criarImagemPeao(new Color(30, 95, 215)),
-                                            criarImagemPeao(new Color(195, 35, 55))};
+        imagemPeoes = new BufferedImage[partida.getQuantidadeJogadores()];
+        for (int i = 0; i < imagemPeoes.length; i++) {
+            imagemPeoes[i] = criarImagemPeao(CoresJogadores.obter(partida.getCorJogador(i)));
+        }
         setPreferredSize(new Dimension(820, 820));
         setBackground(new Color(45, 43, 51));
         addMouseListener(controlador);
@@ -75,7 +77,7 @@ public class PainelTabuleiro extends JPanel {
             if (ponto != null) {
                 int x = xImagem + (int) Math.round(ponto.getX() * larguraImagem);
                 int y = yImagem + (int) Math.round(ponto.getY() * alturaImagem);
-                int deslocamento = i * 23 - 12;
+                int deslocamento = (int) Math.round((i - (imagemPeoes.length - 1) / 2.0) * 23);
                 g.drawImage(imagemPeoes[i], x + deslocamento - 16, y - 47, 32, 36, null);
             }
         }

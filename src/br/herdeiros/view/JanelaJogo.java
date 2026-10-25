@@ -18,6 +18,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.JTextArea;
 
 /** Jogo normal: carrega o mapa e não oferece comandos para editá-lo. */
 public class JanelaJogo extends JFrame {
@@ -38,14 +39,21 @@ public class JanelaJogo extends JFrame {
         }
         ControladorTabuleiro controlador = new ControladorTabuleiro(partida, mapa);
         PainelTabuleiro painel = new PainelTabuleiro(partida, mapa, controlador);
-        JLabel estado = new JLabel("<html>Selecione uma parada cadastrada. Edite o mapa no EditorMapaMain.</html>");
-        controlador.configurar(painel, estado);
+        JLabel indicadorVez = new JLabel();
+        indicadorVez.setHorizontalAlignment(JLabel.CENTER);
+        JTextArea estado = new JTextArea("Selecione uma parada cadastrada. Edite o mapa no EditorMapaMain.");
+        estado.setEditable(false);
+        estado.setLineWrap(true);
+        estado.setWrapStyleWord(true);
+        estado.setOpaque(false);
+        estado.setRows(3);
+        controlador.configurar(painel, estado, indicadorVez);
         controlador.atualizarEstado();
 
         JPanel lateral = new JPanel(new BorderLayout(8, 8));
-        lateral.setPreferredSize(new Dimension(260, 800));
+        lateral.setPreferredSize(new Dimension(240, 0));
         JPanel ferramentas = new JPanel(new GridLayout(0, 1, 6, 6));
-        ferramentas.add(new JLabel("Movimentos (simulação de cavalos):"));
+        ferramentas.add(new JLabel("<html>Movimentos (simulação<br>de cavalos):</html>"));
         final JComboBox<Integer> cavalos = new JComboBox<>(
                 new Integer[] {1, 2, 3, 4, 5, 6});
         cavalos.addActionListener(new ActionListener() {
@@ -67,7 +75,8 @@ public class JanelaJogo extends JFrame {
             }
         });
         ferramentas.add(passar);
-        ferramentas.add(new JLabel("Mapa carregado do arquivo CSV."));
+        ferramentas.add(new JLabel("<html>Mapa carregado do<br>arquivo CSV.</html>"));
+        lateral.add(indicadorVez, BorderLayout.CENTER);
         lateral.add(ferramentas, BorderLayout.NORTH);
         lateral.add(estado, BorderLayout.SOUTH);
         setLayout(new BorderLayout(8, 8));
