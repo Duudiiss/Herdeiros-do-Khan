@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TabuleiroIndividual {
-    private List<Tributo> tributosArmazenados;
-    private List<Melhoria> melhoriasAdquiridas;
-    private Integer quantidadeColunas;
+    private final List<Tributo> tributosArmazenados;
+    private final List<Melhoria> melhoriasAdquiridas;
+    private final int quantidadeColunas;
 
     public TabuleiroIndividual() {
         this.tributosArmazenados = new ArrayList<>();
@@ -19,29 +19,51 @@ public class TabuleiroIndividual {
     }
 
     public boolean removerTributoPorTipo(TipoTributo tipo) {
-        for (Tributo t : tributosArmazenados) {
-        	Boolean jogadorTemEsseTributo = t.getTipo() == tipo;
+        for (Tributo tributo : tributosArmazenados) {
+        	Boolean tributoEncontrado = tributo.getTipo() == tipo;
         	
-            if (jogadorTemEsseTributo) {
-                tributosArmazenados.remove(t);
+            if (tributoEncontrado) {
+                tributosArmazenados.remove(tributo);
                 return true;
             }
         }
         return false;
     }
 
+    public int getQuantidadeTributoDoTipo(TipoTributo tipo) {
+        int quantidade = 0;
+
+        for (Tributo tributo : tributosArmazenados) {
+            if (tributo.getTipo() == tipo) {
+                quantidade++;
+            }
+        }
+        return quantidade;
+    }
+
+    public boolean removerTributosPorTipo(TipoTributo tipo, int quantidade) {
+        boolean removidos = false;
+
+        if (tipo != null && quantidade > 0 && getQuantidadeTributoDoTipo(tipo) >= quantidade) {
+            for (int i = 0; i < quantidade; i++) {
+                removerTributoPorTipo(tipo);
+            }
+            removidos = true;
+        }
+
+        return removidos;
+    }
+
     public void adicionarMelhoria(Melhoria melhoria) {
         this.melhoriasAdquiridas.add(melhoria);
     }
 
-<<<<<<< HEAD
-    public  List<Tributo> getTributosArmazenados() {
-        return tributosArmazenados;
-=======
+    public int getQuantidadeColunas() {
+        return quantidadeColunas;
+    }
+
     public List<Tributo> getTributosArmazenados() {
         return new ArrayList<>(tributosArmazenados);
->>>>>>> ef454980088f6740f351dcb305cfbad99bd9b912
-    }
 
     public List<Melhoria> getMelhoriasAdquiridas() {
         return new ArrayList<>(melhoriasAdquiridas);

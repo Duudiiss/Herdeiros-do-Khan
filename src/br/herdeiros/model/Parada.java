@@ -1,6 +1,8 @@
 package br.herdeiros.model;
 
 import java.util.HashMap;
+import java.util.Collection;
+import java.util.Collections;
 
 /** Representa uma posição do mapa e as paradas diretamente conectadas a ela. */
 class Parada {
@@ -57,6 +59,10 @@ class Parada {
         if (parada != null && parada != this) {
             adjacentes.put(parada.getId(), parada);
         }
+    }
+
+    public Collection<Parada> getAdjacentes() {
+        return Collections.unmodifiableCollection(adjacentes.values());
     }
 
     public boolean ehAdjacente(Parada parada) {
