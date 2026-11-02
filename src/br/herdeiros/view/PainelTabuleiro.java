@@ -17,7 +17,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
 /** O JPanel é somente a superfície: imagens são desenhadas com Graphics2D.drawImage. */
-public class PainelTabuleiro extends JPanel {
+public final class PainelTabuleiro extends JPanel {
     private final BufferedImage imagem;
     private final BufferedImage[] imagemPeoes;
     private final MapaDados mapa;

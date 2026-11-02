@@ -11,18 +11,12 @@ class Peao {
         }
 
         this.cor = cor;
-<<<<<<< HEAD
-        this.paradaAtual = new Parada(0, TipoParada.KARAKORUM);
-=======
->>>>>>> d39c6919cd980f3ef37a0301c737ea9845bb1f82
     }
 
     public Cor getCor() {
         return cor;
     }
 
-<<<<<<< HEAD
-=======
     public String getLocalizacaoAtual() {
         String localizacao;
 
@@ -37,7 +31,6 @@ class Peao {
         return localizacao;
     }
 
->>>>>>> d39c6919cd980f3ef37a0301c737ea9845bb1f82
     public Parada getParadaAtual() {
         return paradaAtual;
     }
