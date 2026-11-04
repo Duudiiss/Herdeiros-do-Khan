@@ -57,6 +57,7 @@ public class Janela extends JFrame{
 		painelContainer.add(painelInicial, "Menu");
 		painelContainer.add(painelTabuleiro, "Tabuleiro");
 		
+		setContentPane(painelContainer);
 		cardLayout.show(painelContainer, "Menu");
 	}
 	
