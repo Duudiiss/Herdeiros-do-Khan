@@ -1,6 +1,6 @@
 package br.herdeiros.view;
 
-import br.herdeiros.controller.ControladorTabuleiro;
+import br.herdeiros.controller.ControladorTabuleiro; //idealmente a view não conhece o controller
 import br.herdeiros.mapa.ArquivoMapa;
 import br.herdeiros.mapa.MapaDados;
 import br.herdeiros.model.InterfacePartida;
@@ -21,11 +21,10 @@ import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 
 /** Jogo normal: carrega o mapa e não oferece comandos para editá-lo. */
-public class JanelaJogo extends JFrame {
+public class JanelaJogo extends JPanel {
     private static final long serialVersionUID = 1L;
 
     public JanelaJogo() throws IOException {
-        super("Herdeiros de Khan - Partida");
         InterfacePartida partida = new InterfacePartida();
         MapaDados mapa;
         java.nio.file.Path caminho = Paths.get("assets", "mapa_paradas.csv");
@@ -82,21 +81,6 @@ public class JanelaJogo extends JFrame {
         setLayout(new BorderLayout(8, 8));
         add(painel, BorderLayout.CENTER);
         add(lateral, BorderLayout.EAST);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1120, 900);
-        setLocationRelativeTo(null);
     }
 
-    public static void iniciar() {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    new JanelaJogo().setVisible(true);
-                } catch (IOException erro) {
-                    erro.printStackTrace();
-                }
-            }
-        });
-    }
 }
