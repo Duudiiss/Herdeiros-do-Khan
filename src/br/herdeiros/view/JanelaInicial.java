@@ -199,8 +199,6 @@ public class JanelaInicial extends JPanel {
                 int x = (getWidth() - fm.stringWidth(texto)) / 2;
                 int y = ((getHeight() - fm.getHeight()) / 2) + fm.getAscent();
 
-                g2.setFont(fonte);
-
                 g2.setColor(corBorda); // Cor da borda
                 int espessuraBorda = 1;   // Grossura da borda em pixels
                 
