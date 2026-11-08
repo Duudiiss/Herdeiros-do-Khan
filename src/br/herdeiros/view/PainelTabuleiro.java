@@ -58,11 +58,9 @@ public final class PainelTabuleiro extends JPanel {
         g.dispose();
         return token;
     }
-
-    @Override
-    protected void paintComponent(Graphics graficos) {
-        super.paintComponent(graficos);
-        Graphics2D g = (Graphics2D) graficos.create();
+    
+    private void drawMapa(Graphics graficos) {
+    	Graphics2D g = (Graphics2D) graficos.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         double escala = Math.min((double) getWidth() / imagem.getWidth(),
                                  (double) getHeight() / imagem.getHeight());
@@ -71,7 +69,11 @@ public final class PainelTabuleiro extends JPanel {
         xImagem = (getWidth() - larguraImagem) / 2;
         yImagem = (getHeight() - alturaImagem) / 2;
         g.drawImage(imagem, xImagem, yImagem, larguraImagem, alturaImagem, null);
-        for (int i = 0; i < partida.getQuantidadeJogadores(); i++) {
+    }
+    
+    private void drawPeoes(Graphics graficos) {
+        Graphics2D g = (Graphics2D) graficos.create();
+    	for (int i = 0; i < partida.getQuantidadeJogadores(); i++) {
             int id = partida.getParadaJogador(i);
             MapaDados.Ponto ponto = mapa.getPonto(id);
             if (ponto != null) {
@@ -81,6 +83,22 @@ public final class PainelTabuleiro extends JPanel {
                 g.drawImage(imagemPeoes[i], x + deslocamento - 16, y - 47, 32, 36, null);
             }
         }
+    }
+
+    private void drawYurts(Graphics graficos) {
+        Graphics2D g = (Graphics2D) graficos.create();
+        BufferedImage token = new BufferedImage(32, 36, BufferedImage.TYPE_INT_ARGB);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(new Color(30, 24, 17, 210));
+        g.fillOval(5, 27, 22, 7);
+        
+    }
+    @Override
+    protected void paintComponent(Graphics graficos) {
+        super.paintComponent(graficos);
+        Graphics2D g = (Graphics2D) graficos.create();
+        drawMapa(graficos);
+        drawPeoes(graficos);
         g.dispose();
     }
 
