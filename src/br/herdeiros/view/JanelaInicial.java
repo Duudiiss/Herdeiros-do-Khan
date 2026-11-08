@@ -201,7 +201,7 @@ public class JanelaInicial extends JPanel {
             camposNomes.clear();
             seletoresCores.clear();
 
-            String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Branco"};
+            String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto"};
 
             painelInputsJogadores.add(Box.createVerticalStrut(20));
             
@@ -240,7 +240,6 @@ public class JanelaInicial extends JPanel {
             case "verde": return Cor.VERDE;
             case "amarelo": return Cor.AMARELO;
             case "preto": return Cor.PRETO;
-            case "branco": return Cor.BRANCO;
             case "laranja": return Cor.LARANJA;
             default: return Cor.BRANCO;
         }
