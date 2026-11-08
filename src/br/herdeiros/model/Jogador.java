@@ -56,7 +56,7 @@ class Jogador {
         if (tipo == null) {
             return 0;
         }
-        return tabuleiroIndividual.quantidadeTributo(tipo);
+        return tabuleiroIndividual.getQuantidadeTributoDoTipo(tipo);
     }
 
     public boolean receberTributos(TipoTributo tipo, int quantidade) {

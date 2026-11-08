@@ -87,8 +87,7 @@ class Tabuleiro {
 
     /** Registra o peão de um jogador em Karakorum somente uma vez. */
     public boolean posicionarPeaoInicial(Peao peao) {
-        if (peao == null || peao == peaoDoKhan || peao.getCor() == Cor.BRANCO
-                || peao.getParadaAtual() != null || peoes.contains(peao)) {
+        if (peao == null || peao == peaoDoKhan || peao.getCor() == Cor.BRANCO || peoes.contains(peao)) {
             return false;
         }
 

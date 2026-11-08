@@ -58,10 +58,14 @@ public class TabuleiroIndividual {
         this.melhoriasAdquiridas.add(melhoria);
     }
 
+    public int getQuantidadeColunas() {
+        return quantidadeColunas;
+    }
+
     public List<Tributo> getTributosArmazenados() {
         return new ArrayList<>(tributosArmazenados);
     }
-
+    
     public List<Melhoria> getMelhoriasAdquiridas() {
         return new ArrayList<>(melhoriasAdquiridas);
     }

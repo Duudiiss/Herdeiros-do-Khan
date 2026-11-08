@@ -1,7 +1,8 @@
-import br.herdeiros.view.JanelaJogo;
+
+import br.herdeiros.view.Janela;
 
 public class Main {
     public static void main(String[] args) {
-        JanelaJogo.iniciar();
+        Janela.iniciar();
     }
 }

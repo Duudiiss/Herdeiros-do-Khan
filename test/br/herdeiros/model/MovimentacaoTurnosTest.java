@@ -93,6 +93,22 @@ public class MovimentacaoTurnosTest {
         assertEquals("Após vermelho deve jogar azul", 0, partida.getIndiceJogadorAtual());
     }
 
+    @Test(timeout = 2000)
+    public void testeTurnosComTresJogadores() {
+        InterfacePartida partida = new InterfacePartida(
+                new String[] {"Azul", "Vermelho", "Amarelo"},
+                new Cor[] {Cor.AZUL, Cor.VERMELHO, Cor.AMARELO});
+
+        assertEquals(3, partida.getQuantidadeJogadores());
+        assertEquals(Cor.AMARELO, partida.getCorJogador(2));
+        partida.avancarJogador();
+        partida.avancarJogador();
+        assertEquals("A vez deve chegar ao terceiro jogador", 2, partida.getIndiceJogadorAtual());
+        partida.avancarJogador();
+        assertEquals("Após o último jogador, a vez deve voltar ao primeiro", 0,
+                partida.getIndiceJogadorAtual());
+    }
+
     /** Objetivo: rejeitar movimento com orçamento zero.
      * Condição inicial: uma parada vizinha e jogador inicial em Karakorum.
      * Resultado esperado: nenhum deslocamento e nenhuma troca de vez. */
