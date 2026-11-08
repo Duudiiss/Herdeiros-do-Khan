@@ -47,7 +47,7 @@ public class Janela extends JFrame{
     private JPanel painelContainer;
     
     private JanelaJogo janelaJogo;
-    private JanelaInicial janelInicial;
+    private JanelaInicial janelaInicial;
     
 	public Janela() throws IOException{
 		super("Herdeiros de Khan");
@@ -60,9 +60,9 @@ public class Janela extends JFrame{
         painelContainer = new JPanel(cardLayout);
         
         janelaJogo = new JanelaJogo();
-        janelInicial = new JanelaInicial(this);
+        janelaInicial = new JanelaInicial(this);
 		
-		painelContainer.add(janelInicial, "Menu");
+		painelContainer.add(janelaInicial, "Menu");
 		painelContainer.add(janelaJogo, "Tabuleiro");
 		
 		setContentPane(painelContainer);
