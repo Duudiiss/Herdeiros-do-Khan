@@ -98,7 +98,10 @@ class Jogador {
             custo = 2;
         }
 
-        if (quantidadeTributo(TipoTributo.ESPADA) < custo) {
+        int espadasVirtuais = tabuleiroIndividual.getQuantidadeEspadasVirtuais();
+        int espadasDisponiveis = quantidadeTributo(TipoTributo.ESPADA) + espadasVirtuais;
+
+        if (espadasDisponiveis < custo) {
             return false;
         }
 
@@ -107,7 +110,14 @@ class Jogador {
             return false;
         }
 
-        tabuleiroIndividual.removerTributosPorTipo(TipoTributo.ESPADA, custo);
+        int espadasReaisNecessarias = custo - espadasVirtuais;
+        if (espadasReaisNecessarias < 0) {
+            espadasReaisNecessarias = 0;
+        }
+
+        if (espadasReaisNecessarias > 0) {
+            tabuleiroIndividual.removerTributosPorTipo(TipoTributo.ESPADA, espadasReaisNecessarias);
+        }
         return true;
     }
 }

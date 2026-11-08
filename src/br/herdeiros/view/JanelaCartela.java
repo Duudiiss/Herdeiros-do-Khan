@@ -34,6 +34,7 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
     private final JTextArea melhorias;
     private final JLabel resumoAtivacao;
     private final JButton[] botoesAtivacao;
+    private final JButton escolherBranca;
 
     public JanelaCartela(InterfacePartida partida) throws IOException {
         super("Herdeiros de Khan - Cartela individual");
@@ -47,6 +48,13 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         this.melhorias = new JTextArea(4, 26);
         this.resumoAtivacao = new JLabel();
         this.botoesAtivacao = new JButton[4];
+        this.escolherBranca = new JButton("Escolher melhoria branca");
+        escolherBranca.addActionListener(new java.awt.event.ActionListener() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent evento) {
+                EscolhaMelhoriaBranca.mostrar(JanelaCartela.this, JanelaCartela.this.partida);
+            }
+        });
         melhorias.setEditable(false);
         melhorias.setLineWrap(true);
         melhorias.setWrapStyleWord(true);
@@ -66,6 +74,7 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
             controles.add(botoesAtivacao[i]);
         }
 
+        controles.add(escolherBranca);
         JPanel areaAtivacao = new JPanel(new BorderLayout(4, 4));
         areaAtivacao.add(controles, BorderLayout.NORTH);
         areaAtivacao.add(resumoAtivacao, BorderLayout.SOUTH);
@@ -96,11 +105,18 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         nome.setText("Jogador: " + resumo.getNomeJogador()
                 + " (" + resumo.getCorJogador() + ")  |  ");
         tributos.setText("Espadas: " + resumo.getEspadas()
+                + formatarVirtual(resumo.getEspadasVirtuais())
                 + "   Moedas: " + resumo.getMoedas()
-                + "   Yurts: " + resumo.getYurts());
-        painelImagem.mostrarCartela(partida.getIndiceCartelaJogador(resumo.getIndiceJogador()));
-
+                + formatarVirtual(resumo.getMoedasVirtuais())
+                + "   Yurts: " + resumo.getYurts()
+                + formatarVirtual(resumo.getYurtsVirtuais()));
         ResumoAtivacao ativacao = partida.consultarAtivacaoJogadorAtual();
+        escolherBranca.setEnabled(partida.consultarMelhoriasBrancasPendentes() > 0);
+        painelImagem.mostrarCartela(
+                partida.getIndiceCartelaJogador(resumo.getIndiceJogador()),
+                ativacao, partida.consultarVotosJogadorAtual(), resumo.getCorJogador(),
+                resumo.getMelhoriasDetalhadas());
+
         String[] nomesColunas = {"Vermelha", "Verde", "Amarela", "Branca"};
         for (int i = 0; i < botoesAtivacao.length; i++) {
             botoesAtivacao[i].setEnabled(ativacao.podeAtivar(i));
@@ -115,7 +131,8 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
                     + nomesColunas[ativacao.getColunaAtiva()]
                     + ". Cavalos restantes: " + ativacao.getMovimentosRestantes()
                     + ". Punhos: " + ativacao.getPunhosDaColuna()
-                    + ". Acoes Khan/melhoria: pendentes de integracao.");
+                    + ". Moedas virtuais da coluna: " + ativacao.getMoedasVirtuaisDaColuna()
+                    + ". Khan obrigatorio: " + ativacao.temAcaoKhan() + ".");
         }
 
         StringBuilder texto = new StringBuilder("Melhorias adquiridas: ");
@@ -128,5 +145,12 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
             }
         }
         melhorias.setText(texto.toString());
+    }
+
+    private String formatarVirtual(int quantidade) {
+        if (quantidade <= 0) {
+            return "";
+        }
+        return " (+" + quantidade + " virtual)";
     }
 }

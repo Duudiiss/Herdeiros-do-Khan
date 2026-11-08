@@ -11,6 +11,12 @@ public class TabuleiroIndividual {
     private int colunaAtivaNoTurno;
     private int movimentosRestantes;
     private int punhosDaColuna;
+    private int moedasVirtuaisDaColuna;
+    private int espadasVirtuaisDaColuna;
+    private int yurtsVirtuaisDaColuna;
+    private int cavalosVirtuaisDaColuna;
+    private int punhosVirtuaisDaColuna;
+    private int linhasBrancasPendentes;
     private boolean acaoKhan;
     private boolean acaoMelhoria;
 
@@ -38,8 +44,16 @@ public class TabuleiroIndividual {
         AcoesColuna acoes = AcoesColuna.obter(personagem, coluna);
         colunasOcupadas[coluna] = true;
         colunaAtivaNoTurno = coluna;
-        movimentosRestantes = acoes.getCavalos();
-        punhosDaColuna = acoes.getPunhos();
+        // Os efeitos sao calculados ao ativar a coluna e nao mudam se
+        // alguma melhoria for comprada durante este mesmo turno.
+        cavalosVirtuaisDaColuna = contarMelhoriasDaColuna("CAV", coluna) * 2;
+        punhosVirtuaisDaColuna = contarMelhoriasDaColuna("MAO", coluna);
+        movimentosRestantes = acoes.getCavalos() + cavalosVirtuaisDaColuna;
+        punhosDaColuna = acoes.getPunhos() + punhosVirtuaisDaColuna;
+        moedasVirtuaisDaColuna = acoes.getMoedasVirtuais()
+                + contarMelhoriasDaColuna("MOE", coluna);
+        espadasVirtuaisDaColuna = contarMelhoriasDaColuna("ESP", coluna);
+        yurtsVirtuaisDaColuna = contarMelhoriasDaColuna("CAS", coluna);
         acaoKhan = acoes.temKhan();
         acaoMelhoria = acoes.temMelhoria();
 
@@ -88,6 +102,11 @@ public class TabuleiroIndividual {
         colunaAtivaNoTurno = -1;
         movimentosRestantes = 0;
         punhosDaColuna = 0;
+        moedasVirtuaisDaColuna = 0;
+        espadasVirtuaisDaColuna = 0;
+        yurtsVirtuaisDaColuna = 0;
+        cavalosVirtuaisDaColuna = 0;
+        punhosVirtuaisDaColuna = 0;
         acaoKhan = false;
         acaoMelhoria = false;
     }
@@ -99,7 +118,7 @@ public class TabuleiroIndividual {
         }
         return new ResumoAtivacao(colunasOcupadas, colunaAtivaNoTurno,
                 movimentosRestantes, punhosDaColuna, acaoKhan,
-                acaoMelhoria, cavalos);
+                acaoMelhoria, cavalos, moedasVirtuaisDaColuna);
     }
 
     public void adicionarTributo(Tributo tributo) {
@@ -143,7 +162,68 @@ public class TabuleiroIndividual {
     }
 
     public void adicionarMelhoria(Melhoria melhoria) {
+        if (melhoria == null) {
+            return;
+        }
+        int coluna = melhoria.getColuna();
+        if (coluna == -1) {
+            // Melhoria sem codigo/coluna criada pelos testes antigos do Model.
+            melhoriasAdquiridas.add(melhoria);
+            return;
+        }
+        if (coluna < 0 || coluna > 3) {
+            return;
+        }
+        int linhasCompletasAntes = contarLinhasCompletas();
         this.melhoriasAdquiridas.add(melhoria);
+        int novasLinhas = contarLinhasCompletas() - linhasCompletasAntes;
+        if (coluna != 3 && novasLinhas > 0) {
+            linhasBrancasPendentes += novasLinhas;
+        }
+    }
+
+    private int contarLinhasCompletas() {
+        int minimo = 4;
+        for (int coluna = 0; coluna < 3; coluna++) {
+            int quantidade = contarMelhoriasNaColuna(coluna);
+            if (quantidade < minimo) {
+                minimo = quantidade;
+            }
+        }
+        return minimo;
+    }
+
+    public int getLinhasBrancasPendentes() {
+        return linhasBrancasPendentes;
+    }
+
+    boolean podeReceberMelhoriaBranca() {
+        return linhasBrancasPendentes > 0 && contarMelhoriasNaColuna(3) < 4;
+    }
+
+    boolean receberMelhoriaBranca(Melhoria melhoria) {
+        if (melhoria == null || !podeReceberMelhoriaBranca()) {
+            return false;
+        }
+        Melhoria branca = new Melhoria(melhoria.getDescdescricao(),
+                melhoria.getCustoEmMoedas(), melhoria.getVotosBonus(),
+                melhoria.getCodigo(), 3);
+        melhoriasAdquiridas.add(branca);
+        linhasBrancasPendentes--;
+        return true;
+    }
+
+    boolean podeAdicionarMelhoria(int coluna) {
+        if (coluna < 0 || coluna > 2) {
+            return false;
+        }
+        int quantidade = 0;
+        for (Melhoria melhoria : melhoriasAdquiridas) {
+            if (melhoria.getColuna() == coluna) {
+                quantidade++;
+            }
+        }
+        return quantidade < 4;
     }
 
     public int getQuantidadeColunas() {
@@ -157,4 +237,56 @@ public class TabuleiroIndividual {
     public List<Melhoria> getMelhoriasAdquiridas() {
         return new ArrayList<>(melhoriasAdquiridas);
     }
+
+
+    public int getQuantidadeMoedasVirtuais() {
+        return moedasVirtuaisDaColuna;
+    }
+
+    public int getMoedasVirtuaisDaColuna() {
+        return moedasVirtuaisDaColuna;
+    }
+
+    public int getQuantidadeEspadasVirtuais() {
+        return espadasVirtuaisDaColuna;
+    }
+
+    public int getQuantidadeYurtsVirtuais() {
+        return yurtsVirtuaisDaColuna;
+    }
+
+    public int getQuantidadeCavalosVirtuais() {
+        return cavalosVirtuaisDaColuna;
+    }
+
+    public int getQuantidadePunhosVirtuais() {
+        return punhosVirtuaisDaColuna;
+    }
+
+    public int contarMelhoriasNaColuna(int coluna) {
+        int quantidade = 0;
+
+        for (Melhoria melhoria : melhoriasAdquiridas) {
+            if (melhoria != null && melhoria.getColuna() == coluna) {
+                quantidade++;
+            }
+        }
+
+        return quantidade;
+    }
+
+    private int contarMelhoriasDaColuna(String prefixo, int coluna) {
+        int quantidade = 0;
+
+        for (Melhoria melhoria : melhoriasAdquiridas) {
+            if (melhoria != null && melhoria.getColuna() == coluna
+                    && melhoria.getCodigo() != null
+                    && melhoria.getCodigo().startsWith(prefixo)) {
+                quantidade++;
+            }
+        }
+
+        return quantidade;
+    }
+
 }

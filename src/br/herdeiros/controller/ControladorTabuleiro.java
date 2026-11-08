@@ -27,6 +27,7 @@ public class ControladorTabuleiro extends MouseAdapter {
     private int movimentosRestantes = 1;
     private boolean iniciouMovimento = false;
     private boolean ativacaoReal = false;
+    private boolean modoConstrucaoYurt = false;
 
 	public ControladorTabuleiro(InterfacePartida partida, MapaDados mapa) {
         this.partida = partida;
@@ -63,11 +64,20 @@ public class ControladorTabuleiro extends MouseAdapter {
 
     /** Apenas este comando encerra o turno, mesmo apos uma movimentacao. */
     public void passarVez() {
+        if (partida.consultarMelhoriasBrancasPendentes() > 0) {
+            escrever("Complete a recompensa: abra a cartela e escolha a melhoria branca antes de passar o turno.");
+            return;
+        }
+        if (partida.isPartidaEncerrada()) {
+            escrever("A partida foi encerrada. O Khan atingiu o limite e as rodadas finais terminaram.");
+            return;
+        }
         if (!partida.tentarAvancarJogador()) {
             escrever("Antes de passar o turno, mova o Khan: esta ação é obrigatória.");
             return;
         }
         iniciouMovimento = false;
+        modoConstrucaoYurt = false;
         movimentosRestantes = movimentosDisponiveis;
         if (seletorMovimentos != null) {
             seletorMovimentos.setEnabled(true);
@@ -96,6 +106,14 @@ public class ControladorTabuleiro extends MouseAdapter {
                     BorderFactory.createLineBorder(indicadorVez.getBackground().darker(), 3),
                     BorderFactory.createEmptyBorder(8, 6, 8, 6)));
             indicadorVez.setOpaque(true);
+        }
+        if (partida.isPartidaEncerrada()) {
+            escrever("FIM DE JOGO: a ficha neutra do Khan chegou ao limite e a rodada final terminou.");
+            return;
+        }
+        if (partida.isFimDisparado()) {
+            escrever("O Khan chegou à casa final! Complete esta rodada e a última rodada da partida.");
+            return;
         }
         if (ativacaoReal) {
             ResumoAtivacao ativacao = partida.consultarAtivacaoJogadorAtual();
@@ -126,6 +144,20 @@ public class ControladorTabuleiro extends MouseAdapter {
             estado.setText(mensagem);
         }
     }
+
+    public void alternarModoConstrucaoYurt() {
+        modoConstrucaoYurt = !modoConstrucaoYurt;
+        if (modoConstrucaoYurt) {
+            escrever("Modo yurt ativado: clique numa parada visitada neste turno para construir 1 yurt.");
+        } else {
+            atualizarEstado();
+        }
+    }
+
+    public boolean isModoConstrucaoYurt() {
+        return modoConstrucaoYurt;
+    }
+
 
     /**
      * Processa um destino usando o saldo de movimentos do turno.
@@ -207,7 +239,16 @@ public class ControladorTabuleiro extends MouseAdapter {
             int destino = mapa.encontrarParada(posicao[0], posicao[1],
                     painel.getLarguraImagem(), painel.getAlturaImagem());
             if (destino >= 0) {
-                tentarMoverPara(destino);
+                if (modoConstrucaoYurt) {
+                    if (partida.construirYurtAtual(destino)) {
+                        modoConstrucaoYurt = false;
+                        escrever("Yurt construida na parada " + destino + ". Ela ja pode ser usada em saltos futuros.");
+                    } else {
+                        escrever("Construcao recusada: a parada precisa ter sido visitada no turno, estar livre e voce precisa ter 1 yurt.");
+                    }
+                } else {
+                    tentarMoverPara(destino);
+                }
             }
         }
     }

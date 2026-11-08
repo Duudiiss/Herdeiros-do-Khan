@@ -38,6 +38,10 @@ final class ReservaProvincia {
         return false;
     }
 
+    Set<Integer> getAcessos() {
+        return new HashSet<Integer>(acessos);
+    }
+
     TipoTributo getTipo() {
         return tipo;
     }

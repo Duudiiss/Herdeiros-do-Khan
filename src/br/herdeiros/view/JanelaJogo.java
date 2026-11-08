@@ -49,6 +49,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JButton passar;
     private JButton abrirCartela;
     private JButton abrirCidades;
+    private JButton abrirMelhorias;
+    private JButton construirYurt;
+    private JanelaMelhorias janelaMelhorias;
     private JButton moverKhan;
     private JComboBox<DestinoKhan> destinosKhan;
     private JLabel posicaoKhan;
@@ -125,6 +128,27 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             }
         });
         // O saque de cidades e feito clicando diretamente nas cidades do tabuleiro.
+        abrirMelhorias = new JButton("Comprar melhorias");
+        abrirMelhorias.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                abrirJanelaMelhorias();
+            }
+        });
+        ferramentas.add(abrirMelhorias);
+
+        construirYurt = new JButton("Construir yurt");
+        construirYurt.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (controlador != null) {
+                    controlador.alternarModoConstrucaoYurt();
+                    construirYurt.setText(controlador.isModoConstrucaoYurt()
+                            ? "Cancelar yurt" : "Construir yurt");
+                }
+            }
+        });
+        ferramentas.add(construirYurt);
 
         ferramentas.add(new JLabel("Ação obrigatória do Khan:"));
         destinosKhan = new JComboBox<DestinoKhan>(DestinoKhan.values());
@@ -158,6 +182,18 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         lateral.add(estado, BorderLayout.SOUTH);
 
         add(lateral, BorderLayout.EAST);
+    }
+
+    private void abrirJanelaMelhorias() {
+        if (partida == null) {
+            return;
+        }
+        if (janelaMelhorias != null && janelaMelhorias.isDisplayable()) {
+            janelaMelhorias.toFront();
+            return;
+        }
+        janelaMelhorias = new JanelaMelhorias(partida);
+        janelaMelhorias.setVisible(true);
     }
 
     /** Janela informativa das cidades disponiveis, atualizada via Observer. */
@@ -207,6 +243,10 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private void iniciarPartida(String[] nomes, Cor[] cores,
                                Personagem[] personagens, boolean ordemAleatoria) throws IOException {
 
+        if (janelaMelhorias != null) {
+            janelaMelhorias.dispose();
+            janelaMelhorias = null;
+        }
         if (janelaCidades != null) {
             janelaCidades.dispose();
             janelaCidades = null;
@@ -392,6 +432,10 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         }
         if (partida != null) {
             moverKhan.setEnabled(partida.deveMoverKhanJogadorAtual());
+            if (controlador != null && construirYurt != null) {
+                construirYurt.setText(controlador.isModoConstrucaoYurt()
+                        ? "Cancelar yurt" : "Construir yurt");
+            }
             DestinoKhan destino = partida.consultarDestinoKhan();
             if (destino == null) {
                 posicaoKhan.setText("Khan: fora do tabuleiro");
