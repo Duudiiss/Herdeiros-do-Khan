@@ -1,10 +1,11 @@
 package br.herdeiros.view;
 
-import br.herdeiros.controller.ControladorCartela;
+import br.herdeiros.controller.ControladorAtivacao;
 import br.herdeiros.model.InterfacePartida;
 import br.herdeiros.model.ObservadoPartida;
 import br.herdeiros.model.ObservadorPartida;
 import br.herdeiros.model.ResumoCartela;
+import br.herdeiros.model.ResumoAtivacao;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -31,6 +32,8 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
     private final JLabel nome;
     private final JLabel tributos;
     private final JTextArea melhorias;
+    private final JLabel resumoAtivacao;
+    private final JButton[] botoesAtivacao;
 
     public JanelaCartela(InterfacePartida partida) throws IOException {
         super("Herdeiros de Khan - Cartela individual");
@@ -42,6 +45,8 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         this.nome = new JLabel();
         this.tributos = new JLabel();
         this.melhorias = new JTextArea(4, 26);
+        this.resumoAtivacao = new JLabel();
+        this.botoesAtivacao = new JButton[4];
         melhorias.setEditable(false);
         melhorias.setLineWrap(true);
         melhorias.setWrapStyleWord(true);
@@ -50,20 +55,22 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         cabecalho.add(nome);
         cabecalho.add(tributos);
 
-        JComboBox<String> tipos = new JComboBox<String>(
-                new String[] {"ESPADA", "MOEDA", "YURT"});
-        JButton simular = new JButton("+1 tributo (TESTE)");
-        simular.addActionListener(new ControladorCartela(partida, tipos));
-
         JPanel rodape = new JPanel(new BorderLayout(8, 8));
         JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        controles.add(new JLabel("Simulacao de desenvolvimento:"));
-        controles.add(tipos);
-        controles.add(simular);
-        rodape.add(controles, BorderLayout.NORTH);
+        String[] nomesColunas = {"Vermelha", "Verde", "Amarela", "Branca"};
+
+        for (int i = 0; i < botoesAtivacao.length; i++) {
+            botoesAtivacao[i] = new JButton("Ativar " + nomesColunas[i]);
+            botoesAtivacao[i].addActionListener(
+                    new ControladorAtivacao(partida, i));
+            controles.add(botoesAtivacao[i]);
+        }
+
+        JPanel areaAtivacao = new JPanel(new BorderLayout(4, 4));
+        areaAtivacao.add(controles, BorderLayout.NORTH);
+        areaAtivacao.add(resumoAtivacao, BorderLayout.SOUTH);
+        rodape.add(areaAtivacao, BorderLayout.NORTH);
         rodape.add(new JScrollPane(melhorias), BorderLayout.CENTER);
-        rodape.add(new JLabel("Esta simulacao nao representa uma acao oficial do jogo."),
-                BorderLayout.SOUTH);
 
         setLayout(new BorderLayout(8, 8));
         add(cabecalho, BorderLayout.NORTH);
@@ -92,6 +99,24 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
                 + "   Moedas: " + resumo.getMoedas()
                 + "   Yurts: " + resumo.getYurts());
         painelImagem.mostrarCartela(partida.getIndiceCartelaJogador(resumo.getIndiceJogador()));
+
+        ResumoAtivacao ativacao = partida.consultarAtivacaoJogadorAtual();
+        String[] nomesColunas = {"Vermelha", "Verde", "Amarela", "Branca"};
+        for (int i = 0; i < botoesAtivacao.length; i++) {
+            botoesAtivacao[i].setEnabled(ativacao.podeAtivar(i));
+            botoesAtivacao[i].setText("Ativar " + nomesColunas[i]
+                    + " (" + ativacao.getCavalosDaColuna(i) + " cavalos)"
+                    + (ativacao.estaOcupada(i) ? " - usada" : ""));
+        }
+        if (ativacao.getColunaAtiva() < 0) {
+            resumoAtivacao.setText("Ative uma coluna para liberar os movimentos do turno.");
+        } else {
+            resumoAtivacao.setText("Coluna ativa: "
+                    + nomesColunas[ativacao.getColunaAtiva()]
+                    + ". Cavalos restantes: " + ativacao.getMovimentosRestantes()
+                    + ". Punhos: " + ativacao.getPunhosDaColuna()
+                    + ". Acoes Khan/melhoria: pendentes de integracao.");
+        }
 
         StringBuilder texto = new StringBuilder("Melhorias adquiridas: ");
         if (resumo.getMelhorias().isEmpty()) {

@@ -42,7 +42,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     // Componentes da interface
     private JLabel indicadorVez;
     private JTextArea estado;
-    private JComboBox<Integer> cavalos;
+
 
     private JButton passar;
     private JButton abrirCartela;
@@ -86,32 +86,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         );
 
         ferramentas.add(new JLabel(
-            "<html>Movimentos (simulação<br>de cavalos):</html>"
+            "<html>Movimentacao: ative uma<br>coluna na cartela individual.</html>"
         ));
-
-        cavalos = new JComboBox<>(
-            new Integer[] {1, 2, 3, 4, 5, 6}
-        );
-
-        cavalos.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-
-                if (controlador == null) {
-                    return;
-                }
-
-                Integer valor =
-                    (Integer) cavalos.getSelectedItem();
-
-                if (valor != null) {
-                    controlador.configurarMovimentos(valor);
-                    controlador.atualizarEstado();
-                }
-            }
-        });
-
-        ferramentas.add(cavalos);
 
         passar = new JButton("Passar turno");
 
@@ -254,9 +230,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         controlador.configurar(
             painel,
             estado,
-            indicadorVez,
-            cavalos
+            indicadorVez
         );
+        controlador.habilitarAtivacaoReal();
 
         partida.registrarObservador(this);
         partida.registrarObservador(painel);

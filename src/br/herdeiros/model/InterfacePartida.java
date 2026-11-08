@@ -130,8 +130,46 @@ public class InterfacePartida implements ObservadoPartida {
         return realizado;
     }
 
+    /** Ativacao oficial da cartela: uma coluna por turno, sem repetir ocupadas. */
+    public boolean ativarColunaJogadorAtual(int coluna) {
+        Jogador jogador = participantes.get(indiceAtual);
+        boolean ativada = jogador.getTabuleiroIndividual().ativarColuna(
+                coluna, jogador.getPersonagem());
+        if (ativada) {
+            notificarObservadores();
+        }
+        return ativada;
+    }
+
+    public ResumoAtivacao consultarAtivacaoJogadorAtual() {
+        Jogador jogador = participantes.get(indiceAtual);
+        return jogador.getTabuleiroIndividual().consultarAtivacao(jogador.getPersonagem());
+    }
+
+    /** Movimentacao cujo saldo e calculado e debitado no proprio Model. */
+    public boolean movimentarJogadorComAtivacao(int destino) {
+        Jogador jogador = participantes.get(indiceAtual);
+        TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
+        ResumoAtivacao ativacao = cartela.consultarAtivacao(jogador.getPersonagem());
+        int custo = consultarCustoMovimentoAtual(destino);
+
+        if (custo <= 0 || custo > ativacao.getMovimentosRestantes()) {
+            return false;
+        }
+        boolean realizado = jogo.getTabuleiro().moverPeaoAte(
+                jogador.getMeuPeao(), destino, ativacao.getMovimentosRestantes());
+        if (!realizado) {
+            return false;
+        }
+
+        cartela.consumirMovimentos(custo);
+        notificarObservadores();
+        return true;
+    }
+
     /** Passa para o próximo participante na ordem de cadastro. */
     public void avancarJogador() {
+        participantes.get(indiceAtual).getTabuleiroIndividual().encerrarTurno();
         indiceAtual++;
         if (indiceAtual >= participantes.size()) {
             indiceAtual = 0;

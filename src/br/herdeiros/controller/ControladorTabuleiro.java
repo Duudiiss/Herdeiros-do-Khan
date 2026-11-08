@@ -2,6 +2,7 @@ package br.herdeiros.controller;
 
 import br.herdeiros.mapa.MapaDados;
 import br.herdeiros.model.InterfacePartida;
+import br.herdeiros.model.ResumoAtivacao;
 import br.herdeiros.view.PainelTabuleiro;
 import br.herdeiros.view.CoresJogadores;
 import java.awt.event.MouseAdapter;
@@ -24,6 +25,7 @@ public class ControladorTabuleiro extends MouseAdapter {
     private int movimentosDisponiveis = 1;
     private int movimentosRestantes = 1;
     private boolean iniciouMovimento = false;
+    private boolean ativacaoReal = false;
 
 	public ControladorTabuleiro(InterfacePartida partida, MapaDados mapa) {
         this.partida = partida;
@@ -42,7 +44,16 @@ public class ControladorTabuleiro extends MouseAdapter {
         this.seletorMovimentos = seletorMovimentos;
     }
 
+    /** A interface normal usa apenas cavalos obtidos de uma coluna ativada. */
+    public void habilitarAtivacaoReal() {
+        ativacaoReal = true;
+        seletorMovimentos = null;
+    }
+
     public void configurarMovimentos(int movimentos) {
+        if (ativacaoReal) {
+            return;
+        }
         if (!iniciouMovimento && movimentos >= 1 && movimentos <= 10) {
             movimentosDisponiveis = movimentos;
             movimentosRestantes = movimentos;
@@ -82,8 +93,22 @@ public class ControladorTabuleiro extends MouseAdapter {
                     BorderFactory.createEmptyBorder(8, 6, 8, 6)));
             indicadorVez.setOpaque(true);
         }
-        escrever("Movimentos restantes neste turno: " + movimentosRestantes
-                + " de " + movimentosDisponiveis + ". Finalize em Passar turno.");
+        if (ativacaoReal) {
+            ResumoAtivacao ativacao = partida.consultarAtivacaoJogadorAtual();
+            if (ativacao.getColunaAtiva() < 0) {
+                escrever("Abra a cartela e ative uma coluna antes de mover. "
+                        + "Uma coluna e ativada por turno. Finalize em Passar turno.");
+            } else {
+                escrever("Movimentos restantes da coluna: "
+                        + ativacao.getMovimentosRestantes()
+                        + ". Punhos: " + ativacao.getPunhosDaColuna()
+                        + ". Acoes de Khan/melhoria ainda em integracao. "
+                        + "Finalize em Passar turno.");
+            }
+        } else {
+            escrever("Movimentos restantes neste turno: " + movimentosRestantes
+                    + " de " + movimentosDisponiveis + ". Finalize em Passar turno.");
+        }
     }
 
     private void escrever(String mensagem) {
@@ -97,6 +122,17 @@ public class ControladorTabuleiro extends MouseAdapter {
      * Pode ser exercitado por testes sem abrir a interface gráfica.
      */
     public boolean tentarMoverPara(int destino) {
+        if (ativacaoReal) {
+            boolean realizado = partida.movimentarJogadorComAtivacao(destino);
+            if (!realizado) {
+                escrever("Movimento recusado: ative uma coluna ou escolha um destino "
+                        + "alcancavel com os cavalos restantes.");
+                return false;
+            }
+            atualizarEstado();
+            return true;
+        }
+
         int custo = partida.consultarCustoMovimentoAtual(destino);
         if (custo <= 0 || custo > movimentosRestantes) {
             escrever("Destino invalido ou exige mais movimentos que os restantes: "
