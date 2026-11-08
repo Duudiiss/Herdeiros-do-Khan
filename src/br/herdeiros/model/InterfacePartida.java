@@ -9,9 +9,9 @@ public class InterfacePartida {
     private final Jogo jogo;
     private final List<Jogador> participantes;
 
-    public InterfacePartida() {
-        this(new String[] {"Azul", "Vermelho"}, new Cor[] {Cor.AZUL, Cor.VERMELHO});
-    }
+    ///public InterfacePartida() {
+    ///    this(new String[] {"Azul", "Vermelho"}, new Cor[] {Cor.AZUL, Cor.VERMELHO});
+    ///}
 
     public InterfacePartida(String[] nomes, Cor[] cores) {
         if (nomes == null || cores == null || nomes.length == 0 || nomes.length != cores.length) {

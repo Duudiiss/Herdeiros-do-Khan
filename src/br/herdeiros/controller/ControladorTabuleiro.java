@@ -21,7 +21,7 @@ public class ControladorTabuleiro extends MouseAdapter {
     private JLabel indicadorVez;
     private int movimentosDisponiveis = 1;
 
-    public ControladorTabuleiro(InterfacePartida partida, MapaDados mapa) {
+	public ControladorTabuleiro(InterfacePartida partida, MapaDados mapa) {
         this.partida = partida;
         this.mapa = mapa;
     }

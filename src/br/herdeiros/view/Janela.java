@@ -1,5 +1,7 @@
 package br.herdeiros.view;
 
+import br.herdeiros.model.Cor;
+
 import br.herdeiros.view.*;
 
 import javax.swing.*;
@@ -26,6 +28,8 @@ import java.io.ObjectOutput;
 import java.io.ObjectStreamConstants;
 import java.io.Serializable;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.imageio.*;
 import javax.imageio.ImageTranscoder;
@@ -42,20 +46,24 @@ public class Janela extends JFrame{
 	private CardLayout cardLayout;
     private JPanel painelContainer;
     
+    private JanelaJogo janelaJogo;
+    private JanelaInicial janelInicial;
+    
 	public Janela() throws IOException{
 		super("Herdeiros de Khan");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1120, 900);
         setLocationRelativeTo(null);
         
+        
         cardLayout = new CardLayout();
         painelContainer = new JPanel(cardLayout);
         
-		JPanel painelTabuleiro = new JanelaJogo();
-		JPanel painelInicial = new JanelaInicial(this);
+        janelaJogo = new JanelaJogo();
+        janelInicial = new JanelaInicial(this);
 		
-		painelContainer.add(painelInicial, "Menu");
-		painelContainer.add(painelTabuleiro, "Tabuleiro");
+		painelContainer.add(janelInicial, "Menu");
+		painelContainer.add(janelaJogo, "Tabuleiro");
 		
 		setContentPane(painelContainer);
 		cardLayout.show(painelContainer, "Menu");
@@ -75,9 +83,22 @@ public class Janela extends JFrame{
         });
 	}
 	
-	public void mostrarTabuleiro() {
+	private void mostrarTabuleiro() {
         cardLayout.show(painelContainer, "Tabuleiro");
     }
+	
+	public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException{
+		try
+		{
+			janelaJogo.iniciarPartida(nomes, cores);
+			mostrarTabuleiro();
+		}
+		catch (IOException e)
+		{
+			
+		}
+		
+	}
 }
 
 
