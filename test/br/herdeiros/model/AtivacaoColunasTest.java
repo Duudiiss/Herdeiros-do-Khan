@@ -94,6 +94,8 @@ public class AtivacaoColunasTest {
     public void testeColunaOcupadaPermaneceIndisponivelNaProximaRodada() {
         InterfacePartida partida = criarPartidaComMapa();
         partida.ativarColunaJogadorAtual(0);
+        assertTrue("O Khan deve ser movido antes de terminar a vez",
+                partida.realizarAcaoKhan(DestinoKhan.RUSSIA_OESTE));
         partida.avancarJogador();
         partida.avancarJogador();
         assertFalse("A coluna vermelha ainda tem uma peca de ativacao",
@@ -108,9 +110,13 @@ public class AtivacaoColunasTest {
     public void testeBrancaRecuperaPecasParaProximoTurno() {
         InterfacePartida partida = criarPartidaComMapa();
         partida.ativarColunaJogadorAtual(0);
+        assertTrue("O Khan deve ser movido antes de terminar a vez",
+                partida.realizarAcaoKhan(DestinoKhan.RUSSIA_OESTE));
         partida.avancarJogador();
         partida.avancarJogador();
         assertTrue("A branca deve ser ativavel", partida.ativarColunaJogadorAtual(3));
+        assertTrue("Ao ativar a coluna branca, o Khan deve mudar de local",
+                partida.realizarAcaoKhan(DestinoKhan.PERSIA_SUL));
         partida.avancarJogador();
         partida.avancarJogador();
         assertTrue("A vermelha deve estar disponivel apos recuperacao",

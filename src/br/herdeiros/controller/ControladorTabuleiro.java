@@ -3,6 +3,7 @@ package br.herdeiros.controller;
 import br.herdeiros.mapa.MapaDados;
 import br.herdeiros.model.InterfacePartida;
 import br.herdeiros.model.ResumoAtivacao;
+import br.herdeiros.model.DestinoKhan;
 import br.herdeiros.view.PainelTabuleiro;
 import br.herdeiros.view.CoresJogadores;
 import java.awt.event.MouseAdapter;
@@ -62,7 +63,10 @@ public class ControladorTabuleiro extends MouseAdapter {
 
     /** Apenas este comando encerra o turno, mesmo apos uma movimentacao. */
     public void passarVez() {
-        partida.avancarJogador();
+        if (!partida.tentarAvancarJogador()) {
+            escrever("Antes de passar o turno, mova o Khan: esta ação é obrigatória.");
+            return;
+        }
         iniciouMovimento = false;
         movimentosRestantes = movimentosDisponiveis;
         if (seletorMovimentos != null) {
@@ -99,11 +103,17 @@ public class ControladorTabuleiro extends MouseAdapter {
                 escrever("Abra a cartela e ative uma coluna antes de mover. "
                         + "Uma coluna e ativada por turno. Finalize em Passar turno.");
             } else {
-                escrever("Movimentos restantes da coluna: "
+                String acaoKhan;
+            if (ativacao.temAcaoKhan()) {
+                acaoKhan = "ação obrigatória pendente";
+            } else {
+                acaoKhan = "sem ação pendente";
+            }
+            escrever("Movimentos restantes da coluna: "
                         + ativacao.getMovimentosRestantes()
                         + ". Punhos: " + ativacao.getPunhosDaColuna()
-                        + ". Acoes de Khan/melhoria ainda em integracao. "
-                        + "Finalize em Passar turno.");
+                        + ". Khan: " + acaoKhan
+                        + ". Finalize em Passar turno.");
             }
         } else {
             escrever("Movimentos restantes neste turno: " + movimentosRestantes
@@ -154,8 +164,46 @@ public class ControladorTabuleiro extends MouseAdapter {
 
     @Override
     public void mouseClicked(MouseEvent evento) {
+        PainelTabuleiro.SelecaoTributo tributo = painel.identificarTributoClicado(
+                evento.getX(), evento.getY());
+        if (tributo != null) {
+            boolean coletado = partida.coletarTributoDaPilha(
+                    tributo.getProvincias(), tributo.getTipo());
+            if (coletado) {
+                escrever("Coletado 1 " + tributo.getTipo()
+                        + ". O estoque do icone diminuiu e a cartela recebeu 1 tributo.");
+            } else {
+                escrever("Coleta recusada: verifique acesso, estoque e punhos da coluna.");
+            }
+            return;
+        }
+        String cidade = painel.identificarCidadeClicada(evento.getX(), evento.getY());
+        if (cidade != null) {
+            if (partida.saquearCidadeAtual(cidade)) {
+                escrever("Saque realizado em " + cidade
+                        + ". O tesouro restante da cidade foi atualizado.");
+            } else {
+                escrever("Saque recusado em " + cidade
+                        + ": cidade fechada, parada nao visitada ou falta de espadas.");
+            }
+            return;
+        }
         double[] posicao = painel.converterClique(evento.getX(), evento.getY());
         if (posicao != null) {
+            if (partida.deveMoverKhanJogadorAtual()) {
+                for (DestinoKhan destinoKhan : DestinoKhan.values()) {
+                    double dx = posicao[0] - destinoKhan.getX();
+                    double dy = posicao[1] - destinoKhan.getY();
+                    if (dx * dx + dy * dy < 0.0030) {
+                        if (partida.realizarAcaoKhan(destinoKhan)) {
+                            escrever("Khan deslocado para: " + destinoKhan.getDescricao());
+                        } else {
+                            escrever("Destino recusado para o Khan.");
+                        }
+                        return;
+                    }
+                }
+            }
             int destino = mapa.encontrarParada(posicao[0], posicao[1],
                     painel.getLarguraImagem(), painel.getAlturaImagem());
             if (destino >= 0) {

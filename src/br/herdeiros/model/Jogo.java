@@ -34,6 +34,10 @@ class Jogo {
         }
     }
 
+    Cidade revelarProximaCidade() {
+        return baralho.sacarCidadeDoTopo();
+    }
+
     public Tabuleiro getTabuleiro() {
         return tabuleiro;
     }

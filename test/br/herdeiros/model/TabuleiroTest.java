@@ -260,7 +260,7 @@ public class TabuleiroTest {
     @Test(timeout = 2000)
     public void testeSubstituicaoDeCidadeAusenteNaoAlteraLista() {
         Cidade existente = new Cidade(NomeCidade.MOSCOU, Regiao.RUSSIA);
-        Cidade ausente = new Cidade(NomeCidade.KAZAN, Regiao.RUSSIA);
+        Cidade ausente = new Cidade(NomeCidade.KIEV, Regiao.RUSSIA);
         Cidade substituta = new Cidade(NomeCidade.SAMARCANDA, Regiao.PERSIA);
         Tabuleiro tabuleiroComCidade = new Tabuleiro(java.util.Arrays.asList(existente));
 

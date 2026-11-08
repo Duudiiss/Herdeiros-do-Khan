@@ -31,6 +31,10 @@ class Cidade {
         return true;
     }
 
+    public NomeCidade getNomeCidade() {
+        return nome;
+    }
+
     public String getNome() {
         return nome.getNomeFormatado();
     }

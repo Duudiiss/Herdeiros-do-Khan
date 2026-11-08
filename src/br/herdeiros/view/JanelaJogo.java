@@ -10,6 +10,8 @@ import br.herdeiros.model.ObservadorPartida;
 import br.herdeiros.model.ObservadoPartida;
 import br.herdeiros.model.Cor;
 import br.herdeiros.model.Personagem;
+import br.herdeiros.model.DestinoKhan;
+import br.herdeiros.model.Provincia;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -47,6 +49,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JButton passar;
     private JButton abrirCartela;
     private JButton abrirCidades;
+    private JButton moverKhan;
+    private JComboBox<DestinoKhan> destinosKhan;
+    private JLabel posicaoKhan;
     private JanelaCartela janelaCartela;
     private JanelaCidades janelaCidades;
 
@@ -119,7 +124,30 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 abrirJanelaCidades();
             }
         });
-        ferramentas.add(abrirCidades);
+        // O saque de cidades e feito clicando diretamente nas cidades do tabuleiro.
+
+        ferramentas.add(new JLabel("Ação obrigatória do Khan:"));
+        destinosKhan = new JComboBox<DestinoKhan>(DestinoKhan.values());
+        ferramentas.add(destinosKhan);
+        moverKhan = new JButton("Mover Khan");
+        moverKhan.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (partida != null) {
+                    DestinoKhan escolhido = (DestinoKhan) destinosKhan.getSelectedItem();
+                    if (!partida.realizarAcaoKhan(escolhido)) {
+                        estado.setText("Ação recusada: ative uma coluna com Khan e escolha outro destino.");
+                    }
+                }
+            }
+        });
+        ferramentas.add(moverKhan);
+        posicaoKhan = new JLabel("Khan: fora do tabuleiro");
+        ferramentas.add(posicaoKhan);
+
+        ferramentas.add(new JLabel(
+            "<html>Clique nos icones com contadores para coletar tributos (1 punho).<br>Clique numa cidade aberta para saquear com espadas.</html>"
+        ));
 
         ferramentas.add(new JLabel(
             "<html>Mapa carregado do<br>arquivo CSV.</html>"
@@ -217,6 +245,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 "O mapa não pôde ser carregado no Model."
             );
         }
+        carregarAcessosCidades();
+        carregarProvincias();
+        carregarEstoquesAdicionais();
 
         // Criação do Controller
         controlador = new ControladorTabuleiro(
@@ -236,7 +267,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         partida.registrarObservador(this);
         partida.registrarObservador(painel);
-        controlador.atualizarEstado();
+        atualizar(partida);
 
         // Adiciona o painel à interface
         add(painel, BorderLayout.CENTER);
@@ -245,10 +276,128 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         repaint();
     }
 
+    /** Cadastro dos acessos às cidades: o mapa e a imagem oficial não ficam no Model. */
+    private void carregarAcessosCidades() throws IOException {
+        Path arquivo = Paths.get("assets", "cidades_paradas.csv");
+        if (!Files.exists(arquivo)) {
+            throw new IOException("Arquivo de acessos das cidades ausente: " + arquivo);
+        }
+        java.util.List<String> linhas = Files.readAllLines(arquivo);
+        for (String linha : linhas) {
+            String limpa = linha.trim();
+            if (limpa.length() == 0 || limpa.startsWith("#")) {
+                continue;
+            }
+            String[] partes = limpa.split(";");
+            if (partes.length < 2) {
+                throw new IOException("Cadastro inválido de cidade: " + linha);
+            }
+            for (int indice = 1; indice < partes.length; indice++) {
+                int parada;
+                try {
+                    parada = Integer.parseInt(partes[indice].trim());
+                } catch (NumberFormatException erro) {
+                    throw new IOException("Identificador de parada inválido: " + linha, erro);
+                }
+                if (!partida.configurarAcessoCidade(partes[0], parada)) {
+                    throw new IOException("Cidade ou parada inválida no cadastro: " + linha);
+                }
+            }
+        }
+    }
+
+    /** Estoques adicionais por tipo, configurados sem duplicar dados na View. */
+    private void carregarEstoquesAdicionais() throws IOException {
+        Path arquivo = Paths.get("assets", "estoques_adicionais.csv");
+        if (!Files.exists(arquivo)) {
+            return;
+        }
+        for (String linha : Files.readAllLines(arquivo)) {
+            String limpa = linha.trim();
+            if (limpa.isEmpty() || limpa.startsWith("#")) {
+                continue;
+            }
+            String[] partes = limpa.split(";");
+            if (partes.length != 3) {
+                throw new IOException("Estoque adicional invalido: " + linha);
+            }
+            try {
+                Provincia provincia = Provincia.valueOf(partes[0].trim());
+                int quantidade = Integer.parseInt(partes[2].trim());
+                if (!partida.configurarTributoAdicional(provincia, partes[1], quantidade)) {
+                    throw new IOException("Estoque adicional recusado: " + linha);
+                }
+            } catch (IllegalArgumentException erro) {
+                throw new IOException("Estoque adicional invalido: " + linha, erro);
+            }
+        }
+    }
+
+    /** As relações visuais estão em CSV, fora do Model e sem números fixos no Java. */
+    private void carregarProvincias() throws IOException {
+        Path arquivo = Paths.get("assets", "provincias_paradas.csv");
+        if (!Files.exists(arquivo)) {
+            throw new IOException("Falta o mapa de províncias: " + arquivo);
+        }
+        java.util.List<String> linhas = Files.readAllLines(arquivo);
+        for (String linha : linhas) {
+            String limpa = linha.trim();
+            if (limpa.length() == 0 || limpa.startsWith("#")) {
+                continue;
+            }
+            String[] campos = limpa.split(";");
+            if (campos.length == 4 && campos[0].equals("V")) {
+                try {
+                    Provincia origem = Provincia.valueOf(campos[1].trim());
+                    Provincia primeira = Provincia.valueOf(campos[2].trim());
+                    Provincia segunda = Provincia.valueOf(campos[3].trim());
+                    if (!partida.configurarVizinhasKhan(origem, primeira, segunda)) {
+                        throw new IOException("Vizinhança de Khan inválida: " + linha);
+                    }
+                    continue;
+                } catch (IllegalArgumentException erro) {
+                    throw new IOException("Província de Khan inválida: " + linha, erro);
+                }
+            }
+            if (campos.length < 4) {
+                throw new IOException("Linha de província incompleta: " + linha);
+            }
+            try {
+                Provincia provincia = Provincia.valueOf(campos[0].trim());
+                int estoque = Integer.parseInt(campos[2].trim());
+                if (!partida.configurarProvincia(provincia, campos[1], estoque)) {
+                    throw new IOException("Província inválida: " + linha);
+                }
+                for (int i = 3; i < campos.length; i++) {
+                    int parada = Integer.parseInt(campos[i].trim());
+                    if (!partida.configurarAcessoProvincia(provincia, parada)) {
+                        throw new IOException("Parada inválida na província: " + linha);
+                    }
+                }
+            } catch (IllegalArgumentException erro) {
+                throw new IOException("Erro no cadastro de província: " + linha, erro);
+            }
+        }
+        for (Provincia provincia : Provincia.values()) {
+            if (partida.consultarEstoqueProvincia(provincia) < 0) {
+                throw new IOException("Província ausente no arquivo: " + provincia.name());
+            }
+        }
+    }
+
     @Override
     public void atualizar(ObservadoPartida observado) {
         if (controlador != null) {
             controlador.atualizarEstado();
+        }
+        if (partida != null) {
+            moverKhan.setEnabled(partida.deveMoverKhanJogadorAtual());
+            DestinoKhan destino = partida.consultarDestinoKhan();
+            if (destino == null) {
+                posicaoKhan.setText("Khan: fora do tabuleiro");
+            } else {
+                posicaoKhan.setText("Khan: " + destino.getDescricao());
+            }
         }
     }
 }

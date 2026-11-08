@@ -60,6 +60,30 @@ public class TabuleiroIndividual {
         return true;
     }
 
+    boolean podeGastarPunho() {
+        return colunaAtivaNoTurno >= 0 && punhosDaColuna > 0;
+    }
+
+    boolean gastarPunho() {
+        if (!podeGastarPunho()) {
+            return false;
+        }
+        punhosDaColuna--;
+        return true;
+    }
+
+    boolean deveMoverKhan() {
+        return colunaAtivaNoTurno >= 0 && acaoKhan;
+    }
+
+    boolean concluirAcaoKhan() {
+        if (!deveMoverKhan()) {
+            return false;
+        }
+        acaoKhan = false;
+        return true;
+    }
+
     void encerrarTurno() {
         colunaAtivaNoTurno = -1;
         movimentosRestantes = 0;

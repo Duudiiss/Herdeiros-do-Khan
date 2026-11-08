@@ -16,6 +16,7 @@ class Tabuleiro {
     private final HashMap<Integer, Parada> paradas = new HashMap<>();
     private final Set<Peao> peoes = Collections.newSetFromMap(new IdentityHashMap<Peao, Boolean>());
     private final HashMap<Integer, Cor> yurts = new HashMap<>();
+    private DestinoKhan destinoKhan;
 
     public Tabuleiro(List<Cidade> cidadesIniciaisSorteadas) {
         if (cidadesIniciaisSorteadas == null) {
@@ -197,6 +198,44 @@ class Tabuleiro {
         return -1;
     }
 
+    /** Retorna a sequencia de paradas percorridas, excluindo a origem. */
+    public List<Integer> consultarCaminho(Peao peao, int idDestino) {
+        List<Integer> vazio = new ArrayList<Integer>();
+        if (peao == null || !peoes.contains(peao)) {
+            return vazio;
+        }
+        Parada origem = peao.getParadaAtual();
+        Parada destino = paradas.get(idDestino);
+        if (origem == null || destino == null || origem == destino) {
+            return vazio;
+        }
+        if (ocupacao(destino, peao) >= destino.capacidade()) {
+            return vazio;
+        }
+        Queue<Parada> fila = new ArrayDeque<Parada>();
+        HashMap<Integer, Integer> anterior = new HashMap<Integer, Integer>();
+        fila.add(origem);
+        anterior.put(origem.getId(), -1);
+        while (!fila.isEmpty()) {
+            Parada atual = fila.remove();
+            for (Parada vizinha : atual.getAdjacentes()) {
+                if (!anterior.containsKey(vizinha.getId())) {
+                    anterior.put(vizinha.getId(), atual.getId());
+                    fila.add(vizinha);
+                }
+            }
+        }
+        if (!anterior.containsKey(idDestino)) {
+            return vazio;
+        }
+        int atual = idDestino;
+        while (atual != origem.getId()) {
+            vazio.add(0, atual);
+            atual = anterior.get(atual);
+        }
+        return vazio;
+    }
+
     /** Valida a rota completa antes de alterar a posição do peão. */
     public boolean moverPeaoAte(Peao peao, int idDestino, int movimentosDisponiveis) {
         boolean permitido = podeMoverAte(peao, idDestino, movimentosDisponiveis);
@@ -242,6 +281,18 @@ class Tabuleiro {
         }
 
         yurts.put(idParada, cor);
+        return true;
+    }
+
+    public DestinoKhan getDestinoKhan() {
+        return destinoKhan;
+    }
+
+    public boolean deslocarKhan(DestinoKhan destino) {
+        if (destino == null || destino == destinoKhan) {
+            return false;
+        }
+        destinoKhan = destino;
         return true;
     }
 
