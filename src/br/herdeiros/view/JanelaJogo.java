@@ -5,6 +5,9 @@ import br.herdeiros.controller.ControladorTabuleiro;
 import br.herdeiros.mapa.ArquivoMapa;
 import br.herdeiros.mapa.MapaDados;
 import br.herdeiros.model.InterfacePartida;
+import br.herdeiros.model.GerenciadorPartida;
+import br.herdeiros.model.ObservadorPartida;
+import br.herdeiros.model.ObservadoPartida;
 import br.herdeiros.model.Cor;
 
 import java.awt.BorderLayout;
@@ -24,7 +27,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
-public class JanelaJogo extends JPanel {
+public class JanelaJogo extends JPanel implements ObservadorPartida {
 
     private static final long serialVersionUID = 1L;
 
@@ -135,7 +138,14 @@ public class JanelaJogo extends JPanel {
     public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
 
         // Criação do Model
-        partida = new InterfacePartida(nomes, cores);
+        if (partida != null) {
+            partida.removerObservador(this);
+            if (painel != null) {
+                partida.removerObservador(painel);
+                remove(painel);
+            }
+        }
+        partida = GerenciadorPartida.getInstancia().iniciarPartida(nomes, cores);
 
         // Carregamento do mapa
         Path caminho = Paths.get(
@@ -170,6 +180,8 @@ public class JanelaJogo extends JPanel {
             indicadorVez
         );
 
+        partida.registrarObservador(this);
+        partida.registrarObservador(painel);
         controlador.atualizarEstado();
 
         // Adiciona o painel à interface
@@ -177,5 +189,12 @@ public class JanelaJogo extends JPanel {
 
         revalidate();
         repaint();
+    }
+
+    @Override
+    public void atualizar(ObservadoPartida observado) {
+        if (controlador != null) {
+            controlador.atualizarEstado();
+        }
     }
 }

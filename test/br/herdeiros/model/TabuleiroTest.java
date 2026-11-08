@@ -125,7 +125,8 @@ public class TabuleiroTest {
         tabuleiro.posicionarPeaoInicial(peao);
 
         assertFalse("testeMovimentacaoNaoAdjacente: tabuleiro.moverPeao(peao, 2) deve ser falso", tabuleiro.moverPeao(peao, 2));
-        assertEquals(TipoParada.KARAKORUM, peao.getParadaAtual());
+        assertEquals("O peao deve continuar no tipo de parada Karakorum",
+                TipoParada.KARAKORUM, peao.getParadaAtual().getTipo());
 
         // O peão deve continuar em Karakorum
         assertEquals("testeMovimentacaoNaoAdjacente: peao.getParadaAtual().getId() deve corresponder ao valor esperado", 0, peao.getParadaAtual().getId());

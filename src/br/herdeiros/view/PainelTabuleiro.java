@@ -2,6 +2,8 @@ package br.herdeiros.view;
 
 import br.herdeiros.controller.ControladorTabuleiro;
 import br.herdeiros.model.InterfacePartida;
+import br.herdeiros.model.ObservadorPartida;
+import br.herdeiros.model.ObservadoPartida;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -17,7 +19,8 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
 /** O JPanel é somente a superfície: imagens são desenhadas com Graphics2D.drawImage. */
-public final class PainelTabuleiro extends JPanel {
+public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
+    private static final long serialVersionUID = 1L;
     private final BufferedImage imagem;
     private final BufferedImage[] imagemPeoes;
     private final MapaDados mapa;
@@ -82,6 +85,11 @@ public final class PainelTabuleiro extends JPanel {
             }
         }
         g.dispose();
+    }
+
+    @Override
+    public void atualizar(ObservadoPartida observado) {
+        repaint();
     }
 
     public int getLarguraImagem() {

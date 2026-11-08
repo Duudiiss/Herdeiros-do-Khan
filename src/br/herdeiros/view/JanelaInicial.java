@@ -10,6 +10,8 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class JanelaInicial extends JPanel {
 
@@ -106,17 +108,23 @@ public class JanelaInicial extends JPanel {
         qtdJogadores_lbl.setFont(new Font("Serif", Font.BOLD, 30));
         qtdJogadores_lbl.setForeground(corTextoClaro);
 
-        Menos_btn.addActionListener(e -> {
-            if (numeroJogadores > 2) {
-                numeroJogadores--;
-                atualizarNumeroJogadores();
+        Menos_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (numeroJogadores > 2) {
+                    numeroJogadores--;
+                    atualizarNumeroJogadores();
+                }
             }
         });
 
-        Mais_btn.addActionListener(e -> {
-            if (numeroJogadores < 6) {
-                numeroJogadores++;
-                atualizarNumeroJogadores();
+        Mais_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (numeroJogadores < 5) {
+                    numeroJogadores++;
+                    atualizarNumeroJogadores();
+                }
             }
         });
 
@@ -129,11 +137,13 @@ public class JanelaInicial extends JPanel {
 
         // Botão para iniciar a partida (Coleta os dados e envia para a JanelaJogo)
         Iniciar_btn = criarBotaoEstilizado("Iniciar partida", fonteEpicaBotoes, corMarromCouro, corMarromHover, corDouradaImperial);
-        Iniciar_btn.addActionListener(e -> {
+        Iniciar_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
             List<String> nomes = new ArrayList<>();
             List<Cor> cores = new ArrayList<>();
 
-            String[] opcoesCoresNomes = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Branco"};
+            String[] opcoesCoresNomes = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
 
             for (int i = 0; i < camposNomes.size(); i++) {
                 String nome = camposNomes.get(i).getText().trim();
@@ -147,20 +157,38 @@ public class JanelaInicial extends JPanel {
                 cores.add(converterStringParaColor(corStr));
             }
             
+            if (new java.util.HashSet<Cor>(cores).size() != cores.size()) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                    "Escolha uma cor diferente para cada jogador.",
+                    "Cores repetidas", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             //mandar essas informações para JanelaJogo
             String[] nomesArray = nomes.toArray(new String[0]);
             Cor[] coresArray = cores.toArray(new Cor[0]);
             try {
-				janela.iniciarPartida(nomesArray, coresArray);
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+                janela.iniciarPartida(nomesArray, coresArray);
+            } catch (IOException erro) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                    "Nao foi possivel carregar o mapa: " + erro.getMessage(),
+                    "Erro na partida", JOptionPane.ERROR_MESSAGE);
+            } catch (IllegalArgumentException erro) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                    erro.getMessage(), "Configuracao invalida",
+                    JOptionPane.WARNING_MESSAGE);
+            }
+            }
         });
 
         // Botão para sair
         Sair_btn = criarBotaoEstilizado("Sair", fonteEpicaBotoes, new Color(80, 20, 20), new Color(110, 30, 30), Color.WHITE);
-        Sair_btn.addActionListener(e -> janela.dispose());
+        Sair_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                janela.dispose();
+            }
+        });
 
         // Montagem do menu principal
         painelH.add(textoJogadores);
@@ -201,7 +229,7 @@ public class JanelaInicial extends JPanel {
             camposNomes.clear();
             seletoresCores.clear();
 
-            String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Branco"};
+            String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
 
             painelInputsJogadores.add(Box.createVerticalStrut(20));
             

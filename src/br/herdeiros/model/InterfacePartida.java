@@ -5,13 +5,16 @@ import java.util.List;
 import br.herdeiros.mapa.MapaDados;
 
 /** API mínima para a interface da segunda iteração; não expõe as classes internas. */
-public class InterfacePartida {
+public class InterfacePartida implements ObservadoPartida {
     private final Jogo jogo;
     private final List<Jogador> participantes;
+    private final List<ObservadorPartida> observadores = new ArrayList<>();
 
-    ///public InterfacePartida() {
-    ///    this(new String[] {"Azul", "Vermelho"}, new Cor[] {Cor.AZUL, Cor.VERMELHO});
-    ///}
+    /** Construtor padrao usado pelos testes de integracao do Model. */
+    public InterfacePartida() {
+        this(new String[] {"Azul", "Vermelho"},
+                new Cor[] {Cor.AZUL, Cor.VERMELHO});
+    }
 
     public InterfacePartida(String[] nomes, Cor[] cores) {
         if (nomes == null || cores == null || nomes.length == 0 || nomes.length != cores.length) {
@@ -40,22 +43,35 @@ public class InterfacePartida {
                 return false;
             }
         }
+        notificarObservadores();
         return true;
     }
 
     public boolean cadastrarParada(int id, boolean dupla) {
-        return jogo.getTabuleiro().adicionarParada(id, dupla);
+        boolean adicionado = jogo.getTabuleiro().adicionarParada(id, dupla);
+        if (adicionado) {
+            notificarObservadores();
+        }
+        return adicionado;
     }
 
     public boolean conectarParadas(int origem, int destino) {
-        return jogo.getTabuleiro().conectarParadas(origem, destino);
+        boolean conectado = jogo.getTabuleiro().conectarParadas(origem, destino);
+        if (conectado) {
+            notificarObservadores();
+        }
+        return conectado;
     }
 
     public boolean movimentarJogador(int indice, int destino) {
         if (indice < 0 || indice >= participantes.size()) {
             return false;
         }
-        return jogo.getTabuleiro().moverPeao(participantes.get(indice).getMeuPeao(), destino);
+        boolean realizado = jogo.getTabuleiro().moverPeao(participantes.get(indice).getMeuPeao(), destino);
+        if (realizado) {
+            notificarObservadores();
+        }
+        return realizado;
     }
 
     private int indiceAtual = 0;
@@ -68,13 +84,13 @@ public class InterfacePartida {
     /**
      * Executa uma ação de movimento com o número de movimentos informado.
      * O seletor da interface é provisório, até implementar a ativação de cavalos.
-     * Um clique inválido não modifica o jogador ativo.
+     * A passagem da vez e responsabilidade do Controller, nao deste metodo.
      */
     public boolean movimentarJogadorAtual(int destino, int movimentosDisponiveis) {
         Peao peao = participantes.get(indiceAtual).getMeuPeao();
         boolean realizado = jogo.getTabuleiro().moverPeaoAte(peao, destino, movimentosDisponiveis);
         if (realizado) {
-            avancarJogador();
+            notificarObservadores();
         }
         return realizado;
     }
@@ -85,6 +101,7 @@ public class InterfacePartida {
         if (indiceAtual >= participantes.size()) {
             indiceAtual = 0;
         }
+        notificarObservadores();
     }
 
     public int getParadaJogador(int indice) {
@@ -111,6 +128,29 @@ public class InterfacePartida {
             return null;
         }
         return participantes.get(indice).getCor();
+    }
+
+    @Override
+    public void registrarObservador(ObservadorPartida observador) {
+        if (observador == null) {
+            throw new IllegalArgumentException("Observador obrigatorio");
+        }
+        if (!observadores.contains(observador)) {
+            observadores.add(observador);
+        }
+    }
+
+    @Override
+    public void removerObservador(ObservadorPartida observador) {
+        observadores.remove(observador);
+    }
+
+    /** Notifica uma copia da lista para permitir remocoes durante a notificacao. */
+    private void notificarObservadores() {
+        List<ObservadorPartida> copia = new ArrayList<>(observadores);
+        for (ObservadorPartida observador : copia) {
+            observador.atualizar(this);
+        }
     }
 
     public int getOcupacao(int id) {

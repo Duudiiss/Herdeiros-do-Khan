@@ -40,8 +40,6 @@ public class ControladorTabuleiro extends MouseAdapter {
 
     public void passarVez() {
         partida.avancarJogador();
-        atualizarEstado();
-        painel.repaint();
     }
 
     public void atualizarEstado() {
@@ -74,11 +72,12 @@ public class ControladorTabuleiro extends MouseAdapter {
                     painel.getLarguraImagem(), painel.getAlturaImagem());
             if (destino >= 0) {
                 if (partida.movimentarJogadorAtual(destino, movimentosDisponiveis)) {
-                    atualizarEstado();
+                    // O Controller organiza a sequencia da jogada.
+                    partida.avancarJogador();
                 } else {
-                	escrever("Movimento inválido! Só pode avançar para paradas diretamente adjacentes.");
+                    // Movimento invalido: a vez e a posicao sao preservadas.
+                    escrever("Movimento invalido para os movimentos disponiveis.");
                 }
-                painel.repaint();
             }
         }
     }

@@ -30,7 +30,11 @@ public class MovimentacaoTurnosTest {
         assertTrue("Dois movimentos devem permitir alcançar a parada 2",
                 partida.movimentarJogadorAtual(2, 2));
         assertEquals("O peão deve terminar na parada 2", 2, partida.getParadaJogador(0));
-        assertEquals("Uma jogada válida deve trocar a vez", 1, partida.getIndiceJogadorAtual());
+        assertEquals("O Model nao deve avancar a vez automaticamente", 0,
+                partida.getIndiceJogadorAtual());
+        partida.avancarJogador();
+        assertEquals("O Controller pode avancar a vez apos o movimento", 1,
+                partida.getIndiceJogadorAtual());
     }
 
     /** Objetivo: rejeitar trajeto acima do orçamento de movimentos.
@@ -52,6 +56,7 @@ public class MovimentacaoTurnosTest {
     public void testeAtravessarParadaOcupada() {
         InterfacePartida partida = criarPartida();
         assertTrue("Azul deve ocupar a parada 1", partida.movimentarJogadorAtual(1, 1));
+        partida.avancarJogador();
         assertTrue("Vermelho deve atravessar uma parada ocupada",
                 partida.movimentarJogadorAtual(2, 2));
         assertEquals("Vermelho deve alcançar a parada 2", 2, partida.getParadaJogador(1));
@@ -64,6 +69,7 @@ public class MovimentacaoTurnosTest {
     public void testeDestinoSimplesOcupadoRejeitado() {
         InterfacePartida partida = criarPartida();
         partida.movimentarJogadorAtual(1, 1);
+        partida.avancarJogador();
         assertFalse("Não se pode terminar em uma parada simples ocupada",
                 partida.movimentarJogadorAtual(1, 1));
         assertEquals("Peão rejeitado continua na posição anterior", 0, partida.getParadaJogador(1));
@@ -77,6 +83,7 @@ public class MovimentacaoTurnosTest {
     public void testeParadaDuplaAceitaDoisPeoes() {
         InterfacePartida partida = criarPartida();
         assertTrue("Azul deve chegar à parada dupla", partida.movimentarJogadorAtual(3, 3));
+        partida.avancarJogador();
         assertTrue("Vermelho também deve chegar à parada dupla", partida.movimentarJogadorAtual(3, 3));
         assertEquals("A parada dupla deve receber os dois peões", 2, partida.getOcupacao(3));
     }

@@ -87,18 +87,10 @@ public class Janela extends JFrame{
         cardLayout.show(painelContainer, "Tabuleiro");
     }
 	
-	public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException{
-		try
-		{
-			janelaJogo.iniciarPartida(nomes, cores);
-			mostrarTabuleiro();
-		}
-		catch (IOException e)
-		{
-			
-		}
-		
-	}
+    public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
+        janelaJogo.iniciarPartida(nomes, cores);
+        mostrarTabuleiro();
+    }
 }
 
 
