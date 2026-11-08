@@ -32,7 +32,10 @@ public class ControladorTabuleiro extends MouseAdapter {
         this.partida = partida;
         this.mapa = mapa;
     }
-
+	public void configurar(PainelTabuleiro painel, JTextArea estado, JLabel indicadorVez) {
+        configurar(painel, estado, indicadorVez, null);
+    }
+	
     public void configurar(PainelTabuleiro painel, JTextArea estado,
                           JLabel indicadorVez, JComboBox<Integer> seletorMovimentos) {
         this.painel = painel;

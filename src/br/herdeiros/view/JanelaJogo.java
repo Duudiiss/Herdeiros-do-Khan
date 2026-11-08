@@ -5,9 +5,6 @@ import br.herdeiros.controller.ControladorTabuleiro;
 import br.herdeiros.mapa.ArquivoMapa;
 import br.herdeiros.mapa.MapaDados;
 import br.herdeiros.model.InterfacePartida;
-<<<<<<< HEAD
-import br.herdeiros.model.Cor;
-=======
 import br.herdeiros.model.GerenciadorPartida;
 import br.herdeiros.model.ObservadorPartida;
 import br.herdeiros.model.ObservadoPartida;
@@ -15,7 +12,6 @@ import br.herdeiros.model.Cor;
 import br.herdeiros.model.Personagem;
 import br.herdeiros.model.DestinoKhan;
 import br.herdeiros.model.Provincia;
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -24,10 +20,7 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-<<<<<<< HEAD
-=======
 import javax.swing.JOptionPane;
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,11 +31,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
-<<<<<<< HEAD
-public class JanelaJogo extends JPanel {
-=======
 public class JanelaJogo extends JPanel implements ObservadorPartida {
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
     private static final long serialVersionUID = 1L;
 
@@ -55,11 +44,6 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     // Componentes da interface
     private JLabel indicadorVez;
     private JTextArea estado;
-<<<<<<< HEAD
-    private JComboBox<Integer> cavalos;
-
-    private JButton passar;
-=======
 
 
     private JButton passar;
@@ -70,7 +54,6 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JLabel posicaoKhan;
     private JanelaCartela janelaCartela;
     private JanelaCidades janelaCidades;
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
     public JanelaJogo() {
 
@@ -108,108 +91,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         );
 
         ferramentas.add(new JLabel(
-<<<<<<< HEAD
-            "<html>Movimentos (simulação<br>de cavalos):</html>"
-        ));
 
-        cavalos = new JComboBox<>(
-            new Integer[] {1, 2, 3, 4, 5, 6}
-        );
-
-        cavalos.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-
-                if (controlador == null) {
-                    return;
-                }
-
-                Integer valor =
-                    (Integer) cavalos.getSelectedItem();
-
-                if (valor != null) {
-                    controlador.configurarMovimentos(valor);
-                    controlador.atualizarEstado();
-                }
-            }
-        });
-
-        ferramentas.add(cavalos);
-
-        passar = new JButton("Passar vez (sem mover)");
-
-        passar.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-
-                if (controlador != null) {
-                    controlador.passarVez();
-                }
-            }
-        });
-
-        ferramentas.add(passar);
-
-        ferramentas.add(new JLabel(
-            "<html>Mapa carregado do<br>arquivo CSV.</html>"
-        ));
-
-        lateral.add(indicadorVez, BorderLayout.CENTER);
-        lateral.add(ferramentas, BorderLayout.NORTH);
-        lateral.add(estado, BorderLayout.SOUTH);
-
-        add(lateral, BorderLayout.EAST);
-    }
-
-    /**
-     * Inicializa uma nova partida.
-     */
-    public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
-
-        // Criação do Model
-        partida = new InterfacePartida(nomes, cores);
-
-        // Carregamento do mapa
-        Path caminho = Paths.get(
-            "assets",
-            "mapa_paradas.csv"
-        );
-
-        if (Files.exists(caminho)) {
-            mapa = ArquivoMapa.carregar(caminho);
-        } else {
-            mapa = new MapaDados();
-        }
-
-        if (!partida.carregarMapa(mapa)) {
-            throw new IOException(
-                "O mapa não pôde ser carregado no Model."
-            );
-        }
-
-        // Criação do Controller
-        controlador = new ControladorTabuleiro(
-            partida,
-            mapa
-        );
-
-        // Criação da View do tabuleiro
-        painel = new PainelTabuleiro(partida, mapa, controlador);
-
-        controlador.configurar(
-            painel,
-            estado,
-            indicadorVez
-        );
-
-        controlador.atualizarEstado();
-
-        // Adiciona o painel à interface
-        add(painel, BorderLayout.CENTER);
-
-        revalidate();
-        repaint();
-=======
             "<html>Movimentacao: ative uma<br>coluna na cartela individual.</html>"
         ));
 
@@ -518,6 +400,5 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 posicaoKhan.setText("Khan: " + destino.getDescricao());
             }
         }
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
     }
 }

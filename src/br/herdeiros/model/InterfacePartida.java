@@ -22,15 +22,6 @@ public class InterfacePartida implements ObservadoPartida {
     private final Map<Provincia, ReservaProvincia> reservas = new HashMap<Provincia, ReservaProvincia>();
     private final Map<Provincia, Provincia[]> vizinhasDoKhan = new HashMap<Provincia, Provincia[]>();
 
-<<<<<<< HEAD
-    public InterfacePartida(String[] nomes, Cor[] cores) {
-        if (nomes == null || cores == null || nomes.length == 0 || nomes.length != cores.length) {
-            throw new IllegalArgumentException("Cada jogador deve ter nome e cor");
-        }
-        participantes = new ArrayList<>();
-        for (int i = 0; i < nomes.length; i++) {
-            participantes.add(new Jogador(nomes[i], cores[i], 0));
-=======
     /** Construtor padrao usado pelos testes de integracao do Model. */
     public InterfacePartida() {
         this(new String[] {"Azul", "Vermelho"},
@@ -71,7 +62,6 @@ public class InterfacePartida implements ObservadoPartida {
         }
         if (ordemAleatoria) {
             Collections.shuffle(participantes);
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
         }
         jogo = new Jogo(participantes);
     }
@@ -234,8 +224,6 @@ public class InterfacePartida implements ObservadoPartida {
         return participantes.get(indice).getNome();
     }
 
-<<<<<<< HEAD
-=======
     public Personagem getPersonagemJogador(int indice) {
         if (indice < 0 || indice >= participantes.size()) {
             return null;
@@ -251,7 +239,6 @@ public class InterfacePartida implements ObservadoPartida {
         return personagem.getIndiceCartela();
     }
 
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
     public Cor getCorJogador(int indice) {
         if (indice < 0 || indice >= participantes.size()) {
             return null;
@@ -259,8 +246,6 @@ public class InterfacePartida implements ObservadoPartida {
         return participantes.get(indice).getCor();
     }
 
-<<<<<<< HEAD
-=======
     @Override
     public void registrarObservador(ObservadorPartida observador) {
         if (observador == null) {
@@ -717,7 +702,6 @@ public class InterfacePartida implements ObservadoPartida {
         }
     }
 
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
     public int getOcupacao(int id) {
         return jogo.getTabuleiro().getOcupacao(id);
     }

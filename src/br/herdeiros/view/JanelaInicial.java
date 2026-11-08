@@ -1,13 +1,9 @@
 package br.herdeiros.view;
 
 import br.herdeiros.model.Cor;
-<<<<<<< HEAD
-=======
 import br.herdeiros.model.Personagem;
 import java.util.Collections;
 import java.util.HashSet;
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
-
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
@@ -16,11 +12,9 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
-<<<<<<< HEAD
-=======
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
 public class JanelaInicial extends JPanel {
 
@@ -37,10 +31,7 @@ public class JanelaInicial extends JPanel {
     // Listas para armazenar os campos dinâmicos de cada jogador
     private List<JTextField> camposNomes;
     private List<JComboBox<String>> seletoresCores;
-<<<<<<< HEAD
-=======
     private List<JComboBox<String>> seletoresPersonagens;
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
     
     // Painel interno que vai guardar a lista dinâmica de inputs dos jogadores
     private JPanel painelInputsJogadores;
@@ -53,10 +44,7 @@ public class JanelaInicial extends JPanel {
         this.janelaPrincipal = janela;
         this.camposNomes = new ArrayList<>();
         this.seletoresCores = new ArrayList<>();
-<<<<<<< HEAD
-=======
         this.seletoresPersonagens = new ArrayList<>();
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
         setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -125,19 +113,6 @@ public class JanelaInicial extends JPanel {
         qtdJogadores_lbl.setFont(new Font("Serif", Font.BOLD, 30));
         qtdJogadores_lbl.setForeground(corTextoClaro);
 
-<<<<<<< HEAD
-        Menos_btn.addActionListener(e -> {
-            if (numeroJogadores > 2) {
-                numeroJogadores--;
-                atualizarNumeroJogadores();
-            }
-        });
-
-        Mais_btn.addActionListener(e -> {
-            if (numeroJogadores < 6) {
-                numeroJogadores++;
-                atualizarNumeroJogadores();
-=======
         Menos_btn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -155,7 +130,6 @@ public class JanelaInicial extends JPanel {
                     numeroJogadores++;
                     atualizarNumeroJogadores();
                 }
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
             }
         });
 
@@ -165,22 +139,6 @@ public class JanelaInicial extends JPanel {
 
         // Constrói os inputs iniciais (para 2 jogadores)
         atualizarNumeroJogadores();
-<<<<<<< HEAD
-
-        // Botão para iniciar a partida (Coleta os dados e envia para a JanelaJogo)
-        Iniciar_btn = criarBotaoEstilizado("Iniciar partida", fonteEpicaBotoes, corMarromCouro, corMarromHover, corDouradaImperial);
-        Iniciar_btn.addActionListener(e -> {
-            List<String> nomes = new ArrayList<>();
-            List<Cor> cores = new ArrayList<>();
-
-            String[] opcoesCoresNomes = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Branco"};
-=======
-        JLabel instrucao = new JLabel(
-                "<html>Escolha cor e personagem (ou Aleatorio).<br>"
-                + "A ordem dos turnos sera sorteada.</html>");
-        instrucao.setForeground(corTextoClaro);
-        instrucao.setFont(new Font("Serif", Font.BOLD, 14));
-        painelH.add(instrucao);
 
         // Botão para iniciar a partida (Coleta os dados e envia para a JanelaJogo)
         Iniciar_btn = criarBotaoEstilizado("Iniciar partida", fonteEpicaBotoes, corMarromCouro, corMarromHover, corDouradaImperial);
@@ -192,7 +150,6 @@ public class JanelaInicial extends JPanel {
             List<String> escolhas = new ArrayList<String>();
 
             String[] opcoesCoresNomes = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
             for (int i = 0; i < camposNomes.size(); i++) {
                 String nome = camposNomes.get(i).getText().trim();
@@ -204,19 +161,6 @@ public class JanelaInicial extends JPanel {
                 // Mapeia a cor selecionada no JComboBox para um objeto java.awt.Color
                 String corStr = (String) seletoresCores.get(i).getSelectedItem();
                 cores.add(converterStringParaColor(corStr));
-<<<<<<< HEAD
-            }
-            
-            //mandar essas informações para JanelaJogo
-            String[] nomesArray = nomes.toArray(new String[0]);
-            Cor[] coresArray = cores.toArray(new Cor[0]);
-            try {
-				janela.iniciarPartida(nomesArray, coresArray);
-			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-=======
                 escolhas.add((String) seletoresPersonagens.get(i).getSelectedItem());
             }
             
@@ -252,21 +196,17 @@ public class JanelaInicial extends JPanel {
                     JOptionPane.WARNING_MESSAGE);
             }
             }
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
         });
 
         // Botão para sair
         Sair_btn = criarBotaoEstilizado("Sair", fonteEpicaBotoes, new Color(80, 20, 20), new Color(110, 30, 30), Color.WHITE);
-<<<<<<< HEAD
-        Sair_btn.addActionListener(e -> janela.dispose());
-=======
+
         Sair_btn.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
                 janela.dispose();
             }
         });
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
         // Montagem do menu principal
         painelH.add(textoJogadores);
@@ -306,14 +246,9 @@ public class JanelaInicial extends JPanel {
             painelInputsJogadores.removeAll();
             camposNomes.clear();
             seletoresCores.clear();
-<<<<<<< HEAD
-
-            String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto"};
-=======
             seletoresPersonagens.clear();
 
             String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
             painelInputsJogadores.add(Box.createVerticalStrut(20));
             
@@ -332,10 +267,6 @@ public class JanelaInicial extends JPanel {
                 camposNomes.add(campoNome);
                 seletoresCores.add(seletorCor);
 
-<<<<<<< HEAD
-                linhaJogador.add(campoNome);
-                linhaJogador.add(seletorCor);
-=======
                 JComboBox<String> seletorPersonagem = new JComboBox<String>(
                         new String[] {"Aleatorio", "Altani", "Jochi", "Chagatai", "Tolui", "Ogedei"});
                 seletorPersonagem.setSelectedIndex(0);
@@ -347,23 +278,17 @@ public class JanelaInicial extends JPanel {
                 linhaJogador.add(seletorCor);
                 linhaJogador.add(new JLabel("Personagem:"));
                 linhaJogador.add(seletorPersonagem);
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
                 painelInputsJogadores.add(linhaJogador);
             }
             painelInputsJogadores.setAlignmentY(Component.TOP_ALIGNMENT);
-<<<<<<< HEAD
-            painelInputsJogadores.setMaximumSize(new Dimension(200, 20+(numeroJogadores*28)));
-=======
+
             painelInputsJogadores.setMaximumSize(new Dimension(560, 20+(numeroJogadores*34)));
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
             painelInputsJogadores.revalidate();
             painelInputsJogadores.repaint();
         }
     }
 
-<<<<<<< HEAD
-=======
     /**
      * Mantem escolhas manuais, impede duplicatas e sorteia apenas os personagens
      * ainda livres para os campos marcados como Aleatorio.
@@ -400,7 +325,6 @@ public class JanelaInicial extends JPanel {
         return resultado;
     }
 
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
     // Auxiliar para converter texto do JComboBox em java.awt.Color
     private Cor converterStringParaColor(String nomeCor) {
         switch (nomeCor.toLowerCase()) {
@@ -409,10 +333,6 @@ public class JanelaInicial extends JPanel {
             case "verde": return Cor.VERDE;
             case "amarelo": return Cor.AMARELO;
             case "preto": return Cor.PRETO;
-<<<<<<< HEAD
-=======
-            case "branco": return Cor.BRANCO;
->>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
             case "laranja": return Cor.LARANJA;
             default: return Cor.BRANCO;
         }

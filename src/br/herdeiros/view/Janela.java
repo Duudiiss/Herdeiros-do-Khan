@@ -61,9 +61,9 @@ public class Janela extends JFrame{
         painelContainer = new JPanel(cardLayout);
         
         janelaJogo = new JanelaJogo();
-        janelInicial = new JanelaInicial(this);
+        janelaInicial = new JanelaInicial(this);
 		
-		painelContainer.add(janelInicial, "Menu");
+		painelContainer.add(janelaInicial, "Menu");
 		painelContainer.add(janelaJogo, "Tabuleiro");
 		
 		setContentPane(painelContainer);
@@ -86,11 +86,6 @@ public class Janela extends JFrame{
 	
 	private void mostrarTabuleiro() {
         cardLayout.show(painelContainer, "Tabuleiro");
-    }
-	
-    public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
-        janelaJogo.iniciarPartida(nomes, cores);
-        mostrarTabuleiro();
     }
 
     public void iniciarPartida(String[] nomes, Cor[] cores,
