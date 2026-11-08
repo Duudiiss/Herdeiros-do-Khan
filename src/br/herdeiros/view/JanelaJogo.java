@@ -17,6 +17,7 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
+import javax.swing.JOptionPane;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,6 +44,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JComboBox<Integer> cavalos;
 
     private JButton passar;
+    private JButton abrirCartela;
+    private JanelaCartela janelaCartela;
 
     public JanelaJogo() {
 
@@ -121,6 +124,15 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         ferramentas.add(passar);
 
+        abrirCartela = new JButton("Abrir cartela do jogador");
+        abrirCartela.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                abrirCartelaDoJogador();
+            }
+        });
+        ferramentas.add(abrirCartela);
+
         ferramentas.add(new JLabel(
             "<html>Mapa carregado do<br>arquivo CSV.</html>"
         ));
@@ -132,10 +144,34 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         add(lateral, BorderLayout.EAST);
     }
 
+    /** Abre uma cartela que acompanha automaticamente o jogador da vez. */
+    private void abrirCartelaDoJogador() {
+        if (partida == null) {
+            return;
+        }
+        if (janelaCartela != null && janelaCartela.isDisplayable()) {
+            janelaCartela.toFront();
+            return;
+        }
+        try {
+            janelaCartela = new JanelaCartela(partida);
+            janelaCartela.setVisible(true);
+        } catch (IOException erro) {
+            JOptionPane.showMessageDialog(this,
+                    "Nao foi possivel abrir as imagens das cartelas: " + erro.getMessage(),
+                    "Erro ao abrir cartela", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     /**
      * Inicializa uma nova partida.
      */
     public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
+
+        if (janelaCartela != null) {
+            janelaCartela.dispose();
+            janelaCartela = null;
+        }
 
         // Criação do Model
         if (partida != null) {

@@ -153,6 +153,67 @@ public class InterfacePartida implements ObservadoPartida {
         }
     }
 
+
+    /**
+     * Devolve um retrato dos recursos da cartela do participante solicitado.
+     * A View nunca recebe as listas internas de TabuleiroIndividual.
+     */
+    public ResumoCartela consultarCartela(int indiceJogador) {
+        if (indiceJogador < 0 || indiceJogador >= participantes.size()) {
+            throw new IllegalArgumentException("Indice de jogador invalido");
+        }
+
+        Jogador jogador = participantes.get(indiceJogador);
+        TabuleiroIndividual tabuleiro = jogador.getTabuleiroIndividual();
+        List<String> descricoes = new ArrayList<String>();
+
+        for (Melhoria melhoria : tabuleiro.getMelhoriasAdquiridas()) {
+            if (melhoria != null) {
+                descricoes.add(melhoria.getDescdescricao());
+            }
+        }
+
+        return new ResumoCartela(
+                jogador.getNome(),
+                jogador.getCor(),
+                indiceJogador,
+                tabuleiro.getQuantidadeColunas(),
+                jogador.quantidadeTributo(TipoTributo.ESPADA),
+                jogador.quantidadeTributo(TipoTributo.MOEDA),
+                jogador.quantidadeTributo(TipoTributo.YURT),
+                descricoes
+        );
+    }
+
+    public ResumoCartela consultarCartelaJogadorAtual() {
+        return consultarCartela(indiceAtual);
+    }
+
+    /**
+     * Recurso restrito a demonstracao e testes da interface.
+     * Nao implementa uma regra de ganho de tributos durante uma jogada.
+     */
+    public boolean simularRecebimentoTributo(int indiceJogador, String tipo, int quantidade) {
+        if (indiceJogador < 0 || indiceJogador >= participantes.size()
+                || tipo == null || quantidade <= 0) {
+            return false;
+        }
+
+        TipoTributo tipoTributo;
+        try {
+            tipoTributo = TipoTributo.valueOf(tipo.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException erro) {
+            return false;
+        }
+
+        boolean recebido = participantes.get(indiceJogador)
+                .receberTributos(tipoTributo, quantidade);
+        if (recebido) {
+            notificarObservadores();
+        }
+        return recebido;
+    }
+
     public int getOcupacao(int id) {
         return jogo.getTabuleiro().getOcupacao(id);
     }
