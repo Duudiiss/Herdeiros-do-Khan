@@ -20,6 +20,14 @@ public final class GerenciadorPartida {
         return partidaAtual;
     }
 
+    public InterfacePartida iniciarPartida(String[] nomes, Cor[] cores,
+                                          Personagem[] personagens, boolean ordemAleatoria) {
+        InterfacePartida novaPartida = new InterfacePartida(
+                nomes, cores, personagens, ordemAleatoria);
+        partidaAtual = novaPartida;
+        return partidaAtual;
+    }
+
     public InterfacePartida getPartidaAtual() {
         return partidaAtual;
     }

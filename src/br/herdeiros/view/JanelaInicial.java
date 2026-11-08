@@ -1,6 +1,9 @@
 package br.herdeiros.view;
 
 import br.herdeiros.model.Cor;
+import br.herdeiros.model.Personagem;
+import java.util.Collections;
+import java.util.HashSet;
 
 import java.awt.*;
 import java.io.File;
@@ -28,6 +31,7 @@ public class JanelaInicial extends JPanel {
     // Listas para armazenar os campos dinâmicos de cada jogador
     private List<JTextField> camposNomes;
     private List<JComboBox<String>> seletoresCores;
+    private List<JComboBox<String>> seletoresPersonagens;
     
     // Painel interno que vai guardar a lista dinâmica de inputs dos jogadores
     private JPanel painelInputsJogadores;
@@ -40,6 +44,7 @@ public class JanelaInicial extends JPanel {
         this.janelaPrincipal = janela;
         this.camposNomes = new ArrayList<>();
         this.seletoresCores = new ArrayList<>();
+        this.seletoresPersonagens = new ArrayList<>();
 
         setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -134,6 +139,12 @@ public class JanelaInicial extends JPanel {
 
         // Constrói os inputs iniciais (para 2 jogadores)
         atualizarNumeroJogadores();
+        JLabel instrucao = new JLabel(
+                "<html>Escolha cor e personagem (ou Aleatorio).<br>"
+                + "A ordem dos turnos sera sorteada.</html>");
+        instrucao.setForeground(corTextoClaro);
+        instrucao.setFont(new Font("Serif", Font.BOLD, 14));
+        painelH.add(instrucao);
 
         // Botão para iniciar a partida (Coleta os dados e envia para a JanelaJogo)
         Iniciar_btn = criarBotaoEstilizado("Iniciar partida", fonteEpicaBotoes, corMarromCouro, corMarromHover, corDouradaImperial);
@@ -142,6 +153,7 @@ public class JanelaInicial extends JPanel {
             public void actionPerformed(ActionEvent evento) {
             List<String> nomes = new ArrayList<>();
             List<Cor> cores = new ArrayList<>();
+            List<String> escolhas = new ArrayList<String>();
 
             String[] opcoesCoresNomes = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
 
@@ -155,6 +167,7 @@ public class JanelaInicial extends JPanel {
                 // Mapeia a cor selecionada no JComboBox para um objeto java.awt.Color
                 String corStr = (String) seletoresCores.get(i).getSelectedItem();
                 cores.add(converterStringParaColor(corStr));
+                escolhas.add((String) seletoresPersonagens.get(i).getSelectedItem());
             }
             
             if (new java.util.HashSet<Cor>(cores).size() != cores.size()) {
@@ -164,11 +177,21 @@ public class JanelaInicial extends JPanel {
                 return;
             }
 
-            //mandar essas informações para JanelaJogo
+            Personagem[] personagens;
+            try {
+                personagens = selecionarPersonagens(escolhas);
+            } catch (IllegalArgumentException erro) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                        erro.getMessage(), "Escolha de personagens",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // A ordem dos participantes sera embaralhada ao criar a partida.
             String[] nomesArray = nomes.toArray(new String[0]);
             Cor[] coresArray = cores.toArray(new Cor[0]);
             try {
-                janela.iniciarPartida(nomesArray, coresArray);
+                janela.iniciarPartida(nomesArray, coresArray, personagens);
             } catch (IOException erro) {
                 JOptionPane.showMessageDialog(JanelaInicial.this,
                     "Nao foi possivel carregar o mapa: " + erro.getMessage(),
@@ -228,6 +251,7 @@ public class JanelaInicial extends JPanel {
             painelInputsJogadores.removeAll();
             camposNomes.clear();
             seletoresCores.clear();
+            seletoresPersonagens.clear();
 
             String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
 
@@ -248,16 +272,61 @@ public class JanelaInicial extends JPanel {
                 camposNomes.add(campoNome);
                 seletoresCores.add(seletorCor);
 
+                JComboBox<String> seletorPersonagem = new JComboBox<String>(
+                        new String[] {"Aleatorio", "Altani", "Jochi", "Chagatai", "Tolui", "Ogedei"});
+                seletorPersonagem.setSelectedIndex(0);
+                seletorPersonagem.setFont(new Font("Serif", Font.PLAIN, 14));
+                seletoresPersonagens.add(seletorPersonagem);
+
                 linhaJogador.add(campoNome);
+                linhaJogador.add(new JLabel("Cor:"));
                 linhaJogador.add(seletorCor);
+                linhaJogador.add(new JLabel("Personagem:"));
+                linhaJogador.add(seletorPersonagem);
 
                 painelInputsJogadores.add(linhaJogador);
             }
             painelInputsJogadores.setAlignmentY(Component.TOP_ALIGNMENT);
-            painelInputsJogadores.setMaximumSize(new Dimension(200, 20+(numeroJogadores*28)));
+            painelInputsJogadores.setMaximumSize(new Dimension(560, 20+(numeroJogadores*34)));
             painelInputsJogadores.revalidate();
             painelInputsJogadores.repaint();
         }
+    }
+
+    /**
+     * Mantem escolhas manuais, impede duplicatas e sorteia apenas os personagens
+     * ainda livres para os campos marcados como Aleatorio.
+     */
+    private Personagem[] selecionarPersonagens(List<String> escolhas) {
+        Personagem[] resultado = new Personagem[escolhas.size()];
+        HashSet<Personagem> ocupados = new HashSet<Personagem>();
+
+        for (int i = 0; i < escolhas.size(); i++) {
+            String nome = escolhas.get(i);
+            if (!"Aleatorio".equals(nome)) {
+                Personagem personagem = Personagem.valueOf(nome.toUpperCase(java.util.Locale.ROOT));
+                if (!ocupados.add(personagem)) {
+                    throw new IllegalArgumentException("Cada personagem pode ser escolhido uma unica vez.");
+                }
+                resultado[i] = personagem;
+            }
+        }
+
+        List<Personagem> disponiveis = new ArrayList<Personagem>();
+        for (Personagem personagem : Personagem.values()) {
+            if (!ocupados.contains(personagem)) {
+                disponiveis.add(personagem);
+            }
+        }
+        Collections.shuffle(disponiveis);
+        int proximo = 0;
+        for (int i = 0; i < resultado.length; i++) {
+            if (resultado[i] == null) {
+                resultado[i] = disponiveis.get(proximo);
+                proximo++;
+            }
+        }
+        return resultado;
     }
 
     // Auxiliar para converter texto do JComboBox em java.awt.Color

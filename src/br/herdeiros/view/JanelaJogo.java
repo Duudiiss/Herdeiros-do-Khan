@@ -9,6 +9,7 @@ import br.herdeiros.model.GerenciadorPartida;
 import br.herdeiros.model.ObservadorPartida;
 import br.herdeiros.model.ObservadoPartida;
 import br.herdeiros.model.Cor;
+import br.herdeiros.model.Personagem;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -45,7 +46,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
     private JButton passar;
     private JButton abrirCartela;
+    private JButton abrirCidades;
     private JanelaCartela janelaCartela;
+    private JanelaCidades janelaCidades;
 
     public JanelaJogo() {
 
@@ -110,7 +113,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         ferramentas.add(cavalos);
 
-        passar = new JButton("Passar vez (sem mover)");
+        passar = new JButton("Passar turno");
 
         passar.addActionListener(new ActionListener() {
             @Override
@@ -133,6 +136,15 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(abrirCartela);
 
+        abrirCidades = new JButton("Consultar cidades abertas");
+        abrirCidades.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                abrirJanelaCidades();
+            }
+        });
+        ferramentas.add(abrirCidades);
+
         ferramentas.add(new JLabel(
             "<html>Mapa carregado do<br>arquivo CSV.</html>"
         ));
@@ -142,6 +154,19 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         lateral.add(estado, BorderLayout.SOUTH);
 
         add(lateral, BorderLayout.EAST);
+    }
+
+    /** Janela informativa das cidades disponiveis, atualizada via Observer. */
+    private void abrirJanelaCidades() {
+        if (partida == null) {
+            return;
+        }
+        if (janelaCidades != null && janelaCidades.isDisplayable()) {
+            janelaCidades.toFront();
+            return;
+        }
+        janelaCidades = new JanelaCidades(partida);
+        janelaCidades.setVisible(true);
     }
 
     /** Abre uma cartela que acompanha automaticamente o jogador da vez. */
@@ -167,6 +192,21 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
      * Inicializa uma nova partida.
      */
     public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
+        iniciarPartida(nomes, cores, null, false);
+    }
+
+    public void iniciarPartida(String[] nomes, Cor[] cores,
+                              Personagem[] personagens) throws IOException {
+        iniciarPartida(nomes, cores, personagens, true);
+    }
+
+    private void iniciarPartida(String[] nomes, Cor[] cores,
+                               Personagem[] personagens, boolean ordemAleatoria) throws IOException {
+
+        if (janelaCidades != null) {
+            janelaCidades.dispose();
+            janelaCidades = null;
+        }
 
         if (janelaCartela != null) {
             janelaCartela.dispose();
@@ -181,7 +221,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 remove(painel);
             }
         }
-        partida = GerenciadorPartida.getInstancia().iniciarPartida(nomes, cores);
+        partida = GerenciadorPartida.getInstancia()
+                .iniciarPartida(nomes, cores, personagens, ordemAleatoria);
 
         // Carregamento do mapa
         Path caminho = Paths.get(
@@ -213,7 +254,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         controlador.configurar(
             painel,
             estado,
-            indicadorVez
+            indicadorVez,
+            cavalos
         );
 
         partida.registrarObservador(this);

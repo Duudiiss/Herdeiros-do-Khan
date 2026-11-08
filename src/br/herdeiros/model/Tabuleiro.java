@@ -151,41 +151,50 @@ class Tabuleiro {
      * caso tenham atingido sua capacidade. Esta operação não altera o peão.
      */
     public boolean podeMoverAte(Peao peao, int idDestino, int movimentosDisponiveis) {
-        if (peao == null || !peoes.contains(peao) || movimentosDisponiveis <= 0) {
+        int custo = distanciaMinima(peao, idDestino);
+        if (custo <= 0) {
             return false;
         }
+        return custo <= movimentosDisponiveis;
+    }
 
+    /**
+     * Busca em largura: devolve a quantidade minima de conexoes ate o
+     * destino, ou -1 para movimentos invalidos. O estado nao e alterado.
+     */
+    public int distanciaMinima(Peao peao, int idDestino) {
+        if (peao == null || !peoes.contains(peao)) {
+            return -1;
+        }
         Parada origem = peao.getParadaAtual();
         Parada destino = paradas.get(idDestino);
         if (origem == null || destino == null || origem == destino) {
-            return false;
+            return -1;
         }
         if (ocupacao(destino, peao) >= destino.capacidade()) {
-            return false;
+            return -1;
         }
 
-        Queue<Parada> fila = new ArrayDeque<>();
-        HashMap<Integer, Integer> distancias = new HashMap<>();
+        Queue<Parada> fila = new ArrayDeque<Parada>();
+        HashMap<Integer, Integer> distancias = new HashMap<Integer, Integer>();
         fila.add(origem);
         distancias.put(origem.getId(), 0);
 
         while (!fila.isEmpty()) {
             Parada atual = fila.remove();
             int distancia = distancias.get(atual.getId());
-            if (distancia < movimentosDisponiveis) {
-                for (Parada vizinha : atual.getAdjacentes()) {
-                    if (!distancias.containsKey(vizinha.getId())) {
-                        int proximaDistancia = distancia + 1;
-                        if (vizinha == destino) {
-                            return true;
-                        }
-                        distancias.put(vizinha.getId(), proximaDistancia);
-                        fila.add(vizinha);
+            for (Parada vizinha : atual.getAdjacentes()) {
+                if (!distancias.containsKey(vizinha.getId())) {
+                    int proximaDistancia = distancia + 1;
+                    if (vizinha == destino) {
+                        return proximaDistancia;
                     }
+                    distancias.put(vizinha.getId(), proximaDistancia);
+                    fila.add(vizinha);
                 }
             }
         }
-        return false;
+        return -1;
     }
 
     /** Valida a rota completa antes de alterar a posição do peão. */

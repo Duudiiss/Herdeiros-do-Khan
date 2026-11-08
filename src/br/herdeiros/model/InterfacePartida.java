@@ -2,6 +2,8 @@ package br.herdeiros.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Collections;
+import java.util.HashSet;
 import br.herdeiros.mapa.MapaDados;
 
 /** API mínima para a interface da segunda iteração; não expõe as classes internas. */
@@ -17,12 +19,39 @@ public class InterfacePartida implements ObservadoPartida {
     }
 
     public InterfacePartida(String[] nomes, Cor[] cores) {
-        if (nomes == null || cores == null || nomes.length == 0 || nomes.length != cores.length) {
-            throw new IllegalArgumentException("Cada jogador deve ter nome e cor");
+        this(nomes, cores, null, false);
+    }
+
+    /**
+     * A ordem aleatoria e solicitada pela tela inicial. Os construtores
+     * antigos permanecem deterministas para preservar cenarios de testes.
+     */
+    public InterfacePartida(String[] nomes, Cor[] cores,
+                            Personagem[] personagens, boolean ordemAleatoria) {
+        if (nomes == null || cores == null || nomes.length < 2
+                || nomes.length > 5 || nomes.length != cores.length) {
+            throw new IllegalArgumentException("A partida requer entre 2 e 5 nomes e cores");
         }
-        participantes = new ArrayList<>();
+        if (personagens != null && personagens.length != nomes.length) {
+            throw new IllegalArgumentException("A quantidade de personagens nao corresponde aos jogadores");
+        }
+
+        HashSet<Personagem> escolhidos = new HashSet<Personagem>();
+        participantes = new ArrayList<Jogador>();
         for (int i = 0; i < nomes.length; i++) {
-            participantes.add(new Jogador(nomes[i], cores[i], 0));
+            Personagem personagem;
+            if (personagens == null) {
+                personagem = Personagem.values()[i];
+            } else {
+                personagem = personagens[i];
+            }
+            if (personagem == null || !escolhidos.add(personagem)) {
+                throw new IllegalArgumentException("Os personagens devem ser unicos e validos");
+            }
+            participantes.add(new Jogador(nomes[i], cores[i], 0, personagem));
+        }
+        if (ordemAleatoria) {
+            Collections.shuffle(participantes);
         }
         jogo = new Jogo(participantes);
     }
@@ -74,6 +103,12 @@ public class InterfacePartida implements ObservadoPartida {
         return realizado;
     }
 
+    /** Consulta o custo minimo do destino para o jogador da vez, sem movimentar. */
+    public int consultarCustoMovimentoAtual(int destino) {
+        Peao peao = participantes.get(indiceAtual).getMeuPeao();
+        return jogo.getTabuleiro().distanciaMinima(peao, destino);
+    }
+
     private int indiceAtual = 0;
 
     /** Jogador ativo da rodada visual. */
@@ -121,6 +156,21 @@ public class InterfacePartida implements ObservadoPartida {
 
     public String getNomeJogador(int indice) {
         return participantes.get(indice).getNome();
+    }
+
+    public Personagem getPersonagemJogador(int indice) {
+        if (indice < 0 || indice >= participantes.size()) {
+            return null;
+        }
+        return participantes.get(indice).getPersonagem();
+    }
+
+    public int getIndiceCartelaJogador(int indice) {
+        Personagem personagem = getPersonagemJogador(indice);
+        if (personagem == null) {
+            return -1;
+        }
+        return personagem.getIndiceCartela();
     }
 
     public Cor getCorJogador(int indice) {
@@ -212,6 +262,26 @@ public class InterfacePartida implements ObservadoPartida {
             notificarObservadores();
         }
         return recebido;
+    }
+
+    /**
+     * Consulta o estado das cidades abertas, sem expor objetos Cidade.
+     * Uma nova consulta deve ser feita apos uma notificacao do Observer.
+     */
+    public List<ResumoCidade> consultarCidadesDisponiveis() {
+        List<ResumoCidade> resumos = new ArrayList<ResumoCidade>();
+        List<Cidade> cidades = jogo.getTabuleiro().getCidadesDisponiveis();
+
+        for (Cidade cidade : cidades) {
+            ResumoCidade resumo = new ResumoCidade(
+                    cidade.getNome(),
+                    cidade.getRegiao().name(),
+                    cidade.getQuantidadeTesouros(),
+                    cidade.isConquistada()
+            );
+            resumos.add(resumo);
+        }
+        return java.util.Collections.unmodifiableList(resumos);
     }
 
     public int getOcupacao(int id) {

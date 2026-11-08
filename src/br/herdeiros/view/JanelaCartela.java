@@ -90,9 +90,8 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
                 + " (" + resumo.getCorJogador() + ")  |  ");
         tributos.setText("Espadas: " + resumo.getEspadas()
                 + "   Moedas: " + resumo.getMoedas()
-                + "   Yurts: " + resumo.getYurts()
-                + "   Colunas: " + resumo.getQuantidadeColunas());
-        painelImagem.mostrarCartela(resumo.getIndiceJogador());
+                + "   Yurts: " + resumo.getYurts());
+        painelImagem.mostrarCartela(partida.getIndiceCartelaJogador(resumo.getIndiceJogador()));
 
         StringBuilder texto = new StringBuilder("Melhorias adquiridas: ");
         if (resumo.getMelhorias().isEmpty()) {

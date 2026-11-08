@@ -1,6 +1,7 @@
 package br.herdeiros.view;
 
 import br.herdeiros.model.Cor;
+import br.herdeiros.model.Personagem;
 
 import br.herdeiros.view.*;
 
@@ -89,6 +90,12 @@ public class Janela extends JFrame{
 	
     public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
         janelaJogo.iniciarPartida(nomes, cores);
+        mostrarTabuleiro();
+    }
+
+    public void iniciarPartida(String[] nomes, Cor[] cores,
+                              Personagem[] personagens) throws IOException {
+        janelaJogo.iniciarPartida(nomes, cores, personagens);
         mostrarTabuleiro();
     }
 }
