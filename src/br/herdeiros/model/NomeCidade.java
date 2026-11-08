@@ -1,25 +1,23 @@
 package br.herdeiros.model;
 
 enum NomeCidade {
-	MOSCOU("Moscou"),
-    KAZAN("Kazan"),
-    NOVGOROD("Novgorod"),
-    
-    PEQUIM("Pequim"),
-    CANTAO("Cantão"),
-    XIAN("Xi'an"),
-    
+    KIEV("Kiev"),
+    MOSCOU("Moscou"),
+    SARAI("Sarai"),
     SAMARCANDA("Samarcanda"),
     BAGDA("Bagdá"),
-    TABRIZ("Tabriz");
-	
-	private final String nomeFormatado;
-	
-	NomeCidade(String nomeFormatado) {
-		this.nomeFormatado = nomeFormatado;
-	}
-	
-	public String getNomeFormatado() {
-		return this.nomeFormatado;
-	}
+    CABUL("Cabul"),
+    KAESONG("Kaesong"),
+    PEQUIM("Pequim"),
+    CANTAO("Cantão");
+
+    private final String nomeFormatado;
+
+    NomeCidade(String nomeFormatado) {
+        this.nomeFormatado = nomeFormatado;
+    }
+
+    public String getNomeFormatado() {
+        return nomeFormatado;
+    }
 }

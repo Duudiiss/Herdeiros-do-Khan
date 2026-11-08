@@ -125,7 +125,12 @@ public class TabuleiroTest {
         tabuleiro.posicionarPeaoInicial(peao);
 
         assertFalse("testeMovimentacaoNaoAdjacente: tabuleiro.moverPeao(peao, 2) deve ser falso", tabuleiro.moverPeao(peao, 2));
+<<<<<<< HEAD
         assertEquals(TipoParada.KARAKORUM, peao.getParadaAtual());
+=======
+        assertEquals("O peao deve continuar no tipo de parada Karakorum",
+                TipoParada.KARAKORUM, peao.getParadaAtual().getTipo());
+>>>>>>> 6156ca63e48f7be01a1c3087fcb3ef3af6acfb47
 
         // O peão deve continuar em Karakorum
         assertEquals("testeMovimentacaoNaoAdjacente: peao.getParadaAtual().getId() deve corresponder ao valor esperado", 0, peao.getParadaAtual().getId());
@@ -259,7 +264,7 @@ public class TabuleiroTest {
     @Test(timeout = 2000)
     public void testeSubstituicaoDeCidadeAusenteNaoAlteraLista() {
         Cidade existente = new Cidade(NomeCidade.MOSCOU, Regiao.RUSSIA);
-        Cidade ausente = new Cidade(NomeCidade.KAZAN, Regiao.RUSSIA);
+        Cidade ausente = new Cidade(NomeCidade.KIEV, Regiao.RUSSIA);
         Cidade substituta = new Cidade(NomeCidade.SAMARCANDA, Regiao.PERSIA);
         Tabuleiro tabuleiroComCidade = new Tabuleiro(java.util.Arrays.asList(existente));
 

@@ -16,6 +16,7 @@ class Tabuleiro {
     private final HashMap<Integer, Parada> paradas = new HashMap<>();
     private final Set<Peao> peoes = Collections.newSetFromMap(new IdentityHashMap<Peao, Boolean>());
     private final HashMap<Integer, Cor> yurts = new HashMap<>();
+    private DestinoKhan destinoKhan;
 
     public Tabuleiro(List<Cidade> cidadesIniciaisSorteadas) {
         if (cidadesIniciaisSorteadas == null) {
@@ -151,41 +152,88 @@ class Tabuleiro {
      * caso tenham atingido sua capacidade. Esta operação não altera o peão.
      */
     public boolean podeMoverAte(Peao peao, int idDestino, int movimentosDisponiveis) {
-        if (peao == null || !peoes.contains(peao) || movimentosDisponiveis <= 0) {
+        int custo = distanciaMinima(peao, idDestino);
+        if (custo <= 0) {
             return false;
         }
+        return custo <= movimentosDisponiveis;
+    }
 
+    /**
+     * Busca em largura: devolve a quantidade minima de conexoes ate o
+     * destino, ou -1 para movimentos invalidos. O estado nao e alterado.
+     */
+    public int distanciaMinima(Peao peao, int idDestino) {
+        if (peao == null || !peoes.contains(peao)) {
+            return -1;
+        }
         Parada origem = peao.getParadaAtual();
         Parada destino = paradas.get(idDestino);
         if (origem == null || destino == null || origem == destino) {
-            return false;
+            return -1;
         }
         if (ocupacao(destino, peao) >= destino.capacidade()) {
-            return false;
+            return -1;
         }
 
-        Queue<Parada> fila = new ArrayDeque<>();
-        HashMap<Integer, Integer> distancias = new HashMap<>();
+        Queue<Parada> fila = new ArrayDeque<Parada>();
+        HashMap<Integer, Integer> distancias = new HashMap<Integer, Integer>();
         fila.add(origem);
         distancias.put(origem.getId(), 0);
 
         while (!fila.isEmpty()) {
             Parada atual = fila.remove();
             int distancia = distancias.get(atual.getId());
-            if (distancia < movimentosDisponiveis) {
-                for (Parada vizinha : atual.getAdjacentes()) {
-                    if (!distancias.containsKey(vizinha.getId())) {
-                        int proximaDistancia = distancia + 1;
-                        if (vizinha == destino) {
-                            return true;
-                        }
-                        distancias.put(vizinha.getId(), proximaDistancia);
-                        fila.add(vizinha);
+            for (Parada vizinha : atual.getAdjacentes()) {
+                if (!distancias.containsKey(vizinha.getId())) {
+                    int proximaDistancia = distancia + 1;
+                    if (vizinha == destino) {
+                        return proximaDistancia;
                     }
+                    distancias.put(vizinha.getId(), proximaDistancia);
+                    fila.add(vizinha);
                 }
             }
         }
-        return false;
+        return -1;
+    }
+
+    /** Retorna a sequencia de paradas percorridas, excluindo a origem. */
+    public List<Integer> consultarCaminho(Peao peao, int idDestino) {
+        List<Integer> vazio = new ArrayList<Integer>();
+        if (peao == null || !peoes.contains(peao)) {
+            return vazio;
+        }
+        Parada origem = peao.getParadaAtual();
+        Parada destino = paradas.get(idDestino);
+        if (origem == null || destino == null || origem == destino) {
+            return vazio;
+        }
+        if (ocupacao(destino, peao) >= destino.capacidade()) {
+            return vazio;
+        }
+        Queue<Parada> fila = new ArrayDeque<Parada>();
+        HashMap<Integer, Integer> anterior = new HashMap<Integer, Integer>();
+        fila.add(origem);
+        anterior.put(origem.getId(), -1);
+        while (!fila.isEmpty()) {
+            Parada atual = fila.remove();
+            for (Parada vizinha : atual.getAdjacentes()) {
+                if (!anterior.containsKey(vizinha.getId())) {
+                    anterior.put(vizinha.getId(), atual.getId());
+                    fila.add(vizinha);
+                }
+            }
+        }
+        if (!anterior.containsKey(idDestino)) {
+            return vazio;
+        }
+        int atual = idDestino;
+        while (atual != origem.getId()) {
+            vazio.add(0, atual);
+            atual = anterior.get(atual);
+        }
+        return vazio;
     }
 
     /** Valida a rota completa antes de alterar a posição do peão. */
@@ -233,6 +281,18 @@ class Tabuleiro {
         }
 
         yurts.put(idParada, cor);
+        return true;
+    }
+
+    public DestinoKhan getDestinoKhan() {
+        return destinoKhan;
+    }
+
+    public boolean deslocarKhan(DestinoKhan destino) {
+        if (destino == null || destino == destinoKhan) {
+            return false;
+        }
+        destinoKhan = destino;
         return true;
     }
 

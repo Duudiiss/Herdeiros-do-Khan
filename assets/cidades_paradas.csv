@@ -1,0 +1,10 @@
+# Cidade;IDs das paradas adjacentes verificáveis no editor (separadas por ponto e vírgula)
+KIEV;7;8;9
+MOSCOU;1;2;6
+SARAI;3;4;5
+SAMARCANDA;10;11;12
+BAGDA;13;14;15
+CABUL;16;17;18
+KAESONG;25;26;27
+PEQUIM;22;23;24
+CANTAO;19;20;21

@@ -1,6 +1,7 @@
 package br.herdeiros.view;
 
 import br.herdeiros.model.Cor;
+import br.herdeiros.model.Personagem;
 
 import br.herdeiros.view.*;
 
@@ -60,9 +61,9 @@ public class Janela extends JFrame{
         painelContainer = new JPanel(cardLayout);
         
         janelaJogo = new JanelaJogo();
-        janelaInicial = new JanelaInicial(this);
+        janelInicial = new JanelaInicial(this);
 		
-		painelContainer.add(janelaInicial, "Menu");
+		painelContainer.add(janelInicial, "Menu");
 		painelContainer.add(janelaJogo, "Tabuleiro");
 		
 		setContentPane(painelContainer);
@@ -87,18 +88,16 @@ public class Janela extends JFrame{
         cardLayout.show(painelContainer, "Tabuleiro");
     }
 	
-	public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException{
-		try
-		{
-			janelaJogo.iniciarPartida(nomes, cores);
-			mostrarTabuleiro();
-		}
-		catch (IOException e)
-		{
-			
-		}
-		
-	}
+    public void iniciarPartida(String[] nomes, Cor[] cores) throws IOException {
+        janelaJogo.iniciarPartida(nomes, cores);
+        mostrarTabuleiro();
+    }
+
+    public void iniciarPartida(String[] nomes, Cor[] cores,
+                              Personagem[] personagens) throws IOException {
+        janelaJogo.iniciarPartida(nomes, cores, personagens);
+        mostrarTabuleiro();
+    }
 }
 
 

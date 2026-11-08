@@ -17,16 +17,16 @@ class BaralhoDeCidades {
 
 	private void criarTodasCidades() {
 		this.pilha.push(new Cidade(NomeCidade.MOSCOU, Regiao.RUSSIA));
-		this.pilha.push(new Cidade(NomeCidade.KAZAN, Regiao.RUSSIA));
-        this.pilha.push(new Cidade(NomeCidade.NOVGOROD, Regiao.RUSSIA));
+		this.pilha.push(new Cidade(NomeCidade.KIEV, Regiao.RUSSIA));
+        this.pilha.push(new Cidade(NomeCidade.SARAI, Regiao.RUSSIA));
         
         this.pilha.push(new Cidade(NomeCidade.PEQUIM, Regiao.CHINA));
         this.pilha.push(new Cidade(NomeCidade.CANTAO, Regiao.CHINA));
-        this.pilha.push(new Cidade(NomeCidade.XIAN, Regiao.CHINA));
+        this.pilha.push(new Cidade(NomeCidade.KAESONG, Regiao.CHINA));
         
         this.pilha.push(new Cidade(NomeCidade.SAMARCANDA, Regiao.PERSIA));
         this.pilha.push(new Cidade(NomeCidade.BAGDA, Regiao.PERSIA));
-        this.pilha.push(new Cidade(NomeCidade.TABRIZ, Regiao.PERSIA));		
+        this.pilha.push(new Cidade(NomeCidade.CABUL, Regiao.PERSIA));		
 	}
 	
 	public Cidade sacarCidadeDoTopo() {
