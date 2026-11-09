@@ -13,6 +13,10 @@ public class InterfacePartida {
         this(new String[] {"Azul", "Vermelho"}, new Cor[] {Cor.AZUL, Cor.VERMELHO});
     }
 
+    public InterfacePartida(int quantidadeJogadores) {
+        this(criarNomesJogadores(quantidadeJogadores), criarCoresJogadores(quantidadeJogadores));
+    }
+
     public InterfacePartida(String[] nomes, Cor[] cores) {
         if (nomes == null || cores == null || nomes.length == 0 || nomes.length != cores.length) {
             throw new IllegalArgumentException("Cada jogador deve ter nome e cor");
@@ -22,6 +26,26 @@ public class InterfacePartida {
             participantes.add(new Jogador(nomes[i], cores[i], 0));
         }
         jogo = new Jogo(participantes);
+    }
+
+    private static String[] criarNomesJogadores(int quantidadeJogadores) {
+        if (quantidadeJogadores < 2 || quantidadeJogadores > 5) {
+            throw new IllegalArgumentException("A partida requer de 2 a 5 jogadores");
+        }
+
+        String[] nomes = new String[quantidadeJogadores];
+        for (int i = 0; i < nomes.length; i++) {
+            nomes[i] = "Jogador " + (i + 1);
+        }
+        return nomes;
+    }
+
+    private static Cor[] criarCoresJogadores(int quantidadeJogadores) {
+        Cor[] coresDisponiveis = {Cor.AZUL, Cor.VERMELHO, Cor.AMARELO,
+                Cor.VERDE, Cor.LARANJA};
+        Cor[] cores = new Cor[quantidadeJogadores];
+        System.arraycopy(coresDisponiveis, 0, cores, 0, quantidadeJogadores);
+        return cores;
     }
 
     /** Carrega um mapa de uma só vez; não deixa um tabuleiro parcialmente configurado. */

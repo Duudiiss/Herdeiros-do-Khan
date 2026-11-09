@@ -51,11 +51,9 @@ public class Janela extends JFrame{
         cardLayout = new CardLayout();
         painelContainer = new JPanel(cardLayout);
         
-		JPanel painelTabuleiro = new JanelaJogo();
 		JPanel painelInicial = new JanelaInicial(this);
 		
 		painelContainer.add(painelInicial, "Menu");
-		painelContainer.add(painelTabuleiro, "Tabuleiro");
 		
 		setContentPane(painelContainer);
 		cardLayout.show(painelContainer, "Menu");
@@ -75,8 +73,14 @@ public class Janela extends JFrame{
         });
 	}
 	
-	public void mostrarTabuleiro() {
-        cardLayout.show(painelContainer, "Tabuleiro");
+	public void mostrarTabuleiro(int quantidadeJogadores) {
+        try {
+            painelContainer.add(new JanelaJogo(quantidadeJogadores), "Tabuleiro");
+            cardLayout.show(painelContainer, "Tabuleiro");
+        } catch (IOException erro) {
+            JOptionPane.showMessageDialog(this, "Não foi possível carregar o tabuleiro: "
+                    + erro.getMessage(), "Erro ao iniciar partida", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }
 

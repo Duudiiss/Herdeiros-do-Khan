@@ -24,8 +24,8 @@ import javax.swing.JTextArea;
 public class JanelaJogo extends JPanel {
     private static final long serialVersionUID = 1L;
 
-    public JanelaJogo() throws IOException {
-        InterfacePartida partida = new InterfacePartida();
+    public JanelaJogo(int quantidadeJogadores) throws IOException {
+        InterfacePartida partida = new InterfacePartida(quantidadeJogadores);
         MapaDados mapa;
         java.nio.file.Path caminho = Paths.get("assets", "mapa_paradas.csv");
         if (Files.exists(caminho)) {

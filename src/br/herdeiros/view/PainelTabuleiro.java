@@ -77,11 +77,25 @@ public final class PainelTabuleiro extends JPanel {
             if (ponto != null) {
                 int x = xImagem + (int) Math.round(ponto.getX() * larguraImagem);
                 int y = yImagem + (int) Math.round(ponto.getY() * alturaImagem);
-                int deslocamento = (int) Math.round((i - (imagemPeoes.length - 1) / 2.0) * 23);
+                int deslocamento = calcularDeslocamentoHorizontal(i, id);
                 g.drawImage(imagemPeoes[i], x + deslocamento - 16, y - 47, 32, 36, null);
             }
         }
         g.dispose();
+    }
+
+    private int calcularDeslocamentoHorizontal(int indiceJogador, int idParada) {
+        int quantidadeNaParada = 0;
+        int posicaoNaParada = 0;
+        for (int i = 0; i < partida.getQuantidadeJogadores(); i++) {
+            if (partida.getParadaJogador(i) == idParada) {
+                if (i < indiceJogador) {
+                    posicaoNaParada++;
+                }
+                quantidadeNaParada++;
+            }
+        }
+        return (int) Math.round((posicaoNaParada - (quantidadeNaParada - 1) / 2.0) * 23);
     }
 
     public int getLarguraImagem() {

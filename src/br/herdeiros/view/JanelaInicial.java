@@ -96,7 +96,7 @@ public class JanelaInicial extends JPanel {
         });
 
         Mais_btn.addActionListener(e -> {
-            if (numeroJogadores < 6) {
+            if (numeroJogadores < 5) {
                 numeroJogadores++;
                 atualizarNumeroJogadores();
             }
@@ -108,7 +108,7 @@ public class JanelaInicial extends JPanel {
 
         // Botão para iniciar a partida.
         Iniciar_btn = criarBotaoEstilizado("Iniciar partida", fonteEpicaBotoes, corMarromCouro, corMarromHover, corDouradaImperial);
-        Iniciar_btn.addActionListener(e -> janela.mostrarTabuleiro());
+        Iniciar_btn.addActionListener(e -> janela.mostrarTabuleiro(numeroJogadores));
 
         // Botão para sair.
         Sair_btn = criarBotaoEstilizado("Sair", fonteEpicaBotoes, new Color(80, 20, 20), new Color(110, 30, 30), Color.WHITE);
