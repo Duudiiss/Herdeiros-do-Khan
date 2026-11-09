@@ -1,11 +1,20 @@
 package br.herdeiros.view;
 
+import br.herdeiros.model.Cor;
+import br.herdeiros.model.Personagem;
+import java.util.Collections;
+import java.util.HashSet;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class JanelaInicial extends JPanel {
 
@@ -19,9 +28,23 @@ public class JanelaInicial extends JPanel {
     private JButton Mais_btn;
     private JButton Menos_btn;
     
+    // Listas para armazenar os campos dinâmicos de cada jogador
+    private List<JTextField> camposNomes;
+    private List<JComboBox<String>> seletoresCores;
+    private List<JComboBox<String>> seletoresPersonagens;
+    
+    // Painel interno que vai guardar a lista dinâmica de inputs dos jogadores
+    private JPanel painelInputsJogadores;
+    
     private Image BackImage;
     
+    private Janela janelaPrincipal; // Referência guardada para usar ao iniciar
+
     public JanelaInicial(Janela janela) throws IOException {
+        this.janelaPrincipal = janela;
+        this.camposNomes = new ArrayList<>();
+        this.seletoresCores = new ArrayList<>();
+        this.seletoresPersonagens = new ArrayList<>();
 
         setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -38,46 +61,48 @@ public class JanelaInicial extends JPanel {
             }
         }
 
+        JPanel painelBackgroundH = new JPanel();
+        painelBackgroundH.setLayout(new BoxLayout(painelBackgroundH, BoxLayout.X_AXIS));
+        painelBackgroundH.setAlignmentY(Component.TOP_ALIGNMENT);
+        painelBackgroundH.setOpaque(false);
+        
         // Painel que contém os controles.
         JPanel painelBackground = new JPanel();
         painelBackground.setLayout(new BoxLayout(painelBackground, BoxLayout.Y_AXIS));
         painelBackground.setOpaque(false);
+        painelBackground.setAlignmentY(Component.TOP_ALIGNMENT);
         
-        // Painel H (Textos e Seleção)
+        // Painel H (Textos e Seleção de Quantidade)
         JPanel painelH = new JPanel();
         painelH.setLayout(new BoxLayout(painelH, BoxLayout.Y_AXIS));
         painelH.setOpaque(false);
         
+        // Painel central para os inputs dinâmicos de nomes e cores
+        painelInputsJogadores = new JPanel();
+        painelInputsJogadores.setLayout(new BoxLayout(painelInputsJogadores, BoxLayout.Y_AXIS));
+        painelInputsJogadores.setOpaque(false);
+
         // Painel V (Botões de Ação)
         JPanel painelV = new JPanel();
         painelV.setLayout(new BoxLayout(painelV, BoxLayout.X_AXIS));
         painelV.setOpaque(false);
 
-        // --- ESTILO ÉPICO / MONGOL (Fontes e Cores) ---
-        // 'Serif' robusto e elegante (garantido em qualquer Java/SO). Se preferir, substitua por "Pangolin" caso esteja instalada.
-        Font fonteEpicaTitulo = new Font("Serif", Font.BOLD, 40);
-        Font fonteEpicaBotoes = new Font("Serif", Font.BOLD, 30);
+        // --- ESTILO ÉPICO / MONGOL ---
+        Font fonteEpicaTitulo = new Font("Serif", Font.BOLD, 36);
+        Font fonteEpicaBotoes = new Font("Serif", Font.BOLD, 26);
         
-        // Cores temáticas (Dourado imperial, Marrom/Couro escuro e Branco marfim)
         Color corDouradaImperial = new Color(219, 161, 121); 
         Color corMarromCouro = new Color(85, 40, 10);
         Color corMarromHover = new Color(90, 45, 15);
         Color corTextoClaro = new Color(245, 240, 230);
         Color corBordaTexto = new Color(112, 84, 63);
         
-        //-------------------------------------------------------------------------
-        // Texto de configuração com borda estilizada
-        JLabel textoJogadores = criarLabelComBorda(
-                "Número de jogadores", 
-                fonteEpicaTitulo, 
-                corDouradaImperial, 
-                corBordaTexto,
-                1   
-            );
+        // Texto de configuração
+        JLabel textoJogadores = criarLabelComBorda("Número de jogadores", fonteEpicaTitulo, corDouradaImperial, corBordaTexto);
         textoJogadores.setAlignmentX(Component.CENTER_ALIGNMENT);
         textoJogadores.setOpaque(false);
-        
-        // Controles para selecionar jogadores.
+
+        // Controles para selecionar quantidade de jogadores
         JPanel selecao = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
         selecao.setOpaque(false);
 
@@ -85,20 +110,26 @@ public class JanelaInicial extends JPanel {
         qtdJogadores_lbl = new JLabel(String.valueOf(numeroJogadores));
         Mais_btn = criarBotaoEstilizado("+", fonteEpicaBotoes, corMarromCouro, corMarromHover, corDouradaImperial);
 
-        qtdJogadores_lbl.setFont(new Font("Serif", Font.BOLD, 32));
+        qtdJogadores_lbl.setFont(new Font("Serif", Font.BOLD, 30));
         qtdJogadores_lbl.setForeground(corTextoClaro);
 
-        Menos_btn.addActionListener(e -> {
-            if (numeroJogadores > 2) {
-                numeroJogadores--;
-                atualizarNumeroJogadores();
+        Menos_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (numeroJogadores > 2) {
+                    numeroJogadores--;
+                    atualizarNumeroJogadores();
+                }
             }
         });
 
-        Mais_btn.addActionListener(e -> {
-            if (numeroJogadores < 6) {
-                numeroJogadores++;
-                atualizarNumeroJogadores();
+        Mais_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (numeroJogadores < 5) {
+                    numeroJogadores++;
+                    atualizarNumeroJogadores();
+                }
             }
         });
 
@@ -106,41 +137,209 @@ public class JanelaInicial extends JPanel {
         selecao.add(qtdJogadores_lbl);
         selecao.add(Mais_btn);
 
-        // Botão para iniciar a partida.
+        // Constrói os inputs iniciais (para 2 jogadores)
+        atualizarNumeroJogadores();
+
+        // Botão para iniciar a partida (Coleta os dados e envia para a JanelaJogo)
         Iniciar_btn = criarBotaoEstilizado("Iniciar partida", fonteEpicaBotoes, corMarromCouro, corMarromHover, corDouradaImperial);
-        Iniciar_btn.addActionListener(e -> janela.mostrarTabuleiro());
+        Iniciar_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+            List<String> nomes = new ArrayList<>();
+            List<Cor> cores = new ArrayList<>();
+            List<String> escolhas = new ArrayList<String>();
 
-        // Botão para sair.
+            String[] opcoesCoresNomes = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
+
+            for (int i = 0; i < camposNomes.size(); i++) {
+                String nome = camposNomes.get(i).getText().trim();
+                if (nome.isEmpty()) {
+                    nome = "Jogador " + (i + 1); // Nome padrão se estiver vazio
+                }
+                nomes.add(nome);
+
+                // Mapeia a cor selecionada no JComboBox para um objeto java.awt.Color
+                String corStr = (String) seletoresCores.get(i).getSelectedItem();
+                cores.add(converterStringParaColor(corStr));
+                escolhas.add((String) seletoresPersonagens.get(i).getSelectedItem());
+            }
+            
+            if (new java.util.HashSet<Cor>(cores).size() != cores.size()) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                    "Escolha uma cor diferente para cada jogador.",
+                    "Cores repetidas", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            Personagem[] personagens;
+            try {
+                personagens = selecionarPersonagens(escolhas);
+            } catch (IllegalArgumentException erro) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                        erro.getMessage(), "Escolha de personagens",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // A ordem dos participantes sera embaralhada ao criar a partida.
+            String[] nomesArray = nomes.toArray(new String[0]);
+            Cor[] coresArray = cores.toArray(new Cor[0]);
+            try {
+                janela.iniciarPartida(nomesArray, coresArray, personagens);
+            } catch (IOException erro) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                    "Nao foi possivel carregar o mapa: " + erro.getMessage(),
+                    "Erro na partida", JOptionPane.ERROR_MESSAGE);
+            } catch (IllegalArgumentException erro) {
+                JOptionPane.showMessageDialog(JanelaInicial.this,
+                    erro.getMessage(), "Configuracao invalida",
+                    JOptionPane.WARNING_MESSAGE);
+            }
+            }
+        });
+
+        // Botão para sair
         Sair_btn = criarBotaoEstilizado("Sair", fonteEpicaBotoes, new Color(80, 20, 20), new Color(110, 30, 30), Color.WHITE);
-        Sair_btn.addActionListener(e -> janela.dispose());
 
-        // Montagem do menu.
-        painelH.add(Box.createVerticalStrut(35));
+        Sair_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                janela.dispose();
+            }
+        });
+
+        // Montagem do menu principal
         painelH.add(textoJogadores);
-        painelH.add(Box.createVerticalStrut(10));
+        painelH.add(Box.createVerticalStrut(5));
         painelH.add(selecao);
-        painelH.add(Box.createVerticalStrut(25));
+        painelH.add(Box.createVerticalStrut(15));
         
         painelV.add(Iniciar_btn);
-        painelV.add(Box.createRigidArea(new Dimension(15, 0))); // Espaço horizontal entre os botões
+        painelV.add(Box.createRigidArea(new Dimension(15, 0)));
         painelV.add(Sair_btn);
         
-        painelBackground.add(Box.createVerticalStrut(15)); // Margem superior interna
+        painelBackground.add(Box.createVerticalStrut(10));
         painelBackground.add(painelH);
         painelBackground.add(painelV);
-        painelBackground.add(Box.createVerticalStrut(15));
+        painelBackground.add(Box.createVerticalStrut(10));
         
-        // --- POSICIONAMENTO: CENTRO-ESQUERDO (Inalterado) ---
+        painelBackgroundH.add(painelBackground);
+        painelBackgroundH.add(painelInputsJogadores); // Adiciona a área dinâmica de nomes/cores
+        
+        // --- POSICIONAMENTO: CENTRO-ESQUERDO ---
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 1.0;
         gbc.anchor = GridBagConstraints.WEST; 
         gbc.insets = new Insets(0, 75, 0, 0); 
 
-        add(painelBackground, gbc);
+        add(painelBackgroundH, gbc);
     }
-    
-    // Método auxiliar para criar botões com visual rústico/temático sem o cinza padrão do Swing
+
+    // Método que reconstrói os campos de texto e seleção de cor dinamicamente
+    private void atualizarNumeroJogadores() {
+        if (qtdJogadores_lbl != null) {
+            qtdJogadores_lbl.setText(String.valueOf(numeroJogadores));
+        }
+
+        if (painelInputsJogadores != null) {
+            painelInputsJogadores.removeAll();
+            camposNomes.clear();
+            seletoresCores.clear();
+            seletoresPersonagens.clear();
+
+            String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
+
+            painelInputsJogadores.add(Box.createVerticalStrut(20));
+            
+            for (int i = 1; i <= numeroJogadores; i++) {
+                JPanel linhaJogador = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+                linhaJogador.setOpaque(false);
+
+                JTextField campoNome = new JTextField("Jogador " + i, 10);
+                campoNome.setFont(new Font("Serif", Font.PLAIN, 16));
+
+                JComboBox<String> seletorCor = new JComboBox<>(coresDisponiveis);
+                // Define cores padrão diferentes para cada jogador para evitar repetição inicial
+                seletorCor.setSelectedIndex((i - 1) % coresDisponiveis.length);
+                seletorCor.setFont(new Font("Serif", Font.PLAIN, 14));
+
+                camposNomes.add(campoNome);
+                seletoresCores.add(seletorCor);
+
+                JComboBox<String> seletorPersonagem = new JComboBox<String>(
+                        new String[] {"Aleatorio", "Altani", "Jochi", "Chagatai", "Tolui", "Ogedei"});
+                seletorPersonagem.setSelectedIndex(0);
+                seletorPersonagem.setFont(new Font("Serif", Font.PLAIN, 14));
+                seletoresPersonagens.add(seletorPersonagem);
+
+                linhaJogador.add(campoNome);
+                linhaJogador.add(new JLabel("Cor:"));
+                linhaJogador.add(seletorCor);
+                linhaJogador.add(new JLabel("Personagem:"));
+                linhaJogador.add(seletorPersonagem);
+
+                painelInputsJogadores.add(linhaJogador);
+            }
+            painelInputsJogadores.setAlignmentY(Component.TOP_ALIGNMENT);
+
+            painelInputsJogadores.setMaximumSize(new Dimension(560, 20+(numeroJogadores*34)));
+            painelInputsJogadores.revalidate();
+            painelInputsJogadores.repaint();
+        }
+    }
+
+    /**
+     * Mantem escolhas manuais, impede duplicatas e sorteia apenas os personagens
+     * ainda livres para os campos marcados como Aleatorio.
+     */
+    private Personagem[] selecionarPersonagens(List<String> escolhas) {
+        Personagem[] resultado = new Personagem[escolhas.size()];
+        HashSet<Personagem> ocupados = new HashSet<Personagem>();
+
+        for (int i = 0; i < escolhas.size(); i++) {
+            String nome = escolhas.get(i);
+            if (!"Aleatorio".equals(nome)) {
+                Personagem personagem = Personagem.valueOf(nome.toUpperCase(java.util.Locale.ROOT));
+                if (!ocupados.add(personagem)) {
+                    throw new IllegalArgumentException("Cada personagem pode ser escolhido uma unica vez.");
+                }
+                resultado[i] = personagem;
+            }
+        }
+
+        List<Personagem> disponiveis = new ArrayList<Personagem>();
+        for (Personagem personagem : Personagem.values()) {
+            if (!ocupados.contains(personagem)) {
+                disponiveis.add(personagem);
+            }
+        }
+        Collections.shuffle(disponiveis);
+        int proximo = 0;
+        for (int i = 0; i < resultado.length; i++) {
+            if (resultado[i] == null) {
+                resultado[i] = disponiveis.get(proximo);
+                proximo++;
+            }
+        }
+        return resultado;
+    }
+
+    // Auxiliar para converter texto do JComboBox em java.awt.Color
+    private Cor converterStringParaColor(String nomeCor) {
+        switch (nomeCor.toLowerCase()) {
+            case "vermelho": return Cor.VERMELHO;
+            case "azul": return Cor.AZUL;
+            case "verde": return Cor.VERDE;
+            case "amarelo": return Cor.AMARELO;
+            case "preto": return Cor.PRETO;
+            case "laranja": return Cor.LARANJA;
+            default: return Cor.BRANCO;
+        }
+    }
+
+    // Método auxiliar para criar botões customizados
+
     private JButton criarBotaoEstilizado(String texto, Font fonte, Color fundoNormal, Color fundoHover, Color corTexto) {
         JButton botao = new JButton(texto) {
             private static final long serialVersionUID = 1L;
@@ -150,7 +349,6 @@ public class JanelaInicial extends JPanel {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 
-                // Muda a cor se o botão estiver pressionado ou com o mouse em cima
                 if (getModel().isPressed()) {
                     g2.setColor(fundoHover.darker());
                 } else if (getModel().isRollover()) {
@@ -159,10 +357,7 @@ public class JanelaInicial extends JPanel {
                     g2.setColor(fundoNormal);
                 }
                 
-                // Desenha o fundo arredondado estilo placa de madeira/metal antigo
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-                
-                // Borda dourada ou detalhe
                 g2.setColor(new Color(219, 161, 121, 180));
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
                 
@@ -178,14 +373,15 @@ public class JanelaInicial extends JPanel {
         botao.setContentAreaFilled(false);
         botao.setOpaque(false);
         botao.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        botao.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16)); // Margem interna do botão
+        botao.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
         
         return botao;
     }
     
-    // Método auxiliar que cria a label já com a borda estilizada
-    private JLabel criarLabelComBorda(String texto, Font fonte, Color corTexto, Color corBorda, int espessuraBorda) {
-    	JLabel label = new JLabel(texto, SwingConstants.CENTER) {
+    // Método auxiliar que cria a label com borda
+    private JLabel criarLabelComBorda(String texto, Font fonte, Color corTexto, Color corBorda) {
+        int espessuraBorda = 1;
+        JLabel label = new JLabel(texto, SwingConstants.CENTER) {
             private static final long serialVersionUID = 1L;
             
             @Override
@@ -194,43 +390,32 @@ public class JanelaInicial extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-                String texto = getText();
+                g2.setFont(getFont());
+                String textoLbl = getText();
                 FontMetrics fm = g2.getFontMetrics();
-                int x = (getWidth() - fm.stringWidth(texto)) / 2;
+                int x = (getWidth() - fm.stringWidth(textoLbl)) / 2;
                 int y = ((getHeight() - fm.getHeight()) / 2) + fm.getAscent();
 
-                g2.setColor(corBorda); // Cor da borda
-                int espessuraBorda = 1;   // Grossura da borda em pixels
-                
+                g2.setColor(corBorda);
                 for (int dx = -espessuraBorda; dx <= espessuraBorda; dx++) {
                     for (int dy = -espessuraBorda; dy <= espessuraBorda; dy++) {
                         if (dx != 0 || dy != 0) {
-                            g2.drawString(texto, x + dx, y + dy);
+                            g2.drawString(textoLbl, x + dx, y + dy);
                         }
                     }
                 }
 
-                // --- 2. DESENHA O TEXTO PRINCIPAL POR CIMA ---
                 g2.setColor(corTexto);
-                g2.drawString(texto, x, y);
-
+                g2.drawString(textoLbl, x, y);
                 g2.dispose();
             }
         };
-        // Aplica a fonte diretamente no JLabel para o Swing calcular a geometria certa
-        label.setFont(fonte);
         
-        // Calcula dinamicamente o tamanho necessário com folga para a borda não cortar
+        label.setFont(fonte);
         FontMetrics fm = label.getFontMetrics(fonte);
-        int larguraDesejada = fm.stringWidth(texto) + (espessuraBorda * 4) + 20;
-        int alturaDesejada = fm.getHeight() + (espessuraBorda * 4) + 10;
-        label.setPreferredSize(new Dimension(larguraDesejada, alturaDesejada));
+        label.setPreferredSize(new Dimension(fm.stringWidth(texto) + 25, fm.getHeight() + 10));
 
         return label;
-    }
-
-    private void atualizarNumeroJogadores() {
-        qtdJogadores_lbl.setText(String.valueOf(numeroJogadores));
     }
 
     @Override
