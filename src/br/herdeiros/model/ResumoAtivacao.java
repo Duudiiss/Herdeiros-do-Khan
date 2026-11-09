@@ -6,6 +6,7 @@ public final class ResumoAtivacao {
     private final int colunaAtiva;
     private final int movimentosRestantes;
     private final int punhosDaColuna;
+    private final int moedasVirtuaisDaColuna;
     private final boolean acaoKhan;
     private final boolean acaoMelhoria;
     private final int[] cavalosPorColuna;
@@ -13,11 +14,12 @@ public final class ResumoAtivacao {
     ResumoAtivacao(boolean[] colunasOcupadas, int colunaAtiva,
                    int movimentosRestantes, int punhosDaColuna,
                    boolean acaoKhan, boolean acaoMelhoria,
-                   int[] cavalosPorColuna) {
+                   int[] cavalosPorColuna, int moedasVirtuaisDaColuna) {
         this.colunasOcupadas = colunasOcupadas.clone();
         this.colunaAtiva = colunaAtiva;
         this.movimentosRestantes = movimentosRestantes;
         this.punhosDaColuna = punhosDaColuna;
+        this.moedasVirtuaisDaColuna = moedasVirtuaisDaColuna;
         this.acaoKhan = acaoKhan;
         this.acaoMelhoria = acaoMelhoria;
         this.cavalosPorColuna = cavalosPorColuna.clone();
@@ -47,6 +49,10 @@ public final class ResumoAtivacao {
 
     public int getPunhosDaColuna() {
         return punhosDaColuna;
+    }
+
+    public int getMoedasVirtuaisDaColuna() {
+        return moedasVirtuaisDaColuna;
     }
 
     public boolean temAcaoKhan() {

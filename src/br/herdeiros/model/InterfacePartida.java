@@ -13,6 +13,7 @@ import br.herdeiros.mapa.MapaDados;
 /** API mínima para a interface da segunda iteração; não expõe as classes internas. */
 public class InterfacePartida implements ObservadoPartida {
     private final Jogo jogo;
+    private final MercadoMelhorias mercadoMelhorias;
     private final List<Jogador> participantes;
     private final List<ObservadorPartida> observadores = new ArrayList<>();
     private final Map<String, Set<Integer>> acessosCidades = new HashMap<String, Set<Integer>>();
@@ -21,6 +22,10 @@ public class InterfacePartida implements ObservadoPartida {
     private final Map<String, Cor> cidadesConquistadas = new HashMap<String, Cor>();
     private final Map<Provincia, ReservaProvincia> reservas = new HashMap<Provincia, ReservaProvincia>();
     private final Map<Provincia, Provincia[]> vizinhasDoKhan = new HashMap<Provincia, Provincia[]>();
+    private int rodadasConcluidas;
+    private int pontuacaoKhan;
+    private int rodadasNoDisparoFim = -1;
+    private boolean partidaEncerrada;
 
     /** Construtor padrao usado pelos testes de integracao do Model. */
     public InterfacePartida() {
@@ -38,6 +43,17 @@ public class InterfacePartida implements ObservadoPartida {
      */
     public InterfacePartida(String[] nomes, Cor[] cores,
                             Personagem[] personagens, boolean ordemAleatoria) {
+        this(nomes, cores, personagens, ordemAleatoria, new MercadoMelhorias());
+    }
+
+    /** Construtor de apoio aos testes de integracao, com mercado reproduzivel. */
+    InterfacePartida(String[] nomes, Cor[] cores,
+                     Personagem[] personagens, boolean ordemAleatoria,
+                     MercadoMelhorias mercado) {
+        if (mercado == null) {
+            throw new IllegalArgumentException("Mercado obrigatorio");
+        }
+        this.mercadoMelhorias = mercado;
         if (nomes == null || cores == null || nomes.length < 2
                 || nomes.length > 5 || nomes.length != cores.length) {
             throw new IllegalArgumentException("A partida requer entre 2 e 5 nomes e cores");
@@ -116,8 +132,9 @@ public class InterfacePartida implements ObservadoPartida {
 
     /** Consulta o custo minimo do destino para o jogador da vez, sem movimentar. */
     public int consultarCustoMovimentoAtual(int destino) {
-        Peao peao = participantes.get(indiceAtual).getMeuPeao();
-        return jogo.getTabuleiro().distanciaMinima(peao, destino);
+        Jogador jogador = participantes.get(indiceAtual);
+        return jogo.getTabuleiro().distanciaMinima(
+                jogador.getMeuPeao(), destino, jogador.getCor());
     }
 
     private int indiceAtual = 0;
@@ -133,9 +150,11 @@ public class InterfacePartida implements ObservadoPartida {
      * A passagem da vez e responsabilidade do Controller, nao deste metodo.
      */
     public boolean movimentarJogadorAtual(int destino, int movimentosDisponiveis) {
-        Peao peao = participantes.get(indiceAtual).getMeuPeao();
-        List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(peao, destino);
-        boolean realizado = jogo.getTabuleiro().moverPeaoAte(peao, destino, movimentosDisponiveis);
+        Jogador jogador = participantes.get(indiceAtual);
+        Peao peao = jogador.getMeuPeao();
+        List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(peao, destino, jogador.getCor());
+        boolean realizado = jogo.getTabuleiro().moverPeaoAte(
+                peao, destino, movimentosDisponiveis, jogador.getCor());
         if (realizado) {
             paradasVisitadasTurno.addAll(percurso);
             notificarObservadores();
@@ -145,6 +164,9 @@ public class InterfacePartida implements ObservadoPartida {
 
     /** Ativacao oficial da cartela: uma coluna por turno, sem repetir ocupadas. */
     public boolean ativarColunaJogadorAtual(int coluna) {
+        if (partidaEncerrada) {
+            return false;
+        }
         Jogador jogador = participantes.get(indiceAtual);
         boolean ativada = jogador.getTabuleiroIndividual().ativarColuna(
                 coluna, jogador.getPersonagem());
@@ -161,6 +183,9 @@ public class InterfacePartida implements ObservadoPartida {
 
     /** Movimentacao cujo saldo e calculado e debitado no proprio Model. */
     public boolean movimentarJogadorComAtivacao(int destino) {
+        if (partidaEncerrada) {
+            return false;
+        }
         Jogador jogador = participantes.get(indiceAtual);
         TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
         ResumoAtivacao ativacao = cartela.consultarAtivacao(jogador.getPersonagem());
@@ -169,9 +194,10 @@ public class InterfacePartida implements ObservadoPartida {
         if (custo <= 0 || custo > ativacao.getMovimentosRestantes()) {
             return false;
         }
-        List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(jogador.getMeuPeao(), destino);
+        List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(
+                jogador.getMeuPeao(), destino, jogador.getCor());
         boolean realizado = jogo.getTabuleiro().moverPeaoAte(
-                jogador.getMeuPeao(), destino, ativacao.getMovimentosRestantes());
+                jogador.getMeuPeao(), destino, ativacao.getMovimentosRestantes(), jogador.getCor());
         if (!realizado) {
             return false;
         }
@@ -184,7 +210,13 @@ public class InterfacePartida implements ObservadoPartida {
 
     /** Encerra o turno somente apos a acao obrigatoria do Khan, quando houver. */
     public boolean tentarAvancarJogador() {
+        if (partidaEncerrada) {
+            return false;
+        }
         TabuleiroIndividual cartela = participantes.get(indiceAtual).getTabuleiroIndividual();
+        if (cartela.getLinhasBrancasPendentes() > 0) {
+            return false;
+        }
         if (cartela.deveMoverKhan()) {
             return false;
         }
@@ -194,8 +226,15 @@ public class InterfacePartida implements ObservadoPartida {
         indiceAtual++;
         if (indiceAtual >= participantes.size()) {
             indiceAtual = 0;
+            rodadasConcluidas++;
+            if (rodadasNoDisparoFim >= 0
+                    && rodadasConcluidas >= rodadasNoDisparoFim + 2) {
+                partidaEncerrada = true;
+            }
         }
-        registrarParadaAtualNoTurno();
+        if (!partidaEncerrada) {
+            registrarParadaAtualNoTurno();
+        }
         notificarObservadores();
         return true;
     }
@@ -283,10 +322,15 @@ public class InterfacePartida implements ObservadoPartida {
         Jogador jogador = participantes.get(indiceJogador);
         TabuleiroIndividual tabuleiro = jogador.getTabuleiroIndividual();
         List<String> descricoes = new ArrayList<String>();
+        List<ResumoMelhoria> melhoriasDetalhadas = new ArrayList<ResumoMelhoria>();
 
         for (Melhoria melhoria : tabuleiro.getMelhoriasAdquiridas()) {
             if (melhoria != null) {
                 descricoes.add(melhoria.getDescdescricao());
+                melhoriasDetalhadas.add(new ResumoMelhoria(
+                        melhoria.getCodigo(),
+                        melhoria.getDescdescricao(),
+                        melhoria.getColuna()));
             }
         }
 
@@ -298,13 +342,106 @@ public class InterfacePartida implements ObservadoPartida {
                 jogador.quantidadeTributo(TipoTributo.ESPADA),
                 jogador.quantidadeTributo(TipoTributo.MOEDA),
                 jogador.quantidadeTributo(TipoTributo.YURT),
-                descricoes
+                tabuleiro.getQuantidadeEspadasVirtuais(),
+                tabuleiro.getQuantidadeMoedasVirtuais(),
+                tabuleiro.getQuantidadeYurtsVirtuais(),
+                descricoes,
+                melhoriasDetalhadas
         );
     }
 
     public ResumoCartela consultarCartelaJogadorAtual() {
         return consultarCartela(indiceAtual);
     }
+
+    public int consultarVotosJogadorAtual() {
+        return participantes.get(indiceAtual).getVotosKurultai();
+    }
+
+    public int consultarVotosJogador(int indiceJogador) {
+        if (indiceJogador < 0 || indiceJogador >= participantes.size()) {
+            return 0;
+        }
+        return participantes.get(indiceJogador).getVotosKurultai();
+    }
+
+    public int consultarPontuacaoKhan() {
+        return pontuacaoKhan;
+    }
+
+    /** A ficha branca avanca sempre que qualquer jogador ganha votos. */
+    public boolean registrarVotosConquistados(int quantidade) {
+        if (quantidade <= 0 || partidaEncerrada) {
+            return false;
+        }
+        participantes.get(indiceAtual).ganharVotos(quantidade);
+        pontuacaoKhan += quantidade;
+        if (rodadasNoDisparoFim < 0
+                && pontuacaoKhan >= consultarCasaFinal()) {
+            rodadasNoDisparoFim = rodadasConcluidas;
+        }
+        notificarObservadores();
+        return true;
+    }
+
+    public int consultarCasaFinal() {
+        if (participantes.size() == 2) {
+            return 9;
+        }
+        if (participantes.size() == 3) {
+            return 13;
+        }
+        if (participantes.size() == 4) {
+            return 15;
+        }
+        return 16;
+    }
+
+    public boolean isFimDisparado() {
+        return rodadasNoDisparoFim >= 0;
+    }
+
+    public boolean isPartidaEncerrada() {
+        return partidaEncerrada;
+    }
+
+    public int consultarQuantidadeYurtsNaParada(int idParada) {
+        return jogo.getTabuleiro().getQuantidadeYurts(idParada);
+    }
+
+    public List<Cor> consultarDonosYurtNaParada(int idParada) {
+        return jogo.getTabuleiro().getDonosYurt(idParada);
+    }
+
+    public boolean construirYurtAtual(int idParada) {
+        if (partidaEncerrada) {
+            return false;
+        }
+        Jogador jogador = participantes.get(indiceAtual);
+        if (!paradasVisitadasTurno.contains(idParada)) {
+            return false;
+        }
+        TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
+        int yurtsVirtuais = cartela.getQuantidadeYurtsVirtuais();
+        int yurtsDisponiveis = jogador.quantidadeTributo(TipoTributo.YURT) + yurtsVirtuais;
+        if (yurtsDisponiveis < 1) {
+            return false;
+        }
+        if (!jogo.getTabuleiro().construirYurt(idParada, jogador.getCor())) {
+            return false;
+        }
+        int yurtsReaisNecessarios = 1 - yurtsVirtuais;
+        if (yurtsReaisNecessarios < 0) {
+            yurtsReaisNecessarios = 0;
+        }
+        if (yurtsReaisNecessarios > 0) {
+            jogador.getTabuleiroIndividual().removerTributosPorTipo(TipoTributo.YURT,
+                    yurtsReaisNecessarios);
+        }
+        notificarObservadores();
+        return true;
+    }
+
 
     /**
      * Recurso restrito a demonstracao e testes da interface.
@@ -409,7 +546,9 @@ public class InterfacePartida implements ObservadoPartida {
         if (anteriores > 0) {
             custo = 2;
         }
-        return participantes.get(indiceAtual).quantidadeTributo(TipoTributo.ESPADA) >= custo;
+        Jogador jogadorAtual = participantes.get(indiceAtual);
+        return jogadorAtual.quantidadeTributo(TipoTributo.ESPADA)
+                + jogadorAtual.getTabuleiroIndividual().getQuantidadeEspadasVirtuais() >= custo;
     }
 
     private Cidade encontrarCidadeDisponivel(NomeCidade nome) {
@@ -423,7 +562,7 @@ public class InterfacePartida implements ObservadoPartida {
 
     /** Saque completo: valida visita, gasta espadas e revela nova cidade ao conquistar. */
     public boolean saquearCidadeAtual(String nomeCidade) {
-        if (!podeSaquearCidadeAtual(nomeCidade)) {
+        if (partidaEncerrada || !podeSaquearCidadeAtual(nomeCidade)) {
             return false;
         }
         NomeCidade nome = interpretarCidade(nomeCidade);
@@ -510,7 +649,7 @@ public class InterfacePartida implements ObservadoPartida {
      * em tentativas recusadas.
      */
     public boolean coletarTributoDaPilha(Provincia[] provincias, String tipoEscolhido) {
-        if (provincias == null || provincias.length == 0 || tipoEscolhido == null) {
+        if (partidaEncerrada || provincias == null || provincias.length == 0 || tipoEscolhido == null) {
             return false;
         }
 
@@ -577,8 +716,11 @@ public class InterfacePartida implements ObservadoPartida {
     }
 
     private boolean coletarTributoDaReserva(Provincia provincia, TipoTributo tipo) {
+        if (partidaEncerrada) {
+            return false;
+        }
         ReservaProvincia reserva = reservas.get(provincia);
-        if (reserva == null || !reserva.acessivelPelas(paradasVisitadasTurno)) {
+        if (reserva == null || !provinciaAcessivelNoTurno(reserva)) {
             return false;
         }
         Jogador jogador = participantes.get(indiceAtual);
@@ -669,8 +811,90 @@ public class InterfacePartida implements ObservadoPartida {
         }
     }
 
+    /** Apenas as paradas efetivamente cadastradas podem dar acesso ao estoque. */
+    private boolean provinciaAcessivelNoTurno(ReservaProvincia reserva) {
+        if (reserva == null) {
+            return false;
+        }
+        return reserva.acessivelPelas(paradasVisitadasTurno);
+    }
+
+    /** Consulta as quatro posicoes do mercado, sem expor cartas internas. */
+    public List<ResumoMelhoria> consultarMercadoMelhorias() {
+        return mercadoMelhorias.consultarResumos();
+    }
+
+    /** Compra uma melhoria real do mercado por duas moedas. */
+    public boolean comprarMelhoriaAtual(int posicao) {
+        Melhoria melhoria = mercadoMelhorias.consultar(posicao);
+        if (melhoria == null || partidaEncerrada) {
+            return false;
+        }
+        Jogador jogador = participantes.get(indiceAtual);
+        TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
+        if (!cartela.podeAdicionarMelhoria(melhoria.getColuna())) {
+            return false;
+        }
+        int custo = melhoria.getCustoEmMoedas();
+        int moedasVirtuais = cartela.getQuantidadeMoedasVirtuais();
+        int moedasDisponiveis = jogador.quantidadeTributo(TipoTributo.MOEDA) + moedasVirtuais;
+        if (moedasDisponiveis < custo) {
+            return false;
+        }
+        int moedasReaisNecessarias = custo - moedasVirtuais;
+        if (moedasReaisNecessarias < 0) {
+            moedasReaisNecessarias = 0;
+        }
+        if (moedasReaisNecessarias > 0
+                && !cartela.removerTributosPorTipo(TipoTributo.MOEDA, moedasReaisNecessarias)) {
+            return false;
+        }
+        Melhoria retirada = mercadoMelhorias.retirar(posicao);
+        cartela.adicionarMelhoria(retirada);
+        notificarObservadores();
+        return true;
+    }
+
+    public int consultarMelhoriasBrancasPendentes() {
+        return participantes.get(indiceAtual).getTabuleiroIndividual()
+                .getLinhasBrancasPendentes();
+    }
+
+    /** Resgata uma carta revelada gratuitamente para a coluna branca. */
+    public boolean escolherMelhoriaBrancaDoMercado(int posicao) {
+        TabuleiroIndividual cartela = participantes.get(indiceAtual).getTabuleiroIndividual();
+        if (!cartela.podeReceberMelhoriaBranca() || mercadoMelhorias.consultar(posicao) == null
+                || partidaEncerrada) {
+            return false;
+        }
+        Melhoria retirada = mercadoMelhorias.retirar(posicao);
+        boolean recebida = cartela.receberMelhoriaBranca(retirada);
+        if (recebida) {
+            notificarObservadores();
+        }
+        return recebida;
+    }
+
+    /** Resgata a melhoria do topo da pilha; a cor nao limita a coluna branca. */
+    public boolean escolherMelhoriaBrancaAleatoria() {
+        TabuleiroIndividual cartela = participantes.get(indiceAtual).getTabuleiroIndividual();
+        if (!cartela.podeReceberMelhoriaBranca() || !mercadoMelhorias.possuiPilha()
+                || partidaEncerrada) {
+            return false;
+        }
+        Melhoria retirada = mercadoMelhorias.retirarAleatoria();
+        boolean recebida = cartela.receberMelhoriaBranca(retirada);
+        if (recebida) {
+            notificarObservadores();
+        }
+        return recebida;
+    }
+
     /** Resolve a movimentação obrigatória do Khan nas províncias ou melhorias. */
     public boolean realizarAcaoKhan(DestinoKhan destino) {
+        if (partidaEncerrada) {
+            return false;
+        }
         TabuleiroIndividual cartela = participantes.get(indiceAtual).getTabuleiroIndividual();
         if (!cartela.deveMoverKhan() || destino == null) {
             return false;
@@ -689,7 +913,13 @@ public class InterfacePartida implements ObservadoPartida {
                 reporTributo(vizinha);
             }
         }
-        // A reposição de melhorias exige controlar espaços livres e não é simulada.
+        if (destino == DestinoKhan.MELHORIAS) {
+            mercadoMelhorias.reporVazios();
+            // A area impressa possui espacos de bonus (moeda/espada).
+            // A ocupacao individual desses espacos ainda sera modelada.
+            participantes.get(indiceAtual).receberTributos(TipoTributo.MOEDA, 1);
+            participantes.get(indiceAtual).receberTributos(TipoTributo.ESPADA, 1);
+        }
         cartela.concluirAcaoKhan();
         notificarObservadores();
         return true;

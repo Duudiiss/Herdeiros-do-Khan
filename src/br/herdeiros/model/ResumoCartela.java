@@ -17,12 +17,26 @@ public final class ResumoCartela {
     private final int espadas;
     private final int moedas;
     private final int yurts;
+    private final int espadasVirtuais;
+    private final int moedasVirtuais;
+    private final int yurtsVirtuais;
     private final List<String> melhorias;
+    private final List<ResumoMelhoria> melhoriasDetalhadas;
 
     public ResumoCartela(String nomeJogador, Cor corJogador, int indiceJogador,
             int quantidadeColunas, int espadas, int moedas, int yurts,
             List<String> melhorias) {
-        if (nomeJogador == null || corJogador == null || melhorias == null) {
+        this(nomeJogador, corJogador, indiceJogador, quantidadeColunas,
+                espadas, moedas, yurts, 0, 0, 0, melhorias,
+                Collections.<ResumoMelhoria>emptyList());
+    }
+
+    public ResumoCartela(String nomeJogador, Cor corJogador, int indiceJogador,
+            int quantidadeColunas, int espadas, int moedas, int yurts,
+            int espadasVirtuais, int moedasVirtuais, int yurtsVirtuais,
+            List<String> melhorias, List<ResumoMelhoria> melhoriasDetalhadas) {
+        if (nomeJogador == null || corJogador == null || melhorias == null
+                || melhoriasDetalhadas == null) {
             throw new IllegalArgumentException("Dados da cartela obrigatorios");
         }
         this.nomeJogador = nomeJogador;
@@ -32,7 +46,12 @@ public final class ResumoCartela {
         this.espadas = espadas;
         this.moedas = moedas;
         this.yurts = yurts;
+        this.espadasVirtuais = espadasVirtuais;
+        this.moedasVirtuais = moedasVirtuais;
+        this.yurtsVirtuais = yurtsVirtuais;
         this.melhorias = Collections.unmodifiableList(new ArrayList<String>(melhorias));
+        this.melhoriasDetalhadas = Collections.unmodifiableList(
+                new ArrayList<ResumoMelhoria>(melhoriasDetalhadas));
     }
 
     public String getNomeJogador() {
@@ -63,7 +82,23 @@ public final class ResumoCartela {
         return yurts;
     }
 
+    public int getEspadasVirtuais() {
+        return espadasVirtuais;
+    }
+
+    public int getMoedasVirtuais() {
+        return moedasVirtuais;
+    }
+
+    public int getYurtsVirtuais() {
+        return yurtsVirtuais;
+    }
+
     public List<String> getMelhorias() {
         return melhorias;
+    }
+
+    public List<ResumoMelhoria> getMelhoriasDetalhadas() {
+        return melhoriasDetalhadas;
     }
 }

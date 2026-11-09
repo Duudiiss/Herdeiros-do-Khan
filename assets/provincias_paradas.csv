@@ -1,7 +1,7 @@
 # NOME;TIPO_TRIBUTO;ESTOQUE_INICIAL;ID_PARADA;...
 # MAPEAMENTO PROVISORIO por proximidade aos marcadores do Khan. CONFIRA no tabuleiro!
 # Tipos de tributo tambem devem ser conferidos com a simbologia das províncias.
-RUSSIA_OESTE;MOEDA;1;1;6;7;8;9;30;31
+RUSSIA_OESTE;MOEDA;1;1;2;6;7;8;9;30;31
 RUSSIA_LESTE;YURT;1;2;3;4;5;24;25;26;27;28
 PERSIA_SUL;ESPADA;1;10;11;12;13;14;15;16;17;32
 CHINA_LESTE;ESPADA;1;18;19;20;21;22;23;29;33
