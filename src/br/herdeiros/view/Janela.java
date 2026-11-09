@@ -1,5 +1,8 @@
 package br.herdeiros.view;
 
+import br.herdeiros.model.Cor;
+import br.herdeiros.model.Personagem;
+
 import br.herdeiros.view.*;
 
 import javax.swing.*;
@@ -26,6 +29,8 @@ import java.io.ObjectOutput;
 import java.io.ObjectStreamConstants;
 import java.io.Serializable;
 import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.imageio.*;
 import javax.imageio.ImageTranscoder;
@@ -38,9 +43,11 @@ import javax.imageio.stream.ImageInputStream;
 //import jdk.internal.vm.VMSupport.IOReader;
 
 public class Janela extends JFrame{
-	
 	private CardLayout cardLayout;
     private JPanel painelContainer;
+    
+    private JanelaJogo janelaJogo;
+    private JanelaInicial janelaInicial;
     
 	public Janela() throws IOException{
 		super("Herdeiros de Khan");
@@ -48,12 +55,13 @@ public class Janela extends JFrame{
         setSize(1120, 900);
         setLocationRelativeTo(null);
         
+        
         cardLayout = new CardLayout();
         painelContainer = new JPanel(cardLayout);
         
-		JPanel painelInicial = new JanelaInicial(this);
+        janelaInicial = new JanelaInicial(this);
 		
-		painelContainer.add(painelInicial, "Menu");
+		painelContainer.add(janelaInicial, "Menu");
 		
 		setContentPane(painelContainer);
 		cardLayout.show(painelContainer, "Menu");
@@ -73,14 +81,15 @@ public class Janela extends JFrame{
         });
 	}
 	
-	public void mostrarTabuleiro(int quantidadeJogadores) {
-        try {
-            painelContainer.add(new JanelaJogo(quantidadeJogadores), "Tabuleiro");
-            cardLayout.show(painelContainer, "Tabuleiro");
-        } catch (IOException erro) {
-            JOptionPane.showMessageDialog(this, "Não foi possível carregar o tabuleiro: "
-                    + erro.getMessage(), "Erro ao iniciar partida", JOptionPane.ERROR_MESSAGE);
-        }
+	private void mostrarTabuleiro() {
+        cardLayout.show(painelContainer, "Tabuleiro");
+    }
+
+    public void iniciarPartida(int quantidadeJogadores, String[] nomes, Cor[] cores,
+                              Personagem[] personagens) throws IOException {
+        janelaJogo = new JanelaJogo(quantidadeJogadores, nomes, cores, personagens);
+        painelContainer.add(janelaJogo, "Tabuleiro");
+        mostrarTabuleiro();
     }
 }
 

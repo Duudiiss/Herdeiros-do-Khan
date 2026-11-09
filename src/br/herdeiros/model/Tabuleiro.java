@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
@@ -13,9 +14,10 @@ import java.util.Queue;
 class Tabuleiro {
     private final Peao peaoDoKhan;
     private final List<Cidade> cidadesDisponiveis;
-    private final HashMap<Integer, Parada> paradas = new HashMap<>();
+    private final HashMap<Integer, Parada> paradas = new HashMap<Integer, Parada>();
     private final Set<Peao> peoes = Collections.newSetFromMap(new IdentityHashMap<Peao, Boolean>());
-    private final HashMap<Integer, Cor> yurts = new HashMap<>();
+    private final HashMap<Integer, ArrayList<Cor>> yurts = new HashMap<Integer, ArrayList<Cor>>();
+    private DestinoKhan destinoKhan;
 
     public Tabuleiro(List<Cidade> cidadesIniciaisSorteadas) {
         if (cidadesIniciaisSorteadas == null) {
@@ -23,7 +25,7 @@ class Tabuleiro {
         }
 
         this.peaoDoKhan = new Peao(Cor.BRANCO);
-        this.cidadesDisponiveis = new ArrayList<>(cidadesIniciaisSorteadas);
+        this.cidadesDisponiveis = new ArrayList<Cidade>(cidadesIniciaisSorteadas);
         this.paradas.put(0, new Parada(0, TipoParada.KARAKORUM));
     }
 
@@ -53,11 +55,7 @@ class Tabuleiro {
         Parada primeira = paradas.get(id1);
         Parada segunda = paradas.get(id2);
 
-        if (primeira == null) {
-            return false;
-        }
-
-        if (segunda == null) {
+        if (primeira == null || segunda == null) {
             return false;
         }
 
@@ -78,7 +76,7 @@ class Tabuleiro {
     }
 
     public List<Cidade> getCidadesDisponiveis() {
-        return new ArrayList<>(cidadesDisponiveis);
+        return new ArrayList<Cidade>(cidadesDisponiveis);
     }
 
     public int getQuantidadeParadas() {
@@ -145,56 +143,138 @@ class Tabuleiro {
         return true;
     }
 
-    /**
-     * Calcula um trajeto com até movimentosDisponiveis conexões.
-     * Paradas ocupadas podem ser atravessadas, mas não usadas como destino final
-     * caso tenham atingido sua capacidade. Esta operação não altera o peão.
-     */
+    /** Calcula um trajeto usando a regra opcional de saltar yurts do proprio jogador. */
     public boolean podeMoverAte(Peao peao, int idDestino, int movimentosDisponiveis) {
-        if (peao == null || !peoes.contains(peao) || movimentosDisponiveis <= 0) {
+        return podeMoverAte(peao, idDestino, movimentosDisponiveis, null);
+    }
+
+    public boolean podeMoverAte(Peao peao, int idDestino, int movimentosDisponiveis, Cor corDoJogador) {
+        int custo = distanciaMinima(peao, idDestino, corDoJogador);
+        if (custo <= 0) {
             return false;
         }
+        return custo <= movimentosDisponiveis;
+    }
 
+    /** Busca em largura: devolve a quantidade minima de conexoes/saltos ate o destino. */
+    public int distanciaMinima(Peao peao, int idDestino) {
+        return distanciaMinima(peao, idDestino, null);
+    }
+
+    public int distanciaMinima(Peao peao, int idDestino, Cor corDoJogador) {
+        if (peao == null || !peoes.contains(peao)) {
+            return -1;
+        }
         Parada origem = peao.getParadaAtual();
         Parada destino = paradas.get(idDestino);
         if (origem == null || destino == null || origem == destino) {
-            return false;
+            return -1;
         }
         if (ocupacao(destino, peao) >= destino.capacidade()) {
-            return false;
+            return -1;
         }
 
-        Queue<Parada> fila = new ArrayDeque<>();
-        HashMap<Integer, Integer> distancias = new HashMap<>();
+        Queue<Parada> fila = new ArrayDeque<Parada>();
+        HashMap<Integer, Integer> distancias = new HashMap<Integer, Integer>();
         fila.add(origem);
         distancias.put(origem.getId(), 0);
 
         while (!fila.isEmpty()) {
             Parada atual = fila.remove();
             int distancia = distancias.get(atual.getId());
-            if (distancia < movimentosDisponiveis) {
-                for (Parada vizinha : atual.getAdjacentes()) {
-                    if (!distancias.containsKey(vizinha.getId())) {
-                        int proximaDistancia = distancia + 1;
-                        if (vizinha == destino) {
-                            return true;
-                        }
-                        distancias.put(vizinha.getId(), proximaDistancia);
-                        fila.add(vizinha);
+            for (Parada proxima : destinosEmUmPasso(atual, peao, corDoJogador)) {
+                if (!distancias.containsKey(proxima.getId())) {
+                    int proximaDistancia = distancia + 1;
+                    if (proxima == destino) {
+                        return proximaDistancia;
                     }
+                    distancias.put(proxima.getId(), proximaDistancia);
+                    fila.add(proxima);
                 }
             }
         }
-        return false;
+        return -1;
+    }
+
+    /** Retorna a sequencia de paradas realmente ocupadas, excluindo a origem. */
+    public List<Integer> consultarCaminho(Peao peao, int idDestino) {
+        return consultarCaminho(peao, idDestino, null);
+    }
+
+    public List<Integer> consultarCaminho(Peao peao, int idDestino, Cor corDoJogador) {
+        List<Integer> vazio = new ArrayList<Integer>();
+        if (peao == null || !peoes.contains(peao)) {
+            return vazio;
+        }
+        Parada origem = peao.getParadaAtual();
+        Parada destino = paradas.get(idDestino);
+        if (origem == null || destino == null || origem == destino) {
+            return vazio;
+        }
+        if (ocupacao(destino, peao) >= destino.capacidade()) {
+            return vazio;
+        }
+        Queue<Parada> fila = new ArrayDeque<Parada>();
+        HashMap<Integer, Integer> anterior = new HashMap<Integer, Integer>();
+        fila.add(origem);
+        anterior.put(origem.getId(), -1);
+        while (!fila.isEmpty()) {
+            Parada atual = fila.remove();
+            for (Parada proxima : destinosEmUmPasso(atual, peao, corDoJogador)) {
+                if (!anterior.containsKey(proxima.getId())) {
+                    anterior.put(proxima.getId(), atual.getId());
+                    fila.add(proxima);
+                }
+            }
+        }
+        if (!anterior.containsKey(idDestino)) {
+            return vazio;
+        }
+        int atual = idDestino;
+        while (atual != origem.getId()) {
+            vazio.add(0, atual);
+            atual = anterior.get(atual);
+        }
+        return vazio;
     }
 
     /** Valida a rota completa antes de alterar a posição do peão. */
     public boolean moverPeaoAte(Peao peao, int idDestino, int movimentosDisponiveis) {
-        boolean permitido = podeMoverAte(peao, idDestino, movimentosDisponiveis);
+        return moverPeaoAte(peao, idDestino, movimentosDisponiveis, null);
+    }
+
+    public boolean moverPeaoAte(Peao peao, int idDestino, int movimentosDisponiveis, Cor corDoJogador) {
+        boolean permitido = podeMoverAte(peao, idDestino, movimentosDisponiveis, corDoJogador);
         if (permitido) {
             peao.posicionarEm(paradas.get(idDestino));
         }
         return permitido;
+    }
+
+    private List<Parada> destinosEmUmPasso(Parada origem, Peao peao, Cor corDoJogador) {
+        LinkedHashSet<Parada> destinos = new LinkedHashSet<Parada>();
+        for (Parada vizinha : origem.getAdjacentes()) {
+            adicionarDestinoSeValido(destinos, vizinha, peao);
+            if (corDoJogador != null && temYurtDoJogador(vizinha.getId(), corDoJogador)) {
+                for (Parada aposSalto : vizinha.getAdjacentes()) {
+                    if (aposSalto != origem) {
+                        adicionarDestinoSeValido(destinos, aposSalto, peao);
+                    }
+                }
+            }
+        }
+        return new ArrayList<Parada>(destinos);
+    }
+
+    /**
+     * Paradas ocupadas continuam transitaveis. A capacidade impede apenas que
+     * um peao termine o deslocamento nelas, como verificado pelos metodos
+     * distanciaMinima e consultarCaminho antes da busca.
+     */
+    private void adicionarDestinoSeValido(Set<Parada> destinos, Parada destino, Peao peao) {
+        if (destino != null) {
+            destinos.add(destino);
+        }
     }
 
     /** O Khan pode entrar a partir de fora; movimentos seguintes exigem conexão. */
@@ -217,7 +297,7 @@ class Tabuleiro {
         return true;
     }
 
-    /** Registra uma yurt em uma parada válida que ainda não tenha yurt. */
+    /** Registra yurts: parada simples recebe 1; parada dupla pode receber 2; Karakorum nao recebe. */
     public boolean construirYurt(int idParada, Cor cor) {
         Parada parada = paradas.get(idParada);
         if (parada == null || cor == null || cor == Cor.BRANCO) {
@@ -228,15 +308,59 @@ class Tabuleiro {
             return false;
         }
 
-        if (yurts.containsKey(idParada)) {
+        ArrayList<Cor> donos = yurts.get(idParada);
+        if (donos == null) {
+            donos = new ArrayList<Cor>();
+            yurts.put(idParada, donos);
+        }
+
+        int capacidade = parada.isDupla() ? 2 : 1;
+        if (donos.size() >= capacidade) {
             return false;
         }
 
-        yurts.put(idParada, cor);
+        donos.add(cor);
+        return true;
+    }
+
+    public DestinoKhan getDestinoKhan() {
+        return destinoKhan;
+    }
+
+    public boolean deslocarKhan(DestinoKhan destino) {
+        if (destino == null || destino == destinoKhan) {
+            return false;
+        }
+        destinoKhan = destino;
         return true;
     }
 
     public Cor getDonoYurt(int idParada) {
-        return yurts.get(idParada);
+        ArrayList<Cor> donos = yurts.get(idParada);
+        if (donos == null || donos.isEmpty()) {
+            return null;
+        }
+        return donos.get(0);
+    }
+
+    public int getQuantidadeYurts(int idParada) {
+        ArrayList<Cor> donos = yurts.get(idParada);
+        if (donos == null) {
+            return 0;
+        }
+        return donos.size();
+    }
+
+    public List<Cor> getDonosYurt(int idParada) {
+        ArrayList<Cor> donos = yurts.get(idParada);
+        if (donos == null) {
+            return Collections.emptyList();
+        }
+        return new ArrayList<Cor>(donos);
+    }
+
+    public boolean temYurtDoJogador(int idParada, Cor cor) {
+        ArrayList<Cor> donos = yurts.get(idParada);
+        return donos != null && donos.contains(cor);
     }
 }

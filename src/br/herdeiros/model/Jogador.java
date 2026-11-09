@@ -4,12 +4,17 @@ package br.herdeiros.model;
 class Jogador {
     private final String nome;
     private final Cor cor;
+    private final Personagem personagem;
     private final Peao meuPeao;
     private final int quantidadeDescendentes;
     private int votosKurultai;
     private final TabuleiroIndividual tabuleiroIndividual = new TabuleiroIndividual();
 
     public Jogador(String nome, Cor cor, int quantidadeDescendentes) {
+        this(nome, cor, quantidadeDescendentes, null);
+    }
+
+    public Jogador(String nome, Cor cor, int quantidadeDescendentes, Personagem personagem) {
         if (nome == null || nome.trim().isEmpty() || cor == null || cor == Cor.BRANCO
                 || quantidadeDescendentes < 0) {
             throw new IllegalArgumentException("Dados inválidos do jogador");
@@ -17,6 +22,7 @@ class Jogador {
 
         this.nome = nome;
         this.cor = cor;
+        this.personagem = personagem;
         this.quantidadeDescendentes = quantidadeDescendentes;
         this.meuPeao = new Peao(cor);
 
@@ -30,6 +36,10 @@ class Jogador {
 
     public String getNome() {
         return nome;
+    }
+
+    public Personagem getPersonagem() {
+        return personagem;
     }
 
     public Cor getCor() {
@@ -88,7 +98,10 @@ class Jogador {
             custo = 2;
         }
 
-        if (quantidadeTributo(TipoTributo.ESPADA) < custo) {
+        int espadasVirtuais = tabuleiroIndividual.getQuantidadeEspadasVirtuais();
+        int espadasDisponiveis = quantidadeTributo(TipoTributo.ESPADA) + espadasVirtuais;
+
+        if (espadasDisponiveis < custo) {
             return false;
         }
 
@@ -97,7 +110,14 @@ class Jogador {
             return false;
         }
 
-        tabuleiroIndividual.removerTributosPorTipo(TipoTributo.ESPADA, custo);
+        int espadasReaisNecessarias = custo - espadasVirtuais;
+        if (espadasReaisNecessarias < 0) {
+            espadasReaisNecessarias = 0;
+        }
+
+        if (espadasReaisNecessarias > 0) {
+            tabuleiroIndividual.removerTributosPorTipo(TipoTributo.ESPADA, espadasReaisNecessarias);
+        }
         return true;
     }
 }
