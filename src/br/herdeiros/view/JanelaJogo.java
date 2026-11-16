@@ -1,4 +1,3 @@
-
 package br.herdeiros.view;
 
 import br.herdeiros.controller.ControladorTabuleiro;
@@ -16,18 +15,20 @@ import br.herdeiros.model.Provincia;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
-import javax.swing.JOptionPane;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import javax.swing.JComboBox;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 
@@ -67,12 +68,19 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         this(quantidadeJogadores);
         iniciarPartida(quantidadeJogadores, nomes, cores, personagens);
     }
+    
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        EstiloImperial.pintarFundoImperial(g, this, null);
+    }
 
     private void configurarInterface() {
         setLayout(new BorderLayout(8, 8));
 
         indicadorVez = new JLabel();
         indicadorVez.setHorizontalAlignment(JLabel.CENTER);
+        indicadorVez.setFont(EstiloImperial.FONTE_SUBTITULO);
 
         estado = new JTextArea(
             "Configure uma partida para começar."
@@ -81,30 +89,47 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         estado.setEditable(false);
         estado.setLineWrap(true);
         estado.setWrapStyleWord(true);
-        estado.setOpaque(false);
-        estado.setRows(3);
+        estado.setFont(EstiloImperial.FONTE_TEXTO);
+        estado.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        estado.setBackground(new Color(42, 26, 16));
+        estado.setRows(4);
 
-        JPanel lateral = new JPanel(
-            new BorderLayout(8, 8)
-        );
+        JPanel lateral = new JPanel(new BorderLayout(8, 8)) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                EstiloImperial.pintarFundoImperial(g, this, null);
+            }
+        };
 
         lateral.setPreferredSize(new Dimension(240, 0));
+        lateral.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(EstiloImperial.COR_DOURADA_IMPERIAL, 2),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)));
 
         JPanel ferramentas = new JPanel(
-            new GridLayout(0, 1, 6, 6)
+            new GridLayout(0, 1, 0, 6)
         );
+        ferramentas.setOpaque(false);
+        
+        JLabel tituloPainel = EstiloImperial.criarLabelComBorda(
+                "Ações do Turno",
+                EstiloImperial.FONTE_SUBTITULO,
+                EstiloImperial.COR_DOURADA_IMPERIAL,
+                EstiloImperial.COR_BORDA_TEXTO);
+        ferramentas.add(tituloPainel);
 
-        ferramentas.add(new JLabel(
-
-            "<html>Movimentacao: ative uma<br>coluna na cartela individual.</html>"
-        ));
-
-        passar = new JButton("Passar turno");
-
+        passar = EstiloImperial.criarBotaoEstilizado(
+                "Passar turno",
+                EstiloImperial.FONTE_BOTAO_MEDIO,
+                EstiloImperial.COR_VERMELHO_ESCURO,
+                EstiloImperial.COR_VERMELHO_HOVER,
+                EstiloImperial.COR_TEXTO_CLARO);
         passar.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
-
                 if (controlador != null) {
                     controlador.passarVez();
                 }
@@ -113,7 +138,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         ferramentas.add(passar);
 
-        abrirCartela = new JButton("Abrir cartela do jogador");
+        abrirCartela = EstiloImperial.criarBotaoImperial("Abrir cartela do jogador");
         abrirCartela.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -122,15 +147,16 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(abrirCartela);
 
-        abrirCidades = new JButton("Consultar cidades abertas");
+        abrirCidades = EstiloImperial.criarBotaoImperial("Consultar cidades abertas");
         abrirCidades.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
                 abrirJanelaCidades();
             }
         });
-        // O saque de cidades e feito clicando diretamente nas cidades do tabuleiro.
-        abrirMelhorias = new JButton("Comprar melhorias");
+        ferramentas.add(abrirCidades);
+
+        abrirMelhorias = EstiloImperial.criarBotaoImperial("Comprar melhorias");
         abrirMelhorias.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -139,7 +165,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(abrirMelhorias);
 
-        construirYurt = new JButton("Construir yurt");
+        construirYurt = EstiloImperial.criarBotaoImperial("Construir yurt");
         construirYurt.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -152,10 +178,13 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(construirYurt);
 
-        ferramentas.add(new JLabel("Ação obrigatória do Khan:"));
         destinosKhan = new JComboBox<DestinoKhan>(DestinoKhan.values());
+        destinosKhan.setFont(EstiloImperial.FONTE_TEXTO);
+        destinosKhan.setBackground(EstiloImperial.COR_TEXTO_CLARO);
+        destinosKhan.setForeground(EstiloImperial.COR_MARROM_COURO);
         ferramentas.add(destinosKhan);
-        moverKhan = new JButton("Mover Khan");
+
+        moverKhan = EstiloImperial.criarBotaoImperial("Mover Khan");
         moverKhan.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -168,16 +197,26 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             }
         });
         ferramentas.add(moverKhan);
-        posicaoKhan = new JLabel("Khan: fora do tabuleiro");
+        posicaoKhan = EstiloImperial.criarLabelComBorda(
+                "Khan: fora do tabuleiro",
+                EstiloImperial.FONTE_TEXTO,
+                EstiloImperial.COR_TEXTO_CLARO,
+                EstiloImperial.COR_BORDA_TEXTO);
         ferramentas.add(posicaoKhan);
 
-        ferramentas.add(new JLabel(
-            "<html>Clique nos icones com contadores para coletar tributos (1 punho).<br>Clique numa cidade aberta para saquear com espadas.</html>"
-        ));
-
-        ferramentas.add(new JLabel(
-            "<html>Mapa carregado do<br>arquivo CSV.</html>"
-        ));
+        JLabel instrucoes1 = new JLabel("<html>• Ative uma coluna na cartela para<br> mover.</html>");
+        instrucoes1.setFont(EstiloImperial.FONTE_TEXTO);
+        instrucoes1.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        JLabel instrucoes2 = new JLabel("<html>• Clique nos ícones com contadores<br> para coletar tributos (1 punho).</html>");
+        instrucoes2.setFont(EstiloImperial.FONTE_TEXTO);
+        instrucoes2.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        JLabel instrucoes3 = new JLabel("<html>• Clique numa cidade aberta para<br> saquear com espadas.</html>");
+        instrucoes3.setFont(EstiloImperial.FONTE_TEXTO);
+        instrucoes3.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        
+        ferramentas.add(instrucoes1);
+        ferramentas.add(instrucoes2);
+        ferramentas.add(instrucoes3);
 
         lateral.add(indicadorVez, BorderLayout.CENTER);
         lateral.add(ferramentas, BorderLayout.NORTH);
