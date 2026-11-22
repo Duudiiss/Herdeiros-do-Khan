@@ -539,7 +539,7 @@
   },
   "jogadores": [
     {
-      "nome": "Temujin",
+      "nome": "Duda",
       "cor": "AZUL",
       "personagem": "JOCHI",
       "votos": 9,
@@ -555,7 +555,7 @@
       ]
     },
     {
-      "nome": "Batu",
+      "nome": "Saulo",
       "cor": "VERMELHO",
       "personagem": "TOLUI",
       "votos": 3,
@@ -571,7 +571,7 @@
       ]
     },
     {
-      "nome": "Ayla",
+      "nome": "Matheus",
       "cor": "VERDE",
       "personagem": "ALTANI",
       "votos": 2,
@@ -587,7 +587,7 @@
       ]
     },
     {
-      "nome": "Saru",
+      "nome": "Ivan",
       "cor": "AMARELO",
       "personagem": "CHAGATAI",
       "votos": 1,
