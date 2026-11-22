@@ -38,7 +38,7 @@ public class CartelaObserverTest {
     @Test(timeout = 2000)
     public void testeCartelaAtualMudaComJogadorDaVez() {
         InterfacePartida partida = new InterfacePartida();
-        partida.avancarJogador();
+        TestesConselheirosAux.avancarSemResultado(partida);
         assertEquals("Depois de passar a vez, deve aparecer o outro jogador",
                 "Vermelho", partida.consultarCartelaJogadorAtual().getNomeJogador());
     }

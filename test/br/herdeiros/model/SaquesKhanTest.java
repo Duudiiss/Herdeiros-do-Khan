@@ -139,7 +139,7 @@ public class SaquesKhanTest {
         InterfacePartida partida = prepararPartida();
         assertTrue("Altani vermelha tem acao Khan", partida.ativarColunaJogadorAtual(0));
         assertTrue("A acao do Khan esta pendente", partida.deveMoverKhanJogadorAtual());
-        assertFalse("Passar turno com Khan pendente e proibido", partida.tentarAvancarJogador());
+        assertFalse("Passar turno com Khan pendente e proibido", TestesConselheirosAux.avancar(partida));
         assertEquals("O jogador deve continuar na mesma vez", 0, partida.getIndiceJogadorAtual());
     }
 
@@ -152,7 +152,7 @@ public class SaquesKhanTest {
         assertEquals("Destino do Khan deve estar disponivel para a View", DestinoKhan.RUSSIA_OESTE,
                 partida.consultarDestinoKhan());
         assertFalse("A acao ja foi realizada", partida.deveMoverKhanJogadorAtual());
-        assertTrue("A vez pode terminar depois da acao", partida.tentarAvancarJogador());
+        assertTrue("A vez pode terminar depois da acao", TestesConselheirosAux.avancar(partida));
         assertEquals("O proximo jogador deve ficar ativo", 1, partida.getIndiceJogadorAtual());
     }
 
@@ -163,8 +163,8 @@ public class SaquesKhanTest {
         partida.ativarColunaJogadorAtual(0);
         assertTrue("Primeira movimentacao deve ocorrer", partida.realizarAcaoKhan(DestinoKhan.RUSSIA_OESTE));
         assertFalse("Acao nao pode ser repetida", partida.realizarAcaoKhan(DestinoKhan.CHINA_LESTE));
-        partida.tentarAvancarJogador();
-        partida.tentarAvancarJogador();
+        TestesConselheirosAux.avancar(partida);
+        TestesConselheirosAux.avancar(partida);
         assertTrue("A coluna branca libera nova acao Khan", partida.ativarColunaJogadorAtual(3));
         assertFalse("Mesmo destino do Khan deve ser recusado", partida.realizarAcaoKhan(DestinoKhan.RUSSIA_OESTE));
     }
@@ -197,8 +197,8 @@ public class SaquesKhanTest {
         darEspadas(partida, 2);
         chegarNaParada(partida, 1, 1);
         assertTrue("Primeiro turno aceita saque", partida.saquearCidadeAtual(cidade));
-        assertTrue("Pode passar sem acao obrigatoria pendente", partida.tentarAvancarJogador());
-        assertTrue("Segundo jogador passa", partida.tentarAvancarJogador());
+        assertTrue("Pode passar sem acao obrigatoria pendente", TestesConselheirosAux.avancar(partida));
+        assertTrue("Segundo jogador passa", TestesConselheirosAux.avancar(partida));
         assertTrue("Altani usa coluna amarela no turno seguinte", partida.ativarColunaJogadorAtual(2));
         assertTrue("O jogador chega a outro acesso da mesma cidade", partida.movimentarJogadorComAtivacao(2));
         assertTrue("No novo turno o saque custa somente uma espada", partida.saquearCidadeAtual(cidade));

@@ -31,7 +31,7 @@ public final class GerenciadorSave {
     }
 
     public static Path getCaminhoSaveLocal() {
-        return getPastaSaves().resolve("partida.json");
+        return getPastaSaves().resolve("partida.txt");
     }
 
     public static Path getPastaSaves() {
@@ -52,7 +52,7 @@ public final class GerenciadorSave {
         try (Stream<Path> arquivos = Files.list(pasta)) {
             arquivos
                     .filter(Files::isRegularFile)
-                    .filter(arquivo -> arquivo.getFileName().toString().toLowerCase().endsWith(".json"))
+                    .filter(arquivo -> arquivo.getFileName().toString().toLowerCase().endsWith(".txt"))
                     .sorted((um, outro) -> um.getFileName().toString()
                             .compareToIgnoreCase(outro.getFileName().toString()))
                     .forEach(arquivo -> nomes.add(arquivo.getFileName().toString()));
@@ -66,8 +66,8 @@ public final class GerenciadorSave {
         }
 
         String nomeArquivo = nome.trim();
-        if (!nomeArquivo.toLowerCase().endsWith(".json")) {
-            nomeArquivo += ".json";
+        if (!nomeArquivo.toLowerCase().endsWith(".txt")) {
+            nomeArquivo += ".txt";
         }
         if (nomeArquivo.indexOf('/') >= 0 || nomeArquivo.indexOf('\\') >= 0
                 || nomeArquivo.equals("..") || nomeArquivo.equals(".")) {
@@ -106,7 +106,7 @@ public final class GerenciadorSave {
         Path temporario = Files.createTempFile(diretorio, "partida-", ".tmp");
         try {
             SavePartidaData dados = partida.criarDadosSave();
-            Files.write(temporario, GSON.toJson(dados).getBytes(StandardCharsets.UTF_8));
+            Files.write(temporario, converterParaAscii(GSON.toJson(dados)).getBytes(StandardCharsets.US_ASCII));
             try {
                 Files.move(temporario, absoluto, StandardCopyOption.ATOMIC_MOVE,
                         StandardCopyOption.REPLACE_EXISTING);
@@ -148,6 +148,20 @@ public final class GerenciadorSave {
                  | NullPointerException erro) {
             throw new IOException("Não foi possível carregar esse arquivo de save.", erro);
         }
+    }
+
+    /** JSON legivel em arquivo TXT, escapando os caracteres fora da faixa ASCII. */
+    private static String converterParaAscii(String texto) {
+        StringBuilder resultado = new StringBuilder(texto.length());
+        for (int i = 0; i < texto.length(); i++) {
+            char caractere = texto.charAt(i);
+            if (caractere > 127) {
+                resultado.append(String.format(java.util.Locale.ROOT, "\\u%04x", (int) caractere));
+            } else {
+                resultado.append(caractere);
+            }
+        }
+        return resultado.toString();
     }
 
     private static InterfacePartida carregarObjeto(byte[] conteudo) throws IOException {

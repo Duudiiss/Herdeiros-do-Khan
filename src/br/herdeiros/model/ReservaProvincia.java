@@ -128,6 +128,15 @@ final class ReservaProvincia implements Serializable {
         return true;
     }
 
+    /** Repoe somente o recurso associado ao icone escolhido no editor. */
+    boolean reporUma(TipoTributo recurso) {
+        if (recurso == null || total() >= 3) {
+            return false;
+        }
+        quantidades.put(recurso, quantidade(recurso) + 1);
+        return true;
+    }
+
     boolean reporUma() {
         if (total() >= 3) {
             return false;

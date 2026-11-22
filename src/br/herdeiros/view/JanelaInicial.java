@@ -26,6 +26,7 @@ public class JanelaInicial extends JPanel {
     
     private JButton Iniciar_btn;
     private JButton Sair_btn;
+    private JCheckBox modoDesenvolvedor;
     private JLabel qtdJogadores_lbl;
     private JButton Mais_btn;
     private JButton Menos_btn;
@@ -190,7 +191,7 @@ public class JanelaInicial extends JPanel {
             String[] nomesArray = nomes.toArray(new String[0]);
             Cor[] coresArray = cores.toArray(new Cor[0]);
             try {
-                janela.iniciarPartida(numeroJogadores, nomesArray, coresArray, personagens);
+                janela.iniciarPartida(numeroJogadores, nomesArray, coresArray, personagens, modoDesenvolvedor.isSelected());
             } catch (IOException erro) {
                 JOptionPane.showMessageDialog(JanelaInicial.this,
                     "Nao foi possivel carregar o mapa: " + erro.getMessage(),
@@ -223,6 +224,12 @@ public class JanelaInicial extends JPanel {
             }
         });
 
+        modoDesenvolvedor = new JCheckBox("Modo de desenvolvedor (ferramentas de teste)");
+        modoDesenvolvedor.setOpaque(false);
+        modoDesenvolvedor.setForeground(Color.WHITE);
+        modoDesenvolvedor.setFont(new Font("Serif", Font.BOLD, 18));
+        modoDesenvolvedor.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         // Montagem do menu principal
         painelH.add(textoJogadores);
         painelH.add(Box.createVerticalStrut(5));
@@ -238,6 +245,7 @@ public class JanelaInicial extends JPanel {
         painelBackground.add(painelH);
         painelBackground.add(painelV);
         painelBackground.add(painelCarregar);
+        painelBackground.add(modoDesenvolvedor);
         painelBackground.add(Box.createVerticalStrut(10));
         
         painelBackgroundH.add(painelBackground);
@@ -274,12 +282,14 @@ public class JanelaInicial extends JPanel {
                 partida = GerenciadorSave.carregarLocal();
             } else {
                 JFileChooser seletor = new JFileChooser();
+                seletor.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
+                        "Partida TXT (*.txt)", "txt"));
                 if (seletor.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
                     return;
                 }
                 partida = GerenciadorSave.carregar(seletor.getSelectedFile().toPath());
             }
-            janelaPrincipal.carregarPartida(partida);
+            janelaPrincipal.carregarPartida(partida, modoDesenvolvedor.isSelected());
         } catch (IOException | IllegalArgumentException erro) {
             JOptionPane.showMessageDialog(this, erro.getMessage(),
                     "Erro ao carregar partida", JOptionPane.ERROR_MESSAGE);
@@ -324,9 +334,15 @@ public class JanelaInicial extends JPanel {
                 seletoresPersonagens.add(seletorPersonagem);
 
                 linhaJogador.add(campoNome);
-                linhaJogador.add(new JLabel("Cor:"));
+                JLabel rotuloCor = new JLabel("Cor:");
+                rotuloCor.setForeground(Color.WHITE);
+                rotuloCor.setFont(new Font("Serif", Font.BOLD, 15));
+                linhaJogador.add(rotuloCor);
                 linhaJogador.add(seletorCor);
-                linhaJogador.add(new JLabel("Personagem:"));
+                JLabel rotuloPersonagem = new JLabel("Personagem:");
+                rotuloPersonagem.setForeground(Color.WHITE);
+                rotuloPersonagem.setFont(new Font("Serif", Font.BOLD, 15));
+                linhaJogador.add(rotuloPersonagem);
                 linhaJogador.add(seletorPersonagem);
 
                 painelInputsJogadores.add(linhaJogador);

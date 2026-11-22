@@ -36,10 +36,14 @@ public final class JanelaMelhorias extends JFrame implements ObservadorPartida {
         this.partida = partida;
         mensagem = new JLabel("Clique numa melhoria disponivel para comprar por 2 moedas.");
         mensagem.setHorizontalAlignment(SwingConstants.CENTER);
+        mensagem.setFont(EstiloImperial.FONTE_TEXTO);
+        mensagem.setForeground(EstiloImperial.COR_TEXTO_CLARO);
         painel = new PainelMercado();
-        setLayout(new BorderLayout());
-        add(mensagem, BorderLayout.NORTH);
-        add(painel, BorderLayout.CENTER);
+        JPanel conteudo = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
+        conteudo.setBorder(javax.swing.BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        conteudo.add(mensagem, BorderLayout.NORTH);
+        conteudo.add(painel, BorderLayout.CENTER);
+        setContentPane(conteudo);
         setSize(840, 300);
         setLocationByPlatform(true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -69,6 +73,7 @@ public final class JanelaMelhorias extends JFrame implements ObservadorPartida {
         @Override
         protected void paintComponent(Graphics grafico) {
             super.paintComponent(grafico);
+            EstiloImperial.pintarFundoImperial(grafico, this, null);
             Graphics2D g = (Graphics2D) grafico.create();
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                     RenderingHints.VALUE_INTERPOLATION_BILINEAR);
@@ -76,11 +81,13 @@ public final class JanelaMelhorias extends JFrame implements ObservadorPartida {
             int largura = getWidth() / lista.size();
             for (int i = 0; i < lista.size(); i++) {
                 int x = i * largura;
-                g.setColor(new Color(230, 225, 210));
-                g.fillRect(x + 4, 3, largura - 8, getHeight() - 8);
+                g.setColor(new Color(89, 56, 34, 235));
+                g.fillRoundRect(x + 4, 3, largura - 8, getHeight() - 8, 12, 12);
+                g.setColor(EstiloImperial.COR_DOURADA_IMPERIAL);
+                g.drawRoundRect(x + 4, 3, largura - 8, getHeight() - 8, 12, 12);
                 ResumoMelhoria melhoria = lista.get(i);
                 if (melhoria == null) {
-                    g.setColor(Color.DARK_GRAY);
+                    g.setColor(EstiloImperial.COR_TEXTO_CLARO);
                     g.drawString("Vazio - aguarda Khan", x + 12, getHeight() / 2);
                     continue;
                 }
@@ -92,10 +99,10 @@ public final class JanelaMelhorias extends JFrame implements ObservadorPartida {
                                 getHeight() - 65, null);
                     }
                 } catch (IOException erro) {
-                    g.setColor(Color.DARK_GRAY);
+                    g.setColor(EstiloImperial.COR_TEXTO_CLARO);
                     g.drawString(melhoria.getCodigo(), x + 12, getHeight() / 2);
                 }
-                g.setColor(Color.BLACK);
+                g.setColor(EstiloImperial.COR_TEXTO_CLARO);
                 g.setFont(new Font("SansSerif", Font.PLAIN, 12));
                 g.drawString(melhoria.getDescricao(), x + 9, getHeight() - 35);
                 g.drawString("2 moedas | " + nomeColuna(melhoria.getColuna()),

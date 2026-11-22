@@ -3,11 +3,12 @@ package br.herdeiros.model;
 import java.util.List;
 
 /** Representa cada uma das 6 paradas duplas e Karakorum com sua demanda e bonus. */
-final class LocalConselheiro {
+final class LocalConselheiro implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
 
     private final int idParada;
     private final String nome;
-    private final TipoTesouro[] tesourosExigidos; // null = 3 tesouros quaisquer
+    private TipoTesouro[] tesourosExigidos; // null = 3 tesouros quaisquer
     private final int votosConcedidos;
     private PecaBonus pecaBonus;
 
@@ -18,6 +19,12 @@ final class LocalConselheiro {
         this.tesourosExigidos = tesourosExigidos;
         this.votosConcedidos = votosConcedidos;
         this.pecaBonus = pecaBonus;
+    }
+
+    void alterarDemanda(TipoTesouro[] demanda) { this.tesourosExigidos = demanda.clone(); }
+
+    TipoTesouro[] getTesourosExigidos() {
+        return tesourosExigidos == null ? null : tesourosExigidos.clone();
     }
 
     int getIdParada() {

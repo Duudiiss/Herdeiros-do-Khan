@@ -34,9 +34,9 @@ public class GerenciadorSaveTest {
             Files.write(arquivo, conteudo.getBytes(StandardCharsets.UTF_8));
             InterfacePartida carregada = GerenciadorSave.carregarNomeado("teste-fluxo");
 
-            assertEquals("teste-fluxo.json", arquivo.getFileName().toString());
+            assertEquals("teste-fluxo.txt", arquivo.getFileName().toString());
             assertEquals("Ana", carregada.getNomeJogador(0));
-            assertTrue(GerenciadorSave.listarSaves().contains("teste-fluxo.json"));
+            assertTrue(GerenciadorSave.listarSaves().contains("teste-fluxo.txt"));
         } finally {
             Files.deleteIfExists(arquivo);
         }
@@ -58,7 +58,7 @@ public class GerenciadorSaveTest {
         assertTrue(partida.simularRecebimentoTributo(0, "ESPADA", 2));
 
         Path diretorio = Files.createTempDirectory("herdeiros-save-test");
-        Path arquivo = diretorio.resolve("partida.json");
+        Path arquivo = diretorio.resolve("partida.txt");
         try {
             GerenciadorSave.salvar(arquivo, partida);
             assertTrue(partida.registrarVotosConquistados(2));

@@ -3,6 +3,8 @@ package br.herdeiros.model;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class TabuleiroIndividual implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -11,6 +13,8 @@ public class TabuleiroIndividual implements Serializable {
     private final List<Melhoria> melhoriasAdquiridas;
     private final int quantidadeColunas;
     private final boolean[] colunasOcupadas;
+    private final boolean[] melhoriasNesteTurno = new boolean[4];
+    private final int[] quantidadeMelhoriasNesteTurno = new int[4];
     private int colunaAtivaNoTurno;
     private int movimentosRestantes;
     private int punhosDaColuna;
@@ -19,6 +23,8 @@ public class TabuleiroIndividual implements Serializable {
     private int yurtsVirtuaisDaColuna;
     private int cavalosVirtuaisDaColuna;
     private int punhosVirtuaisDaColuna;
+    /** Recursos de teste aplicados antes da ativacao, mantidos no save entre turnos. */
+    private final Map<String, Integer> recursosDesenvolvedor = new HashMap<String, Integer>();
     private int linhasBrancasPendentes;
     private boolean acaoKhan;
     private boolean acaoMelhoria;
@@ -49,16 +55,24 @@ public class TabuleiroIndividual implements Serializable {
         colunaAtivaNoTurno = coluna;
         // Os efeitos sao calculados ao ativar a coluna e nao mudam se
         // alguma melhoria for comprada durante este mesmo turno.
-        cavalosVirtuaisDaColuna = contarMelhoriasDaColuna("CAV", coluna) * 2;
-        punhosVirtuaisDaColuna = contarMelhoriasDaColuna("MAO", coluna);
+        cavalosVirtuaisDaColuna = contarMelhoriasValidasDaColuna("CAV", coluna) * 2;
+        punhosVirtuaisDaColuna = contarMelhoriasValidasDaColuna("MAO", coluna);
         movimentosRestantes = acoes.getCavalos() + cavalosVirtuaisDaColuna;
         punhosDaColuna = acoes.getPunhos() + punhosVirtuaisDaColuna;
         moedasVirtuaisDaColuna = acoes.getMoedasVirtuais()
-                + contarMelhoriasDaColuna("MOE", coluna);
-        espadasVirtuaisDaColuna = contarMelhoriasDaColuna("ESP", coluna);
-        yurtsVirtuaisDaColuna = contarMelhoriasDaColuna("CAS", coluna);
+                + contarMelhoriasValidasDaColuna("MOE", coluna);
+        espadasVirtuaisDaColuna = contarMelhoriasValidasDaColuna("ESP", coluna);
+        yurtsVirtuaisDaColuna = contarMelhoriasValidasDaColuna("CAS", coluna);
         acaoKhan = acoes.temKhan();
         acaoMelhoria = acoes.temMelhoria();
+        movimentosRestantes += recursosDesenvolvedor.getOrDefault("CAVALO", 0)
+                + recursosDesenvolvedor.getOrDefault("CAVALO_VIRTUAL", 0);
+        punhosDaColuna += recursosDesenvolvedor.getOrDefault("PUNHO", 0)
+                + recursosDesenvolvedor.getOrDefault("PUNHO_VIRTUAL", 0);
+        moedasVirtuaisDaColuna += recursosDesenvolvedor.getOrDefault("MOEDA_VIRTUAL", 0);
+        espadasVirtuaisDaColuna += recursosDesenvolvedor.getOrDefault("ESPADA_VIRTUAL", 0);
+        yurtsVirtuaisDaColuna += recursosDesenvolvedor.getOrDefault("YURT_VIRTUAL", 0);
+        recursosDesenvolvedor.clear();
 
         if (acoes.recuperaPecas()) {
             for (int i = 0; i < colunasOcupadas.length; i++) {
@@ -102,6 +116,8 @@ public class TabuleiroIndividual implements Serializable {
     }
 
     void encerrarTurno() {
+        java.util.Arrays.fill(melhoriasNesteTurno, false);
+        java.util.Arrays.fill(quantidadeMelhoriasNesteTurno, 0);
         colunaAtivaNoTurno = -1;
         movimentosRestantes = 0;
         punhosDaColuna = 0;
@@ -119,9 +135,11 @@ public class TabuleiroIndividual implements Serializable {
         for (int i = 0; i < cavalos.length; i++) {
             cavalos[i] = AcoesColuna.obter(personagem, i).getCavalos();
         }
-        return new ResumoAtivacao(colunasOcupadas, colunaAtivaNoTurno,
-                movimentosRestantes, punhosDaColuna, acaoKhan,
-                acaoMelhoria, cavalos, moedasVirtuaisDaColuna);
+        boolean[] usadas = colunasOcupadas.clone();
+        boolean[] bloqueadasPorMelhoria = new boolean[4];
+        return new ResumoAtivacao(usadas, bloqueadasPorMelhoria,
+                colunaAtivaNoTurno, movimentosRestantes, punhosDaColuna,
+                acaoKhan, acaoMelhoria, cavalos, moedasVirtuaisDaColuna);
     }
 
     public void adicionarTributo(Tributo tributo) {
@@ -164,6 +182,20 @@ public class TabuleiroIndividual implements Serializable {
         return removidos;
     }
 
+    /**
+     * A melhoria inicial de Jochi e recebida no primeiro turno dele.
+     * Pode ser colocada na coluna branca sem bloquea-la, mas seu beneficio
+     * so passa a valer a partir do turno seguinte, como toda melhoria nova.
+     */
+    void adicionarMelhoriaInicial(Melhoria melhoria) {
+        if (melhoria == null || melhoria.getColuna() != 3) {
+            throw new IllegalArgumentException("Melhoria inicial de Jochi invalida");
+        }
+        melhoriasAdquiridas.add(melhoria);
+        melhoriasNesteTurno[3] = true;
+        quantidadeMelhoriasNesteTurno[3]++;
+    }
+
     public void adicionarMelhoria(Melhoria melhoria) {
         if (melhoria == null) {
             return;
@@ -179,6 +211,8 @@ public class TabuleiroIndividual implements Serializable {
         }
         int linhasCompletasAntes = contarLinhasCompletas();
         this.melhoriasAdquiridas.add(melhoria);
+        melhoriasNesteTurno[coluna] = true;
+        quantidadeMelhoriasNesteTurno[coluna]++;
         int novasLinhas = contarLinhasCompletas() - linhasCompletasAntes;
         if (coluna != 3 && novasLinhas > 0) {
             linhasBrancasPendentes += novasLinhas;
@@ -212,12 +246,14 @@ public class TabuleiroIndividual implements Serializable {
                 melhoria.getCustoEmMoedas(), melhoria.getVotosBonus(),
                 melhoria.getCodigo(), 3);
         melhoriasAdquiridas.add(branca);
+        melhoriasNesteTurno[3] = true;
+        quantidadeMelhoriasNesteTurno[3]++;
         linhasBrancasPendentes--;
         return true;
     }
 
     boolean podeAdicionarMelhoria(int coluna) {
-        if (coluna < 0 || coluna > 2) {
+        if (coluna < 0 || coluna > 3) {
             return false;
         }
         int quantidade = 0;
@@ -275,20 +311,85 @@ public class TabuleiroIndividual implements Serializable {
     }
 
 
+    Map<String, Integer> getRecursosDesenvolvedor() {
+        return new HashMap<String, Integer>(recursosDesenvolvedor);
+    }
+
+    void restaurarRecursosDesenvolvedor(Map<String, Integer> recursos) {
+        recursosDesenvolvedor.clear();
+        if (recursos != null) {
+            for (Map.Entry<String, Integer> entrada : recursos.entrySet()) {
+                if (!desenvolvimentoAjustarVirtual(entrada.getKey(), entrada.getValue())) {
+                    throw new IllegalArgumentException("Recurso de desenvolvedor invalido");
+                }
+            }
+        }
+    }
+
+    boolean desenvolvimentoAjustarVirtual(String recurso, int variacao) {
+        if (recurso == null || variacao == 0) {
+            return false;
+        }
+        boolean conhecido = "MOEDA_VIRTUAL".equals(recurso)
+                || "ESPADA_VIRTUAL".equals(recurso)
+                || "YURT_VIRTUAL".equals(recurso)
+                || "CAVALO_VIRTUAL".equals(recurso)
+                || "PUNHO_VIRTUAL".equals(recurso)
+                || "CAVALO".equals(recurso) || "PUNHO".equals(recurso);
+        if (!conhecido) {
+            return false;
+        }
+        if (colunaAtivaNoTurno < 0) {
+            int atual = recursosDesenvolvedor.getOrDefault(recurso, 0);
+            if ((long) atual + variacao < 0 || (long) atual + variacao > 9999) {
+                return false;
+            }
+            recursosDesenvolvedor.put(recurso, atual + variacao);
+            return true;
+        }
+        int atual;
+        if ("MOEDA_VIRTUAL".equals(recurso)) {
+            atual = moedasVirtuaisDaColuna;
+        } else if ("ESPADA_VIRTUAL".equals(recurso)) {
+            atual = espadasVirtuaisDaColuna;
+        } else if ("YURT_VIRTUAL".equals(recurso)) {
+            atual = yurtsVirtuaisDaColuna;
+        } else if ("CAVALO_VIRTUAL".equals(recurso) || "CAVALO".equals(recurso)) {
+            atual = movimentosRestantes;
+        } else {
+            atual = punhosDaColuna;
+        }
+        if ((long) atual + variacao < 0 || (long) atual + variacao > 9999) {
+            return false;
+        }
+        if ("MOEDA_VIRTUAL".equals(recurso)) {
+            moedasVirtuaisDaColuna += variacao;
+        } else if ("ESPADA_VIRTUAL".equals(recurso)) {
+            espadasVirtuaisDaColuna += variacao;
+        } else if ("YURT_VIRTUAL".equals(recurso)) {
+            yurtsVirtuaisDaColuna += variacao;
+        } else if ("CAVALO_VIRTUAL".equals(recurso) || "CAVALO".equals(recurso)) {
+            movimentosRestantes += variacao;
+        } else {
+            punhosDaColuna += variacao;
+        }
+        return true;
+    }
+
     public int getQuantidadeMoedasVirtuais() {
-        return moedasVirtuaisDaColuna;
+        return moedasVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("MOEDA_VIRTUAL", 0);
     }
 
     public int getMoedasVirtuaisDaColuna() {
-        return moedasVirtuaisDaColuna;
+        return moedasVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("MOEDA_VIRTUAL", 0);
     }
 
     public int getQuantidadeEspadasVirtuais() {
-        return espadasVirtuaisDaColuna;
+        return espadasVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("ESPADA_VIRTUAL", 0);
     }
 
     public int getQuantidadeYurtsVirtuais() {
-        return yurtsVirtuaisDaColuna;
+        return yurtsVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("YURT_VIRTUAL", 0);
     }
 
     public int getQuantidadeCavalosVirtuais() {
@@ -311,18 +412,25 @@ public class TabuleiroIndividual implements Serializable {
         return quantidade;
     }
 
-    private int contarMelhoriasDaColuna(String prefixo, int coluna) {
-        int quantidade = 0;
-
+    /** Ignora as cartas adicionadas no turno corrente, inclusive na branca. */
+    private int contarMelhoriasValidasDaColuna(String prefixo, int coluna) {
+        int antigas = contarMelhoriasNaColuna(coluna) - quantidadeMelhoriasNesteTurno[coluna];
+        int examinadas = 0;
+        int total = 0;
         for (Melhoria melhoria : melhoriasAdquiridas) {
-            if (melhoria != null && melhoria.getColuna() == coluna
-                    && melhoria.getCodigo() != null
-                    && melhoria.getCodigo().startsWith(prefixo)) {
-                quantidade++;
+            if (melhoria == null || melhoria.getColuna() != coluna) {
+                continue;
             }
+            if (examinadas >= antigas) {
+                break;
+            }
+            if (melhoria.getCodigo() != null && melhoria.getCodigo().startsWith(prefixo)) {
+                total++;
+            }
+            examinadas++;
         }
-
-        return quantidade;
+        return total;
     }
+
 
 }

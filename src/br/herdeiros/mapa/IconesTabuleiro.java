@@ -14,9 +14,9 @@ public final class IconesTabuleiro {
     public static final class IconeTributo {
         private final Provincia[] provincias;
         private final String tipo;
-        private final double x;
-        private final double y;
-        private final double raio;
+        private double x;
+        private double y;
+        private double raio;
 
         private IconeTributo(Provincia[] provincias, String tipo, double x, double y, double raio) {
             this.provincias = provincias.clone();
@@ -41,13 +41,24 @@ public final class IconesTabuleiro {
         public double getY() {
             return y;
         }
+
+        public double getRaio() {
+            return raio;
+        }
+
+        public void posicionar(double novoX, double novoY, double novoRaio) {
+            validar(novoX, novoY, novoRaio);
+            x = novoX;
+            y = novoY;
+            raio = novoRaio;
+        }
     }
 
     public static final class IconeCidade {
         private final String nome;
-        private final double x;
-        private final double y;
-        private final double raio;
+        private double x;
+        private double y;
+        private double raio;
 
         private IconeCidade(String nome, double x, double y, double raio) {
             this.nome = nome;
@@ -66,6 +77,17 @@ public final class IconesTabuleiro {
 
         public double getY() {
             return y;
+        }
+
+        public double getRaio() {
+            return raio;
+        }
+
+        public void posicionar(double novoX, double novoY, double novoRaio) {
+            validar(novoX, novoY, novoRaio);
+            x = novoX;
+            y = novoY;
+            raio = novoRaio;
         }
     }
 
@@ -111,6 +133,34 @@ public final class IconesTabuleiro {
             }
         }
         return mapa;
+    }
+
+    private static void validar(double x, double y, double raio) {
+        if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(raio)
+                || x < 0 || x > 1 || y < 0 || y > 1 || raio <= 0 || raio > 0.10) {
+            throw new IllegalArgumentException("Coordenada ou raio de icone invalido");
+        }
+    }
+
+    public void salvar(Path arquivo) throws IOException {
+        StringBuilder conteudo = new StringBuilder(
+                "# T;PROVINCIAS;TIPO;x;y;raio | C;NOME;TIPO;x;y;raio\n");
+        for (IconeTributo icone : tributos) {
+            StringBuilder nomes = new StringBuilder();
+            for (Provincia provincia : icone.provincias) {
+                if (nomes.length() > 0) {
+                    nomes.append(',');
+                }
+                nomes.append(provincia.name());
+            }
+            conteudo.append(String.format(java.util.Locale.ROOT, "T;%s;%s;%.7f;%.7f;%.7f%n",
+                    nomes, icone.tipo, icone.x, icone.y, icone.raio));
+        }
+        for (IconeCidade icone : cidades) {
+            conteudo.append(String.format(java.util.Locale.ROOT, "C;%s;CIDADE;%.7f;%.7f;%.7f%n",
+                    icone.nome, icone.x, icone.y, icone.raio));
+        }
+        Files.writeString(arquivo, conteudo.toString(), java.nio.charset.StandardCharsets.UTF_8);
     }
 
     public List<IconeTributo> getTributos() {

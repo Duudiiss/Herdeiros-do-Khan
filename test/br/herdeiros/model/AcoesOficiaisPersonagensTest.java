@@ -419,9 +419,9 @@ public class AcoesOficiaisPersonagensTest {
         assertTrue("A coluna vermelha deve ser ativada",
                 partida.ativarColunaJogadorAtual(0));
         assertTrue("O turno pode ser encerrado sem acao de Khan",
-                partida.tentarAvancarJogador());
+                TestesConselheirosAux.avancar(partida));
         assertTrue("O proximo jogador pode passar sem ativar coluna",
-                partida.tentarAvancarJogador());
+                TestesConselheirosAux.avancar(partida));
         assertEquals("A moeda temporaria deve terminar com o turno", 0,
                 partida.consultarCartelaJogadorAtual().getMoedasVirtuais());
     }

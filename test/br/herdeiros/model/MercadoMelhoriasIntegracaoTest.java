@@ -72,7 +72,8 @@ public class MercadoMelhoriasIntegracaoTest {
         assertTrue("Compra abre vaga", partida.comprarMelhoriaAtual(1));
         assertEquals("Vaga vazia antes da reposicao", 4,
                 quantidadeCartas(partida.consultarMercadoMelhorias()));
-        assertTrue("Coluna vermelha de Altani ativa o Khan", partida.ativarColunaJogadorAtual(0));
+        assertTrue("A coluna branca ativa o Khan sem reutilizar coluna melhorada",
+                partida.ativarColunaJogadorAtual(3));
         assertTrue("Khan pode ser enviado a area de melhorias",
                 partida.realizarAcaoKhan(DestinoKhan.MELHORIAS));
         assertEquals("Khan revela uma melhoria no espaco vazio", 5,
@@ -127,8 +128,8 @@ public class MercadoMelhoriasIntegracaoTest {
         assertEquals("A primeira compra consome as moedas reais", 0,
                 partida.consultarCartelaJogadorAtual().getMoedas());
 
-        assertTrue("Jogador A pode passar o turno", partida.tentarAvancarJogador());
-        assertTrue("Jogador B pode passar o turno", partida.tentarAvancarJogador());
+        assertTrue("Jogador A pode passar o turno", TestesConselheirosAux.avancar(partida));
+        assertTrue("Jogador B pode passar o turno", TestesConselheirosAux.avancar(partida));
         int colunaMelhoria = mercado.consultarResumos().size();
         for (ResumoMelhoria adquirida : partida.consultarCartelaJogadorAtual().getMelhoriasDetalhadas()) {
             if (adquirida.getCodigo().startsWith("MOE")) {

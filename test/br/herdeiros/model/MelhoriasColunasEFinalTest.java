@@ -78,6 +78,7 @@ public class MelhoriasColunasEFinalTest {
         cartela.adicionarMelhoria(melhoria("CAV-V", 1));
         cartela.adicionarMelhoria(melhoria("CAV-A", 2));
         assertTrue(cartela.receberMelhoriaBranca(melhoria("MAO-V", 1)));
+        // A compra nao bloqueia a coluna, mas a melhoria so vale no turno seguinte.
         assertTrue(cartela.ativarColuna(2, Personagem.TOLUI));
         assertEquals(2, cartela.consultarAtivacao(Personagem.TOLUI).getPunhosDaColuna());
         cartela.encerrarTurno();
@@ -91,7 +92,7 @@ public class MelhoriasColunasEFinalTest {
         InterfacePartida partida = new InterfacePartida();
         assertTrue(partida.registrarVotosConquistados(2));
         assertEquals(2, partida.consultarVotosJogador(0));
-        assertTrue(partida.tentarAvancarJogador());
+        assertTrue(TestesConselheirosAux.avancar(partida));
         assertTrue(partida.registrarVotosConquistados(3));
         assertEquals(3, partida.consultarVotosJogador(1));
         assertEquals(5, partida.consultarPontuacaoKhan());
@@ -109,26 +110,21 @@ public class MelhoriasColunasEFinalTest {
         assertEquals(java.util.Collections.singletonList("Batu"),
                 partida.consultarNomesVencedores());
 
-        assertTrue(partida.tentarAvancarJogador());
+        assertTrue(TestesConselheirosAux.avancar(partida));
         assertTrue(partida.registrarVotosConquistados(3));
         assertEquals(java.util.Arrays.asList("Ayla", "Batu"),
                 partida.consultarNomesVencedores());
     }
 
-    /** A marca final dispara as duas passagens de rodada previstas no manual. */
+    /** Ao atingir FIM, a partida encerra e nao aceita turnos posteriores. */
     @Test(timeout = 2000)
-    public void testeKhanDisparaFimSemEncerrarImediatamente() {
+    public void testeKhanEncerraAoAlcancarAMarcaFinal() {
         InterfacePartida partida = new InterfacePartida();
         assertEquals("Dois jogadores encerram ao atingir a casa 9", 9, partida.consultarCasaFinal());
         assertTrue(partida.registrarVotosConquistados(9));
         assertTrue(partida.isFimDisparado());
-        assertFalse(partida.isPartidaEncerrada());
-        for (int i = 0; i < 4; i++) {
-            assertTrue("Cada jogador ainda pode encerrar sua vez", partida.tentarAvancarJogador());
-        }
-        assertTrue("A partida deve encerrar após a rodada atual e a extra",
-                partida.isPartidaEncerrada());
-        assertFalse(partida.tentarAvancarJogador());
+        assertTrue("A ficha do Khan chegou a FIM", partida.isPartidaEncerrada());
+        assertFalse(TestesConselheirosAux.avancar(partida));
     }
 
     /** Limiares de pontuação são índices zero-based das casas do CSV. */

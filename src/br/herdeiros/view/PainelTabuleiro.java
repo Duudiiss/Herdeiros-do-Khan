@@ -1,6 +1,8 @@
 package br.herdeiros.view;
 
 import br.herdeiros.controller.ControladorTabuleiro;
+import br.herdeiros.layout.LayoutAreas;
+import br.herdeiros.layout.LayoutRaios;
 import br.herdeiros.layout.LayoutMarcadores;
 import br.herdeiros.layout.LayoutMarcadores.Posicao;
 import br.herdeiros.model.InterfacePartida;
@@ -39,9 +41,13 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
     private final BufferedImage[] imagemPeoes;
     private final BufferedImage imagemKhan;
     private final Map<String, BufferedImage> cacheMelhorias;
+    private final Map<String, BufferedImage> cacheBonus = new HashMap<String, BufferedImage>();
+    private final Map<br.herdeiros.model.TipoTesouro, BufferedImage> cacheTesouros;
     private final MapaDados mapa;
     private final IconesTabuleiro icones;
     private final LayoutMarcadores layoutMarcadores;
+    private final LayoutAreas areasCartas;
+    private final LayoutRaios raiosMarcadores;
     private final InterfacePartida partida;
     private final ControladorTabuleiro controlador;
     private int xImagem;
@@ -55,8 +61,11 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
         this.mapa = mapa;
         this.icones = IconesTabuleiro.carregar(Paths.get("assets", "icones_tabuleiro.csv"));
         this.layoutMarcadores = new LayoutMarcadores(LayoutMarcadores.caminhoTabuleiro());
+        this.areasCartas = new LayoutAreas(LayoutAreas.caminhoTabuleiro());
+        this.raiosMarcadores = new LayoutRaios(LayoutRaios.caminhoTabuleiro());
         this.controlador = controlador;
         this.cacheMelhorias = new HashMap<String, BufferedImage>();
+        this.cacheTesouros = new HashMap<br.herdeiros.model.TipoTesouro, BufferedImage>();
         imagem = ImageIO.read(new File("assets/tabuleiro.jpg"));
         imagemPeoes = new BufferedImage[partida.getQuantidadeJogadores()];
         imagemKhan = criarImagemKhan();
@@ -122,14 +131,30 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
         g.drawImage(imagem, xImagem, yImagem, larguraImagem, alturaImagem, null);
         desenharYurts(g);
         for (int i = 0; i < partida.getQuantidadeJogadores(); i++) {
-            int id = partida.getParadaJogador(i);
-            MapaDados.Ponto ponto = mapa.getPonto(id);
-            if (ponto != null) {
-                int x = xImagem + (int) Math.round(ponto.getX() * larguraImagem);
-                int y = yImagem + (int) Math.round(ponto.getY() * alturaImagem);
-                int deslocamento = calcularDeslocamentoHorizontal(i, id);
-                g.drawImage(imagemPeoes[i], x + deslocamento - 16, y - 47, 32, 36, null);
+            int principal = partida.consultarParadaPeaoPrincipal(i);
+            int segundo = partida.consultarParadaSegundoPeaoAltani(i);
+            desenharPeaoNaParada(g, i, principal, segundo >= 0 ? -14 : 0, "1");
+            if (segundo >= 0) {
+                desenharPeaoNaParada(g, i, segundo, 14, "2");
             }
+        }
+    }
+
+    /** Altani mantem os dois peoes visiveis, mesmo quando ocupam a mesma parada. */
+    private void desenharPeaoNaParada(Graphics2D g, int indice, int id,
+                                      int deslocamentoExtra, String numero) {
+        MapaDados.Ponto ponto = mapa.getPonto(id);
+        if (ponto == null) {
+            return;
+        }
+        int x = xImagem + (int) Math.round(ponto.getX() * larguraImagem);
+        int y = yImagem + (int) Math.round(ponto.getY() * alturaImagem);
+        int deslocamento = calcularDeslocamentoHorizontal(indice, id) + deslocamentoExtra;
+        g.drawImage(imagemPeoes[indice], x + deslocamento - 16, y - 47, 32, 36, null);
+        if (partida.consultarParadaSegundoPeaoAltani(indice) >= 0) {
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("SansSerif", Font.BOLD, 11));
+            g.drawString(numero, x + deslocamento - 3, y - 17);
         }
     }
 
@@ -141,15 +166,93 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
         drawPeoes(graficos);
         desenharContadores(g);
         desenharMercadoMelhorias(g);
+        desenharPecasBonus(g);
         desenharMarcadoresPontuacao(g);
+        desenharDestinosDisponiveisKhan(g);
         DestinoKhan destinoKhan = partida.consultarDestinoKhan();
         if (destinoKhan != null) {
-            int x = xImagem + (int) Math.round(destinoKhan.getX() * larguraImagem);
-            int y = yImagem + (int) Math.round(destinoKhan.getY() * alturaImagem);
+            double[] posicaoKhan = posicaoDestinoKhan(destinoKhan);
+            int x = xImagem + (int) Math.round(posicaoKhan[0] * larguraImagem);
+            int y = yImagem + (int) Math.round(posicaoKhan[1] * alturaImagem);
             g.drawImage(imagemKhan, x - 26, y - 26, 52, 52, null);
         }
 
         g.dispose();
+    }
+
+    /** Posicoes editaveis associadas ao ID de cada parada, nunca a ordem do sorteio. */
+    private void desenharPecasBonus(Graphics2D g) {
+        for (br.herdeiros.model.ResumoConselheiro local : partida.consultarConselheiros()) {
+            String arquivo = local.getImagemBonus();
+            if (arquivo == null) continue;
+            BufferedImage carta = cacheBonus.get(arquivo);
+            if (carta == null) {
+                try {
+                    carta = ImageIO.read(new File("assets/cartas_bonus/" + arquivo));
+                    if (carta == null) continue;
+                    cacheBonus.put(arquivo, carta);
+                } catch (IOException erro) { continue; }
+            }
+            LayoutAreas.Area area = areasCartas.consultar("bonus." + local.getIdParada());
+            if (area == null) {
+                MapaDados.Ponto ponto = mapa.getPonto(local.getIdParada());
+                if (ponto == null) continue;
+                area = new LayoutAreas.Area(ponto.getX(), Math.max(0.035, ponto.getY() - 0.05), 0.052, 0.052);
+            }
+            int cx = xImagem + (int) Math.round(area.x * larguraImagem);
+            int cy = yImagem + (int) Math.round(area.y * alturaImagem);
+            int wMax = Math.max(1, (int) Math.round(area.largura * larguraImagem));
+            int hMax = Math.max(1, (int) Math.round(area.altura * alturaImagem));
+            double escala = Math.min((double) wMax / carta.getWidth(), (double) hMax / carta.getHeight());
+            int w = Math.max(1, (int) Math.round(carta.getWidth() * escala));
+            int h = Math.max(1, (int) Math.round(carta.getHeight() * escala));
+            g.drawImage(carta, cx - w / 2, cy - h / 2, w, h, null);
+        }
+        if (partida.isKarakorumEspecial()) {
+            LayoutAreas.Area area = areasCartas.consultar("karakorum.especial");
+            if (area == null) area = new LayoutAreas.Area(0.495, 0.38, 0.09, 0.09);
+            if (area != null) {
+                try {
+                    BufferedImage carta = cacheBonus.get("cb_karakorum.jpg");
+                    if (carta == null) {
+                        carta = ImageIO.read(new File("assets/cartas_bonus/cb_karakorum.jpg"));
+                        cacheBonus.put("cb_karakorum.jpg", carta);
+                    }
+                    int x = xImagem + (int) Math.round((area.x - area.largura / 2) * larguraImagem);
+                    int y = yImagem + (int) Math.round((area.y - area.altura / 2) * alturaImagem);
+                    g.drawImage(carta, x, y, (int) Math.round(area.largura * larguraImagem),
+                            (int) Math.round(area.altura * alturaImagem), null);
+                } catch (IOException erro) { /* Imagem opcional ausente. */ }
+            }
+        }
+    }
+
+    /** Indica os destinos realmente selecionáveis na ação obrigatória do Khan. */
+    private void desenharDestinosDisponiveisKhan(Graphics2D g) {
+        if (!partida.deveMoverKhanJogadorAtual() || partida.isPartidaEncerrada()) {
+            return;
+        }
+        DestinoKhan atual = partida.consultarDestinoKhan();
+        Graphics2D destaque = (Graphics2D) g.create();
+        destaque.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON);
+        destaque.setStroke(new BasicStroke(3.0f));
+        for (DestinoKhan destino : DestinoKhan.values()) {
+            if (destino == atual) {
+                continue;
+            }
+            double[] posicao = posicaoDestinoKhan(destino);
+            double raio = raiosMarcadores.consultar("khan." + destino.name(), Math.sqrt(0.0030));
+            int x = xImagem + (int) Math.round(posicao[0] * larguraImagem);
+            int y = yImagem + (int) Math.round(posicao[1] * alturaImagem);
+            int rx = Math.max(7, (int) Math.round(raio * larguraImagem));
+            int ry = Math.max(7, (int) Math.round(raio * alturaImagem));
+            destaque.setColor(new Color(84, 164, 255, 80));
+            destaque.fillOval(x - rx, y - ry, rx * 2, ry * 2);
+            destaque.setColor(new Color(40, 126, 255, 235));
+            destaque.drawOval(x - rx, y - ry, rx * 2, ry * 2);
+        }
+        destaque.dispose();
     }
 
     private void desenharYurts(Graphics2D g) {
@@ -188,11 +291,9 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
         contadores.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
 
-        for (IconesTabuleiro.IconeTributo icone : icones.getTributos()) {
-            int quantidade = 0;
-            for (Provincia provincia : icone.getProvincias()) {
-                quantidade += partida.consultarQuantidadeTributoProvincia(provincia, icone.getTipo());
-            }
+        for (int indice = 0; indice < icones.getTributos().size(); indice++) {
+            IconesTabuleiro.IconeTributo icone = icones.getTributos().get(indice);
+            int quantidade = partida.consultarQuantidadeTributoIcone(indice);
             int x = (int) Math.round(icone.getX() * 900);
             int y = (int) Math.round(icone.getY() * 900);
             desenharNumero(contadores, x, y, quantidade, quantidade > 0);
@@ -204,9 +305,25 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
                 if (mesmoNomeCidade(cidade.getNome(), icone.getNome())) {
                     int x = (int) Math.round(icone.getX() * 900);
                     int y = (int) Math.round(icone.getY() * 900);
-                    // A marca pequena da cidade identifica quantos tesouros ainda restam.
-                    desenharNumero(contadores, x + 27, y + 23, cidade.getTesourosRestantes(), true);
+                    // Cada ficha e identificada pelo tipo e fica visivel antes do saque.
+                    List<br.herdeiros.model.TipoTesouro> fichas =
+                            partida.consultarTesourosCidade(cidade.getNome());
+                    for (int indice = 0; indice < fichas.size(); indice++) {
+                        int posicaoX = x - 20 + (indice % 2) * 38;
+                        int posicaoY = y - 20 + (indice / 2) * 38;
+                        desenharFichaTesouro(contadores, posicaoX, posicaoY, fichas.get(indice));
+                    }
                 }
+            }
+        }
+        // Yurt permanente do conquistador da cidade: influencia regional, nao movimento.
+        for (IconesTabuleiro.IconeCidade icone : icones.getCidades()) {
+            br.herdeiros.model.Cor conquistador = partida.consultarConquistadorCidade(icone.getNome());
+            if (conquistador != null) {
+                int x = (int) Math.round(icone.getX() * 900);
+                int y = (int) Math.round(icone.getY() * 900);
+                desenharYurt(contadores, x - 21, y + 18,
+                        CoresJogadores.obter(conquistador));
             }
         }
         contadores.dispose();
@@ -229,20 +346,25 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
             if (ponto == null) {
                 continue;
             }
-            int x = (int) Math.round(ponto.getX() * 900) - largura / 2;
-            int y = (int) Math.round(ponto.getY() * 900) - altura / 2;
+            LayoutAreas.Area area = areasCartas.consultar("mercado." + i);
+            int larguraCarta = area == null ? largura : (int) Math.round(area.largura * 900);
+            int alturaCarta = area == null ? altura : (int) Math.round(area.altura * 900);
+            int x = area == null ? (int) Math.round(ponto.getX() * 900) - larguraCarta / 2
+                    : (int) Math.round(area.x * 900) - larguraCarta / 2;
+            int y = area == null ? (int) Math.round(ponto.getY() * 900) - alturaCarta / 2
+                    : (int) Math.round(area.y * 900) - alturaCarta / 2;
             mercado.setColor(new Color(52, 32, 24, 150));
-            mercado.fillRoundRect(x + 2, y + 3, largura, altura, 8, 8);
+            mercado.fillRoundRect(x + 2, y + 3, larguraCarta, alturaCarta, 8, 8);
             mercado.setColor(new Color(246, 236, 214));
-            mercado.fillRoundRect(x, y, largura, altura, 8, 8);
+            mercado.fillRoundRect(x, y, larguraCarta, alturaCarta, 8, 8);
             mercado.setColor(new Color(103, 75, 48));
-            mercado.drawRoundRect(x, y, largura, altura, 8, 8);
+            mercado.drawRoundRect(x, y, larguraCarta, alturaCarta, 8, 8);
             ResumoMelhoria melhoria = lista.get(i);
             if (melhoria != null) {
                 BufferedImage imagemMelhoria = carregarImagemMelhoria(melhoria.getCodigo());
                 if (imagemMelhoria != null) {
                     mercado.drawImage(imagemMelhoria, x + 2, y + 2,
-                            largura - 4, altura - 4, null);
+                            larguraCarta - 4, alturaCarta - 4, null);
                 } else {
                     mercado.setColor(Color.DARK_GRAY);
                     mercado.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -255,6 +377,32 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
             }
         }
         mercado.dispose();
+    }
+
+    /** Identifica carta pelo mesmo retangulo usado no desenho, inclusive apos redimensionar. */
+    public int identificarMelhoriaMercadoClicada(int xTela, int yTela) {
+        double[] posicao = converterClique(xTela, yTela);
+        if (posicao == null) {
+            return -1;
+        }
+        java.util.List<ResumoMelhoria> lista = partida.consultarMercadoMelhorias();
+        for (int i = 0; i < lista.size(); i++) {
+            if (lista.get(i) == null) {
+                continue;
+            }
+            LayoutAreas.Area area = areasCartas.consultar("mercado." + i);
+            if (area == null) {
+                Posicao centro = layoutMarcadores.consultar("mercado." + i);
+                if (centro == null) {
+                    continue;
+                }
+                area = new LayoutAreas.Area(centro.getX(), centro.getY(), 76.0 / 900, 40.0 / 900);
+            }
+            if (area.contem(posicao[0], posicao[1])) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** Distribui todos os jogadores empatados dentro da mesma casa da trilha. */
@@ -272,7 +420,8 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
             if (finalDaTrilha != null) {
                 desenharCasaFinal(placar,
                         (int) Math.round(finalDaTrilha.getX() * 900),
-                        (int) Math.round(finalDaTrilha.getY() * 900));
+                        (int) Math.round(finalDaTrilha.getY() * 900),
+                        (int) Math.round(raiosMarcadores.consultar("pontos." + casaFinal, 16.0 / 900) * 900));
             }
         }
 
@@ -310,8 +459,11 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
             int y = (int) Math.round(ponto.getY() * 900);
             java.util.List<Integer> jogadores = entrada.getValue();
             int quantidade = jogadores.size();
-            int raioPeca = quantidade == 1 ? 8 : 6;
-            int deslocamento = quantidade <= 2 ? 6 : 8;
+            int raioCasa = (int) Math.round(raiosMarcadores.consultar(
+                    "pontos." + entrada.getKey(), 16.0 / 900) * 900);
+            int raioPeca = Math.max(3, Math.min(quantidade == 1 ? 8 : 6, raioCasa / 2));
+            int deslocamento = quantidade <= 2 ? Math.max(2, raioCasa / 3)
+                    : Math.max(3, raioCasa / 2);
             for (int i = 0; i < quantidade; i++) {
                 int dx = 0;
                 int dy = 0;
@@ -349,13 +501,13 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
     }
 
     /** Circulo branco na casa de encerramento, definida pelo numero de jogadores. */
-    private void desenharCasaFinal(Graphics2D g, int x, int y) {
+    private void desenharCasaFinal(Graphics2D g, int x, int y, int raio) {
         Graphics2D marca = (Graphics2D) g.create();
         marca.setColor(Color.WHITE);
-        marca.fillOval(x - 16, y - 16, 32, 32);
+        marca.fillOval(x - raio, y - raio, raio * 2, raio * 2);
         marca.setColor(new Color(48, 39, 62));
         marca.setStroke(new BasicStroke(2f));
-        marca.drawOval(x - 16, y - 16, 32, 32);
+        marca.drawOval(x - raio, y - raio, raio * 2, raio * 2);
         marca.setFont(new Font("SansSerif", Font.BOLD, 9));
         marca.drawString("FIM", x - 11, y - 4);
         marca.dispose();
@@ -375,6 +527,88 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
             return imagemMelhoria;
         } catch (IOException erro) {
             cacheMelhorias.put(codigo, null);
+            return null;
+        }
+    }
+
+    public double[] posicaoDestinoKhan(DestinoKhan destino) {
+        Posicao posicao = layoutMarcadores.consultar("khan." + destino.name());
+        return posicao == null ? new double[] {destino.getX(), destino.getY()}
+                : new double[] {posicao.getX(), posicao.getY()};
+    }
+
+    public boolean contemDestinoKhan(DestinoKhan destino, double x, double y) {
+        double[] centro = posicaoDestinoKhan(destino);
+        double dx = x - centro[0];
+        double dy = y - centro[1];
+        double raio = raiosMarcadores.consultar("khan." + destino.name(), Math.sqrt(0.0030));
+        return dx * dx + dy * dy <= raio * raio;
+    }
+
+    private void desenharFichaTesouro(Graphics2D g, int x, int y,
+                                     br.herdeiros.model.TipoTesouro tipo) {
+        Graphics2D ficha = (Graphics2D) g.create();
+        BufferedImage imagemTesouro = carregarImagemTesouro(tipo);
+        if (imagemTesouro != null) {
+            ficha.drawImage(imagemTesouro, x - 16, y - 16, 32, 32, null);
+        } else {
+            String sigla;
+            switch (tipo) {
+                case PELES: sigla = "ES"; break;
+                case SEDA: sigla = "SE"; break;
+                case PORCELANA: sigla = "PE"; break;
+                case FERRO: sigla = "FE"; break;
+                case GADO: sigla = "GA"; break;
+                default: sigla = "?";
+            }
+            ficha.setColor(new Color(245, 231, 193));
+            ficha.fillOval(x - 16, y - 16, 32, 32);
+            ficha.setColor(new Color(76, 50, 31));
+            ficha.setStroke(new BasicStroke(1.5f));
+            ficha.drawOval(x - 16, y - 16, 32, 32);
+            ficha.setFont(new Font("SansSerif", Font.BOLD, 9));
+            ficha.drawString(sigla, x - ficha.getFontMetrics().stringWidth(sigla) / 2, y + 3);
+        }
+        ficha.dispose();
+    }
+
+    private BufferedImage carregarImagemTesouro(br.herdeiros.model.TipoTesouro tipo) {
+        if (tipo == null) {
+            return null;
+        }
+        if (cacheTesouros.containsKey(tipo)) {
+            return cacheTesouros.get(tipo);
+        }
+        String arquivo;
+        switch (tipo) {
+            case GADO:
+                arquivo = "gado.png";
+                break;
+            case SEDA:
+                arquivo = "seda.png";
+                break;
+            case FERRO:
+                arquivo = "ferro.png";
+                break;
+            case PORCELANA:
+                arquivo = "peles.png";
+                break;
+            case PELES:
+                arquivo = "especiarias.png";
+                break;
+            default:
+                arquivo = null;
+        }
+        if (arquivo == null) {
+            cacheTesouros.put(tipo, null);
+            return null;
+        }
+        try {
+            BufferedImage imagemTesouro = ImageIO.read(Paths.get("assets", "tesouros", arquivo).toFile());
+            cacheTesouros.put(tipo, imagemTesouro);
+            return imagemTesouro;
+        } catch (IOException erro) {
+            cacheTesouros.put(tipo, null);
             return null;
         }
     }
@@ -412,7 +646,47 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
         if (icone == null) {
             return null;
         }
-        return new SelecaoTributo(icone.getProvincias(), icone.getTipo());
+        return new SelecaoTributo(icones.getTributos().indexOf(icone),
+                icone.getProvincias(), icone.getTipo());
+    }
+
+    /** Permite clicar diretamente em uma ficha de tesouro visivel na cidade. */
+    public SelecaoTesouroCidade identificarFichaCidadeClicada(int xTela, int yTela) {
+        double[] ponto = converterClique(xTela, yTela);
+        if (ponto == null) {
+            return null;
+        }
+        double px = ponto[0] * 900.0;
+        double py = ponto[1] * 900.0;
+        for (IconesTabuleiro.IconeCidade icone : icones.getCidades()) {
+            List<br.herdeiros.model.TipoTesouro> fichas =
+                    partida.consultarTesourosCidade(icone.getNome());
+            int x = (int) Math.round(icone.getX() * 900);
+            int y = (int) Math.round(icone.getY() * 900);
+            for (int indice = 0; indice < fichas.size(); indice++) {
+                int centroX = x - 20 + (indice % 2) * 38;
+                int centroY = y - 20 + (indice / 2) * 38;
+                double dx = px - centroX;
+                double dy = py - centroY;
+                if (dx * dx + dy * dy <= 16 * 16) {
+                    return new SelecaoTesouroCidade(icone.getNome(), fichas.get(indice));
+                }
+            }
+        }
+        return null;
+    }
+
+    public static final class SelecaoTesouroCidade {
+        private final String nomeCidade;
+        private final br.herdeiros.model.TipoTesouro tipo;
+
+        private SelecaoTesouroCidade(String nomeCidade, br.herdeiros.model.TipoTesouro tipo) {
+            this.nomeCidade = nomeCidade;
+            this.tipo = tipo;
+        }
+
+        public String getNomeCidade() { return nomeCidade; }
+        public br.herdeiros.model.TipoTesouro getTipo() { return tipo; }
     }
 
     public String identificarCidadeClicada(int xTela, int yTela) {
@@ -428,12 +702,18 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
     }
 
     public static final class SelecaoTributo {
+        private final int indice;
         private final Provincia[] provincias;
         private final String tipo;
 
-        private SelecaoTributo(Provincia[] provincias, String tipo) {
+        private SelecaoTributo(int indice, Provincia[] provincias, String tipo) {
+            this.indice = indice;
             this.provincias = provincias.clone();
             this.tipo = tipo;
+        }
+
+        public int getIndice() {
+            return indice;
         }
 
         public Provincia[] getProvincias() {

@@ -46,7 +46,7 @@ public final class JanelaResultadoFinal extends JDialog {
 
         DefaultTableModel modelo = new DefaultTableModel(
                 new Object[] {"Pos", "Jogador", "Herdeiro", "Trilha", "Regioes",
-                        "Secreto", "Total", "Tesouros", "Dist. Karakorum"}, 0) {
+                        "Secreto", "Total", "Tesouros", "Dist. Karakorum", "Conselheiro secreto", "Progresso"}, 0) {
             private static final long serialVersionUID = 1L;
 
             @Override
@@ -66,7 +66,9 @@ public final class JanelaResultadoFinal extends JDialog {
                     r.getVotosConselheiroSecreto(),
                     r.getVotosTotais(),
                     r.getTesourosNaoEntregues(),
-                    r.getDistanciaKarakorum()
+                    r.getDistanciaKarakorum(),
+                    r.getNomeConselheiro(),
+                    r.getProgressoConselheiro()
             });
             pos++;
         }
@@ -87,7 +89,7 @@ public final class JanelaResultadoFinal extends JDialog {
         fundo.add(fechar, BorderLayout.SOUTH);
 
         setContentPane(fundo);
-        setSize(new Dimension(860, 340));
+        setSize(new Dimension(1150, 390));
         setLocationRelativeTo(dono);
     }
 }

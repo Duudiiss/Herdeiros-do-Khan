@@ -30,7 +30,8 @@ final class AvaliadorPontuacaoFinal {
             Map<Integer, Regiao> regiaoPorParada,
             Map<NomeCidade, Regiao> regiaoPorCidade,
             Map<DestinoKhan, Set<Integer>> paradasPorProvinciaKhan,
-            Map<NomeCidade, Set<Integer>> paradasPorCidade) {
+            Map<NomeCidade, Set<Integer>> paradasPorCidade,
+            List<Integer> pontosEntrega) {
 
         Map<Jogador, Integer> votosRegiao = new HashMap<Jogador, Integer>();
         for (Jogador j : jogadores) {
@@ -55,10 +56,12 @@ final class AvaliadorPontuacaoFinal {
             List<ResumoMelhoria> melhoriasJogador = obterMelhorias(melhoriasPorJogador, j);
             List<TipoTesouro> tesourosJogador = obterTesouros(tesourosPorJogador, j);
 
-            int vSec = avaliarConselheiroSecreto(
+            int progresso = progressoConselheiroSecreto(
                     j, cartaSecreta, melhoriasJogador, tabuleiro,
                     regiaoPorParada, regiaoPorCidade,
-                    paradasPorProvinciaKhan, paradasPorCidade);
+                    paradasPorProvinciaKhan, paradasPorCidade, pontosEntrega);
+            int vSec = cartaSecreta == null ? 0
+                    : votosPorConselheiro(cartaSecreta, progresso);
 
             int total = vTrilha + vReg + vSec;
             int tesourosRestantes = tesourosJogador.size();
@@ -76,7 +79,9 @@ final class AvaliadorPontuacaoFinal {
                     tesourosRestantes,
                     distKarakorum,
                     cartaSecreta != null ? cartaSecreta.getDescricao() : "Nenhuma",
-                    false));
+                    false,
+                    progresso,
+                    cartaSecreta == null ? "Nenhum" : cartaSecreta.getDescricao().split(":")[0]));
         }
 
         // 3. Ordenacao por votos totais -> tesouros nao entregues -> menor distancia de Karakorum
@@ -183,59 +188,91 @@ final class AvaliadorPontuacaoFinal {
     }
 
     static int avaliarConselheiroSecreto(
-            Jogador j,
+            Jogador jogador,
             CartaConselheiroSecreto carta,
             List<ResumoMelhoria> melhorias,
             Tabuleiro tabuleiro,
-            Map<Integer, Regiao> regiaoPorParada,
-            Map<NomeCidade, Regiao> regiaoPorCidade,
-            Map<DestinoKhan, Set<Integer>> paradasPorProvinciaKhan,
-            Map<NomeCidade, Set<Integer>> paradasPorCidade) {
+            Map<Integer, Regiao> regioesParadas,
+            Map<NomeCidade, Regiao> regioesCidades,
+            Map<DestinoKhan, Set<Integer>> acessosKhan,
+            Map<NomeCidade, Set<Integer>> acessosCidades,
+            List<Integer> pontosEntrega) {
+        int progresso = progressoConselheiroSecreto(jogador, carta, melhorias, tabuleiro,
+                regioesParadas, regioesCidades, acessosKhan, acessosCidades, pontosEntrega);
+        return carta == null ? 0 : votosPorConselheiro(carta, progresso);
+    }
 
+    /** Recompensa exclusiva do maior patamar atingido, nunca cumulativa. */
+    static int votosPorConselheiro(CartaConselheiroSecreto carta, int progresso) {
         if (carta == null) {
             return 0;
         }
-        Cor cor = j.getCor();
+        switch (carta) {
+            case VIAJANTE: return carta.calcularVotos(progresso, 3, 6, 8);
+            case SOLDADO: return carta.calcularVotos(progresso, 4, 7, 10);
+            case COLECIONADOR: return carta.calcularVotos(progresso, 4, 6, 7);
+            case SACERDOTE: return carta.calcularVotos(progresso, 1, 2, 4);
+            case GOVERNADOR: return carta.calcularVotos(progresso, 1, 2, 3);
+            case BAJULADOR: return carta.calcularVotos(progresso, 2, 3, 4);
+            case PREFEITO: return carta.calcularVotos(progresso, 2, 3, 4);
+            case CIDADAO: return carta.calcularVotos(progresso, 3, 6, 8);
+            case CAVALEIRO: return carta.calcularVotos(progresso, 2, 4, 5);
+            case MENSAGEIRO: return carta.calcularVotos(progresso, 2, 4, 6);
+            default: return 0;
+        }
+    }
+
+    /** Mede a condicao indicada na carta sem alterar recursos ou votos. */
+    static int progressoConselheiroSecreto(
+            Jogador jogador,
+            CartaConselheiroSecreto carta,
+            List<ResumoMelhoria> melhorias,
+            Tabuleiro tabuleiro,
+            Map<Integer, Regiao> regioesParadas,
+            Map<NomeCidade, Regiao> regioesCidades,
+            Map<DestinoKhan, Set<Integer>> acessosKhan,
+            Map<NomeCidade, Set<Integer>> acessosCidades,
+            List<Integer> pontosEntrega) {
+        if (carta == null || jogador == null || tabuleiro == null) {
+            return 0;
+        }
+        List<ResumoMelhoria> pecas = melhorias == null
+                ? Collections.<ResumoMelhoria>emptyList() : melhorias;
+        Cor cor = jogador.getCor();
         switch (carta) {
             case VIAJANTE:
-                return carta.calcularVotos(tabuleiro.maiorRedeConectadaYurts(cor), 3, 6, 8);
+                return tabuleiro.maiorRedeConectadaYurts(cor);
             case SOLDADO:
-                return carta.calcularVotos(melhorias.size(), 4, 7, 10);
+                return pecas.size();
             case COLECIONADOR:
-                return carta.calcularVotos(contarTiposDistintosMelhorias(melhorias), 4, 6, 7);
+                return contarTiposDistintosMelhorias(pecas);
             case SACERDOTE:
-                return carta.calcularVotos(contarParesMelhoriasIguais(melhorias), 1, 2, 4);
+                return contarParesMelhoriasIguais(pecas);
             case GOVERNADOR: {
-                int regioes = 0;
-                Regiao[] r = {Regiao.CHINA, Regiao.PERSIA, Regiao.RUSSIA};
-                for (int col = 0; col < 3; col++) {
-                    int y = tabuleiro.contarYurtsJogadorNaRegiao(cor, r[col], regiaoPorParada, regiaoPorCidade);
-                    int m = contarMelhoriasColuna(melhorias, col);
-                    if (y >= 2 && m >= 2) {
-                        regioes++;
+                int regioesValidas = 0;
+                Regiao[] regioes = {Regiao.CHINA, Regiao.PERSIA, Regiao.RUSSIA};
+                for (int coluna = 0; coluna < regioes.length; coluna++) {
+                    int yurtsNaRegiao = tabuleiro.contarYurtsJogadorNaRegiao(
+                            cor, regioes[coluna], regioesParadas, regioesCidades);
+                    int melhoriasDaColuna = contarMelhoriasColuna(pecas, coluna);
+                    if (yurtsNaRegiao >= 2 && melhoriasDaColuna >= 2) {
+                        regioesValidas++;
                     }
                 }
-                return carta.calcularVotos(regioes, 1, 2, 3);
+                return regioesValidas;
             }
             case BAJULADOR:
-                return carta.calcularVotos(
-                        tabuleiro.contarProvinciasKhanComDoisYurts(cor, paradasPorProvinciaKhan), 2, 3, 4);
+                return tabuleiro.contarYurtsAdjacentesProvinciasKhan(cor, acessosKhan);
             case PREFEITO:
-                return carta.calcularVotos(
-                        paradasPorCidade != null
-                                ? tabuleiro.contarCidadesComYurtsAdjacentes(cor, paradasPorCidade.values(), 2)
-                                : 0,
-                        2, 3, 4);
+                return tabuleiro.contarYurtsAdjacentesCidades(cor, acessosCidades);
             case CIDADAO:
-                return carta.calcularVotos(
-                        paradasPorCidade != null
-                                ? tabuleiro.contarCidadesComYurtsAdjacentes(cor, paradasPorCidade.values(), 1)
-                                : 0,
-                        3, 6, 8);
+                return acessosCidades == null ? 0
+                        : tabuleiro.contarCidadesComYurtsAdjacentes(
+                                cor, acessosCidades.values(), 1);
             case CAVALEIRO:
-                return carta.calcularVotos(contarMelhoriasCavaloOuPunho(melhorias), 2, 4, 5);
+                return contarMelhoriasCavaloOuPunho(pecas);
             case MENSAGEIRO:
-                return carta.calcularVotos(tabuleiro.contarParadasDuplasComYurt(cor), 2, 4, 6);
+                return tabuleiro.contarPontosEntregaComYurtAdjacente(cor, pontosEntrega);
             default:
                 return 0;
         }
@@ -292,18 +329,21 @@ final class AvaliadorPontuacaoFinal {
     private static int contarMelhoriasCavaloOuPunho(List<ResumoMelhoria> melhorias) {
         int total = 0;
         for (ResumoMelhoria m : melhorias) {
-            String desc = (m.getCodigo() + " " + m.getDescricao()).toLowerCase(Locale.ROOT);
-            if (desc.contains("cav") || desc.contains("mao") || desc.contains("punho") || desc.contains("movimento")) {
+            String simbolo = normalizarSimboloMelhoria(m);
+            if ("CAV".equals(simbolo) || "MAO".equals(simbolo)) {
                 total++;
             }
         }
         return total;
     }
 
-    private static String normalizarSimboloMelhoria(ResumoMelhoria m) {
-        if (m.getDescricao() != null && !m.getDescricao().trim().isEmpty()) {
-            return m.getDescricao().trim().toLowerCase(Locale.ROOT);
+    /** O simbolo corresponde ao prefixo do codigo, nao ao texto da descricao. */
+    private static String normalizarSimboloMelhoria(ResumoMelhoria melhoria) {
+        String codigo = melhoria.getCodigo();
+        if (codigo != null && codigo.length() >= 3) {
+            return codigo.substring(0, 3).toUpperCase(Locale.ROOT);
         }
-        return m.getCodigo() != null ? m.getCodigo().trim().toLowerCase(Locale.ROOT) : "";
+        return melhoria.getDescricao() == null ? ""
+                : melhoria.getDescricao().trim().toUpperCase(Locale.ROOT);
     }
 }

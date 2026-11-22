@@ -14,6 +14,7 @@ public class MapaDados {
         private double y;
         private final boolean dupla;
         private double raio;
+        private double raioVertical;
 
         public Ponto(int id, double x, double y, boolean dupla) {
             if (id < 0 || !Double.isFinite(x) || !Double.isFinite(y)
@@ -25,6 +26,7 @@ public class MapaDados {
             this.y = y;
             this.dupla = dupla;
             this.raio = raioPadrao(id, dupla);
+            this.raioVertical = this.raio;
         }
 
         public int getId() {
@@ -47,11 +49,21 @@ public class MapaDados {
             return raio;
         }
 
-        private void alterarRaio(double novoRaio) {
+        public double getRaioVertical() {
+            return raioVertical;
+        }
+
+        private void alterarDimensoes(double raioHorizontal, double raioY) {
+            validarRaio(raioHorizontal);
+            validarRaio(raioY);
+            raio = raioHorizontal;
+            raioVertical = raioY;
+        }
+
+        private void validarRaio(double novoRaio) {
             if (!Double.isFinite(novoRaio) || novoRaio < 0.008 || novoRaio > 0.15) {
                 throw new IllegalArgumentException("Raio fora do intervalo permitido");
             }
-            raio = novoRaio;
         }
 
         private void atualizar(double novoX, double novoY) {
@@ -107,11 +119,13 @@ public class MapaDados {
         for (Ponto ponto : pontos.values()) {
             double dx = (ponto.getX() - x) * largura;
             double dy = (ponto.getY() - y) * altura;
-            double distanciaQuadrada = dx * dx + dy * dy;
-            double raioPixels = ponto.getRaio() * dimensao;
-            if (distanciaQuadrada <= raioPixels * raioPixels
-                    && distanciaQuadrada < menorDistancia) {
-                menorDistancia = distanciaQuadrada;
+            double raioX = ponto.getRaio() * dimensao;
+            double raioY = ponto.getRaioVertical() * dimensao;
+            double distanciaNormalizada = (dx * dx) / (raioX * raioX)
+                    + (dy * dy) / (raioY * raioY);
+            if (distanciaNormalizada <= 1.0
+                    && distanciaNormalizada < menorDistancia) {
+                menorDistancia = distanciaNormalizada;
                 encontrada = ponto.getId();
             }
         }
@@ -158,7 +172,17 @@ public class MapaDados {
         if (ponto == null) {
             return false;
         }
-        ponto.alterarRaio(raio);
+        ponto.alterarDimensoes(raio, raio);
+        return true;
+    }
+
+    /** Os dois semieixos sao relativos a menor dimensao da imagem. */
+    public boolean alterarElipse(int id, double horizontal, double vertical) {
+        Ponto ponto = pontos.get(id);
+        if (ponto == null) {
+            return false;
+        }
+        ponto.alterarDimensoes(horizontal, vertical);
         return true;
     }
 

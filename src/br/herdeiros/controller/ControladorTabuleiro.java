@@ -4,6 +4,8 @@ import br.herdeiros.mapa.MapaDados;
 import br.herdeiros.model.InterfacePartida;
 import br.herdeiros.model.ResumoAtivacao;
 import br.herdeiros.model.DestinoKhan;
+import br.herdeiros.model.TipoTesouro;
+import javax.swing.JOptionPane;
 import br.herdeiros.view.PainelTabuleiro;
 import br.herdeiros.view.CoresJogadores;
 import java.awt.event.MouseAdapter;
@@ -28,6 +30,7 @@ public class ControladorTabuleiro extends MouseAdapter {
     private boolean iniciouMovimento = false;
     private boolean ativacaoReal = false;
     private boolean modoConstrucaoYurt = false;
+    private boolean modoHabilidadeOgedei = false;
 
 	public ControladorTabuleiro(InterfacePartida partida, MapaDados mapa) {
         this.partida = partida;
@@ -72,17 +75,39 @@ public class ControladorTabuleiro extends MouseAdapter {
             return false;
         }
         if (!partida.tentarAvancarJogador()) {
-            escrever("Antes de passar o turno, mova o Khan: esta ação é obrigatória.");
+            if (partida.consultarConselheiroSecretoJogadorAtual() == null) {
+                escrever("Escolha seu conselheiro secreto na cartela antes de passar o primeiro turno.");
+            } else {
+                escrever("Antes de passar o turno, conclua as acoes obrigatorias do Khan.");
+            }
             return false;
         }
         iniciouMovimento = false;
         modoConstrucaoYurt = false;
+        modoHabilidadeOgedei = false;
         movimentosRestantes = movimentosDisponiveis;
         if (seletorMovimentos != null) {
             seletorMovimentos.setEnabled(true);
         }
         atualizarEstado();
         return true;
+    }
+
+    /** Habilidade de Ogedei: escolher no tabuleiro uma ficha de cidade. */
+    public boolean alternarModoHabilidadeOgedei() {
+        if (!modoHabilidadeOgedei && !partida.habilidadeEspecialDisponivel()) {
+            return false;
+        }
+        modoHabilidadeOgedei = !modoHabilidadeOgedei;
+        escrever(modoHabilidadeOgedei
+                ? "Ogedei: clique na ficha de tesouro que deseja comprar por 1 moeda. "
+                  + "A cidade precisa manter pelo menos 1 tesouro."
+                : "Selecao de tesouro de Ogedei cancelada.");
+        return true;
+    }
+
+    public boolean isModoHabilidadeOgedei() {
+        return modoHabilidadeOgedei;
     }
 
     public int getMovimentosRestantes() {
@@ -193,7 +218,7 @@ public class ControladorTabuleiro extends MouseAdapter {
         }
 
         int custo = partida.consultarCustoMovimentoAtual(destino);
-        if (custo <= 0 || custo > movimentosRestantes) {
+        if (custo < 0 || custo > movimentosRestantes) {
             escrever("Destino invalido ou exige mais movimentos que os restantes: "
                     + movimentosRestantes);
             return false;
@@ -213,11 +238,81 @@ public class ControladorTabuleiro extends MouseAdapter {
 
     @Override
     public void mouseClicked(MouseEvent evento) {
+        // A ação do Khan tem prioridade sobre cartas, recursos e cidades sobrepostos.
+        if (partida.deveMoverKhanJogadorAtual() && !partida.isPartidaEncerrada()) {
+            double[] local = painel.converterClique(evento.getX(), evento.getY());
+            if (local != null) {
+                for (DestinoKhan destino : DestinoKhan.values()) {
+                    if (destino != partida.consultarDestinoKhan()
+                            && painel.contemDestinoKhan(destino, local[0], local[1])) {
+                        if (partida.realizarAcaoKhan(destino)) {
+                            escrever("Khan deslocado para " + destino.getDescricao()
+                                    + ". Agora você pode passar o turno.");
+                        } else {
+                            escrever("Destino recusado para o Khan.");
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+        if (modoHabilidadeOgedei) {
+            PainelTabuleiro.SelecaoTesouroCidade fichaOgedei =
+                    painel.identificarFichaCidadeClicada(evento.getX(), evento.getY());
+            if (fichaOgedei == null) {
+                escrever("Ogedei: clique diretamente em uma ficha de tesouro de cidade.");
+                return;
+            }
+            if (partida.usarHabilidadeOgedei(fichaOgedei.getNomeCidade(),
+                    fichaOgedei.getTipo())) {
+                modoHabilidadeOgedei = false;
+                escrever("Ogedei comprou " + fichaOgedei.getTipo().getDescricao()
+                        + " em " + fichaOgedei.getNomeCidade() + " por 1 moeda.");
+            } else {
+                escrever("Ogedei: precisa ter 1 moeda, a habilidade livre e "
+                        + "a cidade precisa manter pelo menos 1 tesouro.");
+            }
+            return;
+        }
+        int cartaMercado = painel.identificarMelhoriaMercadoClicada(evento.getX(), evento.getY());
+        if (cartaMercado >= 0) {
+            int resposta = javax.swing.JOptionPane.showConfirmDialog(painel,
+                    "Comprar a melhoria da posicao " + (cartaMercado + 1) + " do mercado?",
+                    "Mercado de melhorias", javax.swing.JOptionPane.YES_NO_OPTION);
+            if (resposta == javax.swing.JOptionPane.YES_OPTION) {
+                int coluna = new ControladorMelhorias(partida, null)
+                        .escolherColunaJochi(painel);
+                if (coluna == -2) {
+                    return;
+                }
+                if (partida.comprarMelhoriaAtual(cartaMercado, coluna)) {
+                    escrever("Melhoria adquirida. Abra a cartela para conferir.");
+                    if (partida.consultarMelhoriasBrancasPendentes() > 0) {
+                        br.herdeiros.view.EscolhaMelhoriaBranca.mostrar(
+                                javax.swing.SwingUtilities.getWindowAncestor(painel), partida);
+                    }
+                } else {
+                    escrever("Compra recusada: verifique recursos e espaco na coluna.");
+                }
+            }
+            return;
+        }
+        PainelTabuleiro.SelecaoTesouroCidade ficha =
+                painel.identificarFichaCidadeClicada(evento.getX(), evento.getY());
+        if (ficha != null) {
+            if (partida.saquearCidadeAtual(ficha.getNomeCidade(), ficha.getTipo())) {
+                escrever("Tesouro " + ficha.getTipo().getDescricao()
+                        + " saqueado em " + ficha.getNomeCidade() + ".");
+            } else {
+                escrever("Saque recusado: verifique acesso, espadas e turno atual.");
+            }
+            return;
+        }
         PainelTabuleiro.SelecaoTributo tributo = painel.identificarTributoClicado(
                 evento.getX(), evento.getY());
         if (tributo != null) {
-            boolean coletado = partida.coletarTributoDaPilha(
-                    tributo.getProvincias(), tributo.getTipo());
+            boolean coletado = partida.coletarTributoDoIcone(
+                    tributo.getIndice(), tributo.getProvincias(), tributo.getTipo());
             if (coletado) {
                 escrever("Coletado 1 " + tributo.getTipo()
                         + ". O estoque do icone diminuiu e a cartela recebeu 1 tributo.");
@@ -228,31 +323,29 @@ public class ControladorTabuleiro extends MouseAdapter {
         }
         String cidade = painel.identificarCidadeClicada(evento.getX(), evento.getY());
         if (cidade != null) {
-            if (partida.saquearCidadeAtual(cidade)) {
-                escrever("Saque realizado em " + cidade
-                        + ". O tesouro restante da cidade foi atualizado.");
+            java.util.List<TipoTesouro> fichas = partida.consultarTesourosCidade(cidade);
+            if (fichas.isEmpty()) {
+                escrever("A cidade nao possui tesouros disponiveis.");
+                return;
+            }
+            TipoTesouro[] opcoes = fichas.stream().distinct().toArray(TipoTesouro[]::new);
+            TipoTesouro escolhido = (TipoTesouro) JOptionPane.showInputDialog(
+                    painel, "Selecione um dos tesouros expostos em " + cidade + ":",
+                    "Saquear cidade", JOptionPane.QUESTION_MESSAGE,
+                    null, opcoes, opcoes[0]);
+            if (escolhido == null) {
+                return;
+            }
+            if (partida.saquearCidadeAtual(cidade, escolhido)) {
+                escrever("Tesouro " + escolhido.getDescricao() + " saqueado em " + cidade + ".");
             } else {
                 escrever("Saque recusado em " + cidade
-                        + ": cidade fechada, parada nao visitada ou falta de espadas.");
+                        + ": verifique acesso a cidade e espadas disponiveis.");
             }
             return;
         }
         double[] posicao = painel.converterClique(evento.getX(), evento.getY());
         if (posicao != null) {
-            if (partida.deveMoverKhanJogadorAtual()) {
-                for (DestinoKhan destinoKhan : DestinoKhan.values()) {
-                    double dx = posicao[0] - destinoKhan.getX();
-                    double dy = posicao[1] - destinoKhan.getY();
-                    if (dx * dx + dy * dy < 0.0030) {
-                        if (partida.realizarAcaoKhan(destinoKhan)) {
-                            escrever("Khan deslocado para: " + destinoKhan.getDescricao());
-                        } else {
-                            escrever("Destino recusado para o Khan.");
-                        }
-                        return;
-                    }
-                }
-            }
             int destino = mapa.encontrarParada(posicao[0], posicao[1],
                     painel.getLarguraImagem(), painel.getAlturaImagem());
             if (destino >= 0) {
@@ -261,7 +354,7 @@ public class ControladorTabuleiro extends MouseAdapter {
                         modoConstrucaoYurt = false;
                         escrever("Yurt construida na parada " + destino + ". Ela ja pode ser usada em saltos futuros.");
                     } else {
-                        escrever("Construcao recusada: a parada precisa ter sido visitada no turno, estar livre e voce precisa ter 1 yurt.");
+                        escrever("Construcao recusada: verifique a parada, seus yurts disponiveis e o limite maximo de 12 yurts por jogador.");
                     }
                 } else {
                     tentarMoverPara(destino);

@@ -14,7 +14,8 @@ public class InterfacePartidaMapaTest {
         Set<Cor> cores = new HashSet<>();
 
         assertEquals(5, partida.getQuantidadeJogadores());
-        assertEquals(5, partida.getOcupacao(0));
+        // Altani inicia com dois peoes; os outros quatro personagens com um.
+        assertEquals(6, partida.getOcupacao(0));
         for (int i = 0; i < partida.getQuantidadeJogadores(); i++) {
             assertEquals(0, partida.getParadaJogador(i));
             assertTrue(cores.add(partida.getCorJogador(i)));

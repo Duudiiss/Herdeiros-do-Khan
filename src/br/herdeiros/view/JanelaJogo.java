@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import javax.swing.BorderFactory;
-import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -35,6 +34,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.JTextArea;
 import javax.swing.BorderFactory;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -53,17 +53,21 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JButton passar;
     private JButton salvar;
     private JButton abrirCartela;
-    private JButton abrirCidades;
     private JButton abrirMelhorias;
     private JButton construirYurt;
+    private String ultimaEscolhaAltani; 
+    private boolean escolhaInicialJochiAberta;
     private JanelaMelhorias janelaMelhorias;
-    private JButton moverKhan;
-    private JComboBox<DestinoKhan> destinosKhan;
     private JLabel posicaoKhan;
     private JanelaCartela janelaCartela;
     private JanelaCidades janelaCidades;
     
     private boolean resultadoExibido = false;
+    /** Opcao de interface, propositalmente fora do estado persistido. */
+    private boolean modoDesenvolvedor;
+    private Janela janelaPrincipal;
+    private JanelaDesenvolvedor janelaDesenvolvedor;
+
 
     public JanelaJogo(int quantidadeJogadores) {
         if (quantidadeJogadores < 2 || quantidadeJogadores > 5) {
@@ -79,6 +83,28 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         iniciarPartida(quantidadeJogadores, nomes, cores, personagens);
     }
     
+    public JanelaJogo(int quantidadeJogadores, String[] nomes, Cor[] cores,
+                      Personagem[] personagens, boolean desenvolvedor, Janela janela) throws IOException {
+        this(quantidadeJogadores);
+        this.modoDesenvolvedor = desenvolvedor;
+        this.janelaPrincipal = janela;
+        // A interface deve ser reconstruida depois de definir o modo.
+        removeAll();
+        configurarInterface();
+        iniciarPartida(quantidadeJogadores, nomes, cores, personagens);
+    }
+
+    public JanelaJogo(InterfacePartida partidaSalva, boolean desenvolvedor, Janela janela)
+            throws IOException {
+        this(quantidadeDaPartida(partidaSalva));
+        this.modoDesenvolvedor = desenvolvedor;
+        this.janelaPrincipal = janela;
+        removeAll();
+        configurarInterface();
+        partida = GerenciadorPartida.getInstancia().carregarPartida(partidaSalva);
+        configurarPartida(false);
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -144,6 +170,12 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 EstiloImperial.COR_BORDA_TEXTO);
         ferramentas.add(tituloPainel);
 
+        if (modoDesenvolvedor) {
+            JButton desenvolvedor = EstiloImperial.criarBotaoImperial("Ferramentas de desenvolvedor");
+            desenvolvedor.addActionListener(evento -> abrirFerramentasDesenvolvedor());
+            ferramentas.add(desenvolvedor);
+        }
+
         passar = EstiloImperial.criarBotaoEstilizado(
                 "Passar turno",
                 EstiloImperial.FONTE_BOTAO_MEDIO,
@@ -151,8 +183,16 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 EstiloImperial.COR_VERMELHO_HOVER,
                 EstiloImperial.COR_TEXTO_CLARO);
 
+        passar.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (controlador != null && controlador.passarVez()) {
+                    painel.repaint();
+                }
+            }
+        });
         ferramentas.add(passar);
-        
+
         abrirCartela = EstiloImperial.criarBotaoImperial("Abrir cartela do jogador");
         abrirCartela.addActionListener(new ActionListener() {
             @Override
@@ -161,15 +201,6 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             }
         });
         ferramentas.add(abrirCartela);
-
-        abrirCidades = EstiloImperial.criarBotaoImperial("Consultar cidades abertas");
-        abrirCidades.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-                abrirJanelaCidades();
-            }
-        });
-        ferramentas.add(abrirCidades);
 
         abrirMelhorias = EstiloImperial.criarBotaoImperial("Comprar melhorias");
         abrirMelhorias.addActionListener(new ActionListener() {
@@ -204,23 +235,12 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(abrirConselheiros);
 
-        destinosKhan = EstiloImperial.criarComboBoxEstilizado(DestinoKhan.values());
-        ferramentas.add(destinosKhan);
+        JLabel orientacaoKhan = new JLabel(
+                "<html>Khan: clique em uma área destacada<br>no tabuleiro quando a ação estiver ativa.</html>");
+        orientacaoKhan.setFont(EstiloImperial.FONTE_TEXTO);
+        orientacaoKhan.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        ferramentas.add(orientacaoKhan);
 
-        moverKhan = EstiloImperial.criarBotaoImperial("Mover Khan");
-        moverKhan.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-                if (partida != null) {
-                    DestinoKhan escolhido = (DestinoKhan) destinosKhan.getSelectedItem();
-                    if (!partida.realizarAcaoKhan(escolhido)) {
-                        estado.setText("Ação recusada: ative uma coluna com Khan e escolha outro destino.");
-                    }
-                }
-            }
-        });
-        ferramentas.add(moverKhan);
-        
         posicaoKhan = EstiloImperial.criarLabelComBorda(
                 "Khan: fora do tabuleiro",
                 EstiloImperial.FONTE_TEXTO,
@@ -252,11 +272,183 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         ferramentas.add(salvar);
 
 
+
         lateral.add(indicadorVez, BorderLayout.CENTER);
         lateral.add(ferramentas, BorderLayout.NORTH);
         lateral.add(estado, BorderLayout.SOUTH);
 
         add(lateral, BorderLayout.EAST);
+    }
+
+    /** Jochi escolhe no primeiro turno clicando diretamente em uma das cartas. */
+    private void solicitarEscolhaInicialJochi() {
+        if (partida == null || escolhaInicialJochiAberta || partida.isPartidaEncerrada()) {
+            return;
+        }
+        java.util.List<br.herdeiros.model.ResumoMelhoria> opcoes =
+                partida.consultarOpcoesIniciaisJochi();
+        if (opcoes.isEmpty()) {
+            return;
+        }
+        escolhaInicialJochiAberta = true;
+        try {
+            javax.swing.JDialog escolha = new javax.swing.JDialog(javax.swing.SwingUtilities.getWindowAncestor(this),
+                    "Jochi - escolha sua melhoria inicial", java.awt.Dialog.ModalityType.APPLICATION_MODAL);
+            JPanel conteudo = EstiloImperial.criarPainelFundo(new BorderLayout(12, 12));
+            conteudo.setBorder(BorderFactory.createEmptyBorder(14, 14, 14, 14));
+            JLabel instrucao = new JLabel("Clique diretamente na imagem da melhoria desejada.");
+            instrucao.setForeground(EstiloImperial.COR_DOURADA_IMPERIAL);
+            instrucao.setFont(EstiloImperial.FONTE_SUBTITULO);
+            conteudo.add(instrucao, BorderLayout.NORTH);
+            JPanel cartas = EstiloImperial.criarPainelFundo(new GridLayout(1, opcoes.size(), 14, 0));
+            for (int i = 0; i < opcoes.size(); i++) {
+                final int indice = i;
+                br.herdeiros.model.ResumoMelhoria melhoria = opcoes.get(i);
+                JPanel carta = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
+                javax.swing.JButton imagem = new javax.swing.JButton("Imagem indisponivel");
+                imagem.setBackground(EstiloImperial.COR_FUNDO_CAMPO);
+                imagem.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+                imagem.setBorder(BorderFactory.createLineBorder(
+                        EstiloImperial.COR_DOURADA_IMPERIAL, 2));
+                imagem.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+                imagem.setPreferredSize(new Dimension(240, 145));
+                try {
+                    java.awt.image.BufferedImage arte = javax.imageio.ImageIO.read(
+                            Paths.get("assets", "melhorias", melhoria.getCodigo() + ".jpg").toFile());
+                    if (arte != null) {
+                        imagem.setText("");
+                        imagem.setIcon(new javax.swing.ImageIcon(arte.getScaledInstance(
+                                230, 135, java.awt.Image.SCALE_SMOOTH)));
+                    }
+                } catch (IOException erro) {
+                    // O beneficio continua visivel se faltar a imagem.
+                }
+                imagem.addActionListener(evento -> {
+                    if (partida.escolherMelhoriaInicialJochi(indice)) {
+                        escolha.dispose();
+                    }
+                });
+                JLabel beneficio = new JLabel("<html><center>" + melhoria.getDescricao()
+                        + "</center></html>", JLabel.CENTER);
+                beneficio.setFont(EstiloImperial.FONTE_TEXTO_NEGRITO);
+                beneficio.setForeground(EstiloImperial.COR_DOURADA_IMPERIAL);
+                carta.add(imagem, BorderLayout.CENTER);
+                carta.add(beneficio, BorderLayout.SOUTH);
+                cartas.add(carta);
+            }
+            conteudo.add(cartas, BorderLayout.CENTER);
+            escolha.setContentPane(conteudo);
+            escolha.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+            escolha.pack();
+            escolha.setSize(Math.max(560, escolha.getWidth()), Math.max(265, escolha.getHeight()));
+            escolha.setLocationRelativeTo(this);
+            escolha.setVisible(true);
+        } finally {
+            escolhaInicialJochiAberta = false;
+        }
+    }
+
+    private void solicitarPeaoAltani() {
+        if (partida == null || partida.isPartidaEncerrada()
+                || partida.getPersonagemJogador(partida.getIndiceJogadorAtual())
+                        != Personagem.ALTANI
+                || partida.escolhaPeaoAltaniRealizada()
+                || partida.consultarAtivacaoJogadorAtual().getColunaAtiva() >= 0) {
+            return;
+        }
+        String chave = partida.getIndiceJogadorAtual() + ":" + partida.consultarRodadasConcluidas();
+        if (chave.equals(ultimaEscolhaAltani)) {
+            return;
+        }
+        ultimaEscolhaAltani = chave;
+        Object[] nomes = {"Peão 1", "Peão 2"};
+        int escolha = JOptionPane.showOptionDialog(this,
+                "Altani: escolha qual dos dois peoes vai agir neste turno.",
+                "Escolha do peao", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, nomes, nomes[0]);
+        partida.escolherPeaoAtivoAltani(escolha == 1);
+    }
+
+    private void executarHabilidadeDoPersonagem() {
+        if (partida == null || !partida.habilidadeEspecialDisponivel()) {
+            return;
+        }
+        Personagem personagem = partida.getPersonagemJogador(partida.getIndiceJogadorAtual());
+        if (personagem == Personagem.CHAGATAI) {
+            int resposta = JOptionPane.showConfirmDialog(this,
+                    "Trocar 1 cavalo restante por 1 espada?",
+                    "Habilidade de Chagatai", JOptionPane.YES_NO_OPTION);
+            if (resposta == JOptionPane.YES_OPTION && !partida.usarHabilidadeChagatai()) {
+                JOptionPane.showMessageDialog(this, "Ative uma coluna com cavalos restantes.");
+            }
+        } else if (personagem == Personagem.OGEDEI) {
+            if (controlador == null || !controlador.alternarModoHabilidadeOgedei()) {
+                JOptionPane.showMessageDialog(this,
+                        "A habilidade nao esta disponivel neste turno.");
+                return;
+            }
+            JOptionPane.showMessageDialog(this,
+                    "Clique diretamente na ficha de tesouro desejada no tabuleiro.\n"
+                    + "Custa 1 moeda e a cidade precisa conservar pelo menos 1 tesouro.",
+                    "Habilidade de Ogedei", JOptionPane.INFORMATION_MESSAGE);
+
+        }
+    }
+
+    private void abrirFerramentasDesenvolvedor() {
+        if (!modoDesenvolvedor || partida == null) {
+            return;
+        }
+        if (janelaDesenvolvedor != null && janelaDesenvolvedor.isDisplayable()) {
+            janelaDesenvolvedor.toFront();
+            return;
+        }
+        java.awt.Window dono = SwingUtilities.getWindowAncestor(this);
+        janelaDesenvolvedor = new JanelaDesenvolvedor(dono, partida);
+        janelaDesenvolvedor.setVisible(true);
+    }
+
+    public void fecharJanelasAuxiliares() {
+        if (partida != null) {
+            partida.removerObservador(this);
+            if (painel != null) {
+                partida.removerObservador(painel);
+            }
+        }
+        if (janelaDesenvolvedor != null) {
+            janelaDesenvolvedor.dispose();
+            janelaDesenvolvedor = null;
+        }
+        if (janelaMelhorias != null) {
+            janelaMelhorias.dispose();
+            janelaMelhorias = null;
+        }
+        if (janelaCartela != null) {
+            janelaCartela.dispose();
+            janelaCartela = null;
+        }
+        if (janelaCidades != null) {
+            janelaCidades.dispose();
+            janelaCidades = null;
+        }
+    }
+
+    private void mostrarResultadoEReiniciar() {
+        java.awt.Window dono = SwingUtilities.getWindowAncestor(this);
+        JFrame frame = dono instanceof JFrame ? (JFrame) dono : null;
+        new JanelaResultadoFinal(frame, partida.consultarResultadoFinal()).setVisible(true);
+        int resposta = JOptionPane.showConfirmDialog(frame,
+                "Desejam iniciar uma nova partida?", "Fim da partida",
+                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (resposta == JOptionPane.YES_OPTION) {
+            if (janelaPrincipal != null) {
+                janelaPrincipal.voltarAoMenuInicial();
+            } else if (frame != null) {
+                frame.dispose();
+            }
+        } else if (frame != null) {
+            frame.dispose();
+        }
     }
 
     private void abrirJanelaMelhorias() {
@@ -272,7 +464,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     }
 
     private void abrirOpcoesSalvar() {
-        if (partida == null) {
+        if (partida == null || !partida.podeSalvarEntreTurnos()) {
+            JOptionPane.showMessageDialog(this,
+                    "So e possivel salvar antes de iniciar o turno do jogador.");
             return;
         }
         Object[] opcoes = {"Salvar no slot local", "Exportar para arquivo", "Cancelar"};
@@ -321,12 +515,15 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private void exportarSave() {
         JFileChooser seletor = new JFileChooser();
         seletor.setDialogTitle("Exportar save da partida");
-        seletor.setFileFilter(new FileNameExtensionFilter("Save JSON (*.json)", "json"));
-        seletor.setSelectedFile(new File("partida.json"));
+        seletor.setFileFilter(new FileNameExtensionFilter("Partida TXT (*.txt)", "txt"));
+        seletor.setSelectedFile(new File("partida.txt"));
         if (seletor.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
         Path destino = seletor.getSelectedFile().toPath();
+        if (!destino.getFileName().toString().toLowerCase().endsWith(".txt")) {
+            destino = destino.resolveSibling(destino.getFileName().toString() + ".txt");
+        }
         if (Files.exists(destino)) {
             int confirmacao = JOptionPane.showConfirmDialog(this,
                     "O arquivo selecionado será substituído. Deseja continuar?",
@@ -369,7 +566,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             return;
         }
         try {
-            janelaCartela = new JanelaCartela(partida);
+            janelaCartela = new JanelaCartela(partida,
+                    () -> executarHabilidadeDoPersonagem());
             janelaCartela.setVisible(true);
         } catch (IOException erro) {
             JOptionPane.showMessageDialog(this,
@@ -447,7 +645,10 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             "mapa_paradas.csv"
         );
 
-        MapaDados mapaSalvo = partida.getMapaDadosSave();
+        // Em partidas novas, o Model inicia com um mapa vazio (apenas Karakorum).
+        // Esse mapa nao pode substituir o CSV oficial do tabuleiro.
+        // Somente uma partida recuperada deve reutilizar seu mapa persistido.
+        MapaDados mapaSalvo = configurarModelo ? null : partida.getMapaDadosSave();
         if (mapaSalvo != null) {
             mapa = mapaSalvo;
         } else if (Files.exists(caminho)) {
@@ -485,6 +686,18 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         partida.registrarObservador(this);
         partida.registrarObservador(painel);
+        // A construcao conclui dentro do listener do Controller; sincronize o botao apos o clique.
+        painel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evento) {
+                SwingUtilities.invokeLater(() -> {
+                    if (construirYurt != null && controlador != null) {
+                        construirYurt.setText(controlador.isModoConstrucaoYurt()
+                                ? "Cancelar yurt" : "Construir yurt");
+                    }
+                });
+            }
+        });
         atualizar(partida);
 
         // Adiciona o painel à interface
@@ -492,6 +705,10 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         revalidate();
         repaint();
+        SwingUtilities.invokeLater(() -> {
+            solicitarEscolhaInicialJochi();
+            solicitarPeaoAltani();
+        });
     }
 
     /** Cadastro dos acessos às cidades: o mapa e a imagem oficial não ficam no Model. */
@@ -609,7 +826,13 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             controlador.atualizarEstado();
         }
         if (partida != null) {
-            moverKhan.setEnabled(partida.deveMoverKhanJogadorAtual());
+            SwingUtilities.invokeLater(() -> {
+                solicitarEscolhaInicialJochi();
+                solicitarPeaoAltani();
+            });
+            if (salvar != null) {
+                salvar.setEnabled(partida.podeSalvarEntreTurnos());
+            }
             if (controlador != null && construirYurt != null) {
                 construirYurt.setText(controlador.isModoConstrucaoYurt()
                         ? "Cancelar yurt" : "Construir yurt");
@@ -624,9 +847,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         
         if (partida.isPartidaEncerrada() && !resultadoExibido) {
             resultadoExibido = true;
-            java.awt.Window ancestral = javax.swing.SwingUtilities.getWindowAncestor(this);
-            JFrame frame = (ancestral instanceof JFrame) ? (JFrame) ancestral : null;
-            new JanelaResultadoFinal(frame, partida.consultarResultadoFinal()).setVisible(true);
+            SwingUtilities.invokeLater(() -> mostrarResultadoEReiniciar());
         }
     }
 }

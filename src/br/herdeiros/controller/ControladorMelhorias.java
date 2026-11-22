@@ -15,6 +15,20 @@ public final class ControladorMelhorias extends MouseAdapter {
         this.mensagem = mensagem;
     }
 
+    /** A cor original da carta nao restringe a coluna comprada por Jochi. */
+    public int escolherColunaJochi(java.awt.Component dono) {
+        if (partida.getPersonagemJogador(partida.getIndiceJogadorAtual())
+                != br.herdeiros.model.Personagem.JOCHI) {
+            return -1;
+        }
+        String[] nomes = {"Vermelha", "Verde", "Amarela", "Branca"};
+        int escolhida = javax.swing.JOptionPane.showOptionDialog(dono,
+                "Jochi: em qual coluna colocar esta melhoria?",
+                "Escolher coluna", javax.swing.JOptionPane.DEFAULT_OPTION,
+                javax.swing.JOptionPane.QUESTION_MESSAGE, null, nomes, nomes[0]);
+        return escolhida < 0 ? -2 : escolhida;
+    }
+
     @Override
     public void mouseClicked(MouseEvent evento) {
         int largura = evento.getComponent().getWidth() / partida.consultarMercadoMelhorias().size();
@@ -25,7 +39,11 @@ public final class ControladorMelhorias extends MouseAdapter {
         if (indice < 0 || indice >= partida.consultarMercadoMelhorias().size()) {
             return;
         }
-        if (partida.comprarMelhoriaAtual(indice)) {
+        int coluna = escolherColunaJochi(evento.getComponent());
+        if (coluna == -2) {
+            return;
+        }
+        if (partida.comprarMelhoriaAtual(indice, coluna)) {
             mensagem.setText("Melhoria comprada. Os efeitos só podem ser ativados a partir do próximo turno.");
             if (partida.consultarMelhoriasBrancasPendentes() > 0) {
                 br.herdeiros.view.EscolhaMelhoriaBranca.mostrar(

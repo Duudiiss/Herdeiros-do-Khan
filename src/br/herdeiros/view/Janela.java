@@ -78,6 +78,7 @@ public class Janela extends JFrame{
             @Override
             public void run() {
                 try {
+                    EstiloImperial.configurarDialogos();
                     new Janela().setVisible(true);
                 } catch (IOException erro) {
                     erro.printStackTrace();
@@ -92,15 +93,46 @@ public class Janela extends JFrame{
 
     public void iniciarPartida(int quantidadeJogadores, String[] nomes, Cor[] cores,
                               Personagem[] personagens) throws IOException {
-        exibirPartida(new JanelaJogo(quantidadeJogadores, nomes, cores, personagens));
+        iniciarPartida(quantidadeJogadores, nomes, cores, personagens, false);
+    }
+
+    public void iniciarPartida(int quantidadeJogadores, String[] nomes, Cor[] cores,
+                              Personagem[] personagens, boolean desenvolvedor) throws IOException {
+        exibirPartida(new JanelaJogo(quantidadeJogadores, nomes, cores, personagens, desenvolvedor, this));
     }
 
     public void carregarPartida(InterfacePartida partida) throws IOException {
-        exibirPartida(new JanelaJogo(partida));
+        carregarPartida(partida, false);
+    }
+
+    public void carregarPartida(InterfacePartida partida, boolean desenvolvedor) throws IOException {
+        exibirPartida(new JanelaJogo(partida, desenvolvedor, this));
+    }
+
+    /** Volta ao menu com uma nova tela e sem reaproveitar configuracoes da partida anterior. */
+    public void voltarAoMenuInicial() {
+        if (janelaJogo != null) {
+            janelaJogo.fecharJanelasAuxiliares();
+            painelContainer.remove(janelaJogo);
+            janelaJogo = null;
+        }
+        painelContainer.remove(janelaInicial);
+        try {
+            janelaInicial = new JanelaInicial(this);
+        } catch (IOException erro) {
+            JOptionPane.showMessageDialog(this, erro.getMessage(), "Erro no menu", JOptionPane.ERROR_MESSAGE);
+            dispose();
+            return;
+        }
+        painelContainer.add(janelaInicial, "Menu");
+        cardLayout.show(painelContainer, "Menu");
+        painelContainer.revalidate();
+        painelContainer.repaint();
     }
 
     private void exibirPartida(JanelaJogo novaJanela) {
         if (janelaJogo != null) {
+            janelaJogo.fecharJanelasAuxiliares();
             painelContainer.remove(janelaJogo);
         }
         janelaJogo = novaJanela;

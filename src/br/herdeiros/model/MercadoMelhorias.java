@@ -165,6 +165,13 @@ final class MercadoMelhorias implements Serializable {
         return pilha.remove(pilha.size() - 1);
     }
 
+    /** Devolve a melhoria nao escolhida por Jochi ao fundo do baralho. */
+    void devolverAoFundo(Melhoria melhoria) {
+        if (melhoria != null) {
+            pilha.add(0, melhoria);
+        }
+    }
+
     boolean possuiPilha() {
         return !pilha.isEmpty();
     }

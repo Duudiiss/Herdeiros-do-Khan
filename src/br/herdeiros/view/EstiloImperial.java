@@ -53,6 +53,37 @@ public final class EstiloImperial {
     private EstiloImperial() {
     }
 
+    /** Aplica a paleta imperial também aos diálogos padrão do Swing. */
+    public static void configurarDialogos() {
+        javax.swing.UIDefaults estilo = javax.swing.UIManager.getDefaults();
+        String[] fundos = {
+            "OptionPane.background", "Panel.background", "Viewport.background",
+            "ScrollPane.background", "TextField.background", "TextArea.background",
+            "List.background", "ComboBox.background", "Spinner.background",
+            "FormattedTextField.background"
+        };
+        for (String chave : fundos) {
+            estilo.put(chave, COR_FUNDO_CAMPO);
+        }
+        String[] textos = {
+            "OptionPane.messageForeground", "Label.foreground", "TextField.foreground",
+            "TextArea.foreground", "List.foreground", "ComboBox.foreground",
+            "Button.foreground", "Spinner.foreground", "FormattedTextField.foreground"
+        };
+        for (String chave : textos) {
+            estilo.put(chave, COR_TEXTO_CLARO);
+        }
+        estilo.put("OptionPane.messageFont", FONTE_TEXTO);
+        estilo.put("OptionPane.buttonFont", FONTE_TEXTO_NEGRITO);
+        estilo.put("Button.background", COR_MARROM_COURO);
+        estilo.put("Button.select", COR_MARROM_HOVER);
+        estilo.put("ComboBox.selectionBackground", COR_SELECAO);
+        estilo.put("ComboBox.selectionForeground", COR_DOURADA_IMPERIAL);
+        estilo.put("List.selectionBackground", COR_SELECAO);
+        estilo.put("List.selectionForeground", COR_DOURADA_IMPERIAL);
+        estilo.put("OptionPane.border", BorderFactory.createLineBorder(COR_DOURADA_IMPERIAL, 2));
+    }
+
     /** Cria um botão arredondado com borda dourada e altura fixa ajustada ao texto. */
     public static JButton criarBotaoEstilizado(String texto, Font fonte,
                                                Color fundoNormal, Color fundoHover,
@@ -211,9 +242,17 @@ public final class EstiloImperial {
         combo.setBackground(COR_FUNDO_CAMPO);
         combo.setForeground(COR_TEXTO_CLARO);
         combo.setBorder(BorderFactory.createLineBorder(COR_DOURADA_IMPERIAL, 1));
+        combo.setOpaque(true);
         combo.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         combo.setUI(new BasicComboBoxUI() {
+            @Override
+            public void paintCurrentValueBackground(Graphics g, java.awt.Rectangle bounds,
+                                                    boolean hasFocus) {
+                g.setColor(COR_FUNDO_CAMPO);
+                g.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            }
+
             @Override
             protected JButton createArrowButton() {
                 JButton seta = new BasicArrowButton(
@@ -238,7 +277,8 @@ public final class EstiloImperial {
                         list, value, index, isSelected, cellHasFocus);
                 item.setFont(FONTE_TEXTO);
                 item.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
-                if (isSelected) {
+                item.setOpaque(true);
+                if (isSelected && index >= 0) {
                     item.setBackground(COR_SELECAO);
                     item.setForeground(COR_DOURADA_IMPERIAL);
                 } else {
@@ -248,6 +288,9 @@ public final class EstiloImperial {
                 return item;
             }
         });
+        // O valor selecionado tambem e desenhado pelo renderer sobre fundo escuro.
+        // A propriedade nao depende da cor de texto do LookAndFeel do Windows.
+        combo.setFocusable(false);
     }
 
     /** Cria uma JTextArea com estética de pergaminho escuro e borda dourada. */

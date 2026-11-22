@@ -103,6 +103,19 @@ class Tabuleiro implements Serializable {
                 throw new IllegalArgumentException("Posição de yurt inválida");
             }
         }
+        if (estado.yurtToluiKarakorum != null) {
+            if (!tabuleiro.posicionarYurtInicialTolui(Cor.valueOf(estado.yurtToluiKarakorum))) {
+                throw new IllegalArgumentException("Yurt inicial de Tolui invalido.");
+            }
+        }
+        if (estado.yurtsConquistaCidade != null) {
+            for (Map.Entry<String, String> entrada : estado.yurtsConquistaCidade.entrySet()) {
+                if (!tabuleiro.registrarYurtConquista(
+                        NomeCidade.valueOf(entrada.getKey()), Cor.valueOf(entrada.getValue()))) {
+                    throw new IllegalArgumentException("Yurt de cidade conquistada invalido.");
+                }
+            }
+        }
         return tabuleiro;
     }
 
@@ -224,138 +237,118 @@ class Tabuleiro implements Serializable {
         return true;
     }
 
-    /** Calcula um trajeto usando a regra opcional de saltar yurts do proprio jogador. */
-    public boolean podeMoverAte(Peao peao, int idDestino, int movimentosDisponiveis) {
-        return podeMoverAte(peao, idDestino, movimentosDisponiveis, null);
+    /**
+     * Cada aresta tem custo 1, exceto entrar numa parada com yurt proprio.
+     * Essa entrada custa zero, mas exige ao menos um cavalo ainda disponivel.
+     * A busca usa estado (parada, cavalos gastos), pois um caminho de custo
+     * igual pode deixar recursos diferentes nas etapas intermediarias.
+     */
+    private static final class EstadoCaminho {
+        private final Parada parada;
+        private final int gasto;
+        private final EstadoCaminho anterior;
+
+        private EstadoCaminho(Parada parada, int gasto, EstadoCaminho anterior) {
+            this.parada = parada;
+            this.gasto = gasto;
+            this.anterior = anterior;
+        }
     }
 
-    public boolean podeMoverAte(Peao peao, int idDestino, int movimentosDisponiveis, Cor corDoJogador) {
-        int custo = distanciaMinima(peao, idDestino, corDoJogador);
-        if (custo <= 0) {
+    private EstadoCaminho encontrarRota(Peao peao, int destinoId, Cor cor, int cavalos) {
+        if (peao == null || !peoes.contains(peao) || cavalos < 0) {
+            return null;
+        }
+        Parada origem = peao.getParadaAtual();
+        Parada destino = paradas.get(destinoId);
+        if (origem == null || destino == null || origem == destino
+                || ocupacao(destino, peao) >= destino.capacidade()) {
+            return null;
+        }
+        int limite = Math.min(cavalos, paradas.size());
+        java.util.PriorityQueue<EstadoCaminho> fila = new java.util.PriorityQueue<>(
+                java.util.Comparator.comparingInt(estado -> estado.gasto));
+        Map<Integer, Set<Integer>> visitados = new HashMap<>();
+        fila.add(new EstadoCaminho(origem, 0, null));
+        while (!fila.isEmpty()) {
+            EstadoCaminho atual = fila.remove();
+            Set<Integer> gastosNaParada = visitados.computeIfAbsent(
+                    atual.parada.getId(), ignorada -> new HashSet<Integer>());
+            if (!gastosNaParada.add(atual.gasto)) {
+                continue;
+            }
+            if (atual.parada == destino) {
+                return atual;
+            }
+            for (Parada vizinha : atual.parada.getAdjacentes()) {
+                boolean gratuito = cor != null && temYurtDoJogador(vizinha.getId(), cor);
+                // Nao se pode iniciar um movimento gratuito sem um cavalo na reserva.
+                if (gratuito && atual.gasto >= cavalos) {
+                    continue;
+                }
+                int novoGasto = atual.gasto + (gratuito ? 0 : 1);
+                if (novoGasto > limite) {
+                    continue;
+                }
+                Set<Integer> gastosConhecidos = visitados.get(vizinha.getId());
+                if (gastosConhecidos == null || !gastosConhecidos.contains(novoGasto)) {
+                    fila.add(new EstadoCaminho(vizinha, novoGasto, atual));
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean podeMoverAte(Peao peao, int destino, int cavalos) {
+        return podeMoverAte(peao, destino, cavalos, null);
+    }
+
+    public boolean podeMoverAte(Peao peao, int destino, int cavalos, Cor cor) {
+        return encontrarRota(peao, destino, cor, cavalos) != null;
+    }
+
+    public int distanciaMinima(Peao peao, int destino) {
+        return distanciaMinima(peao, destino, null);
+    }
+
+    public int distanciaMinima(Peao peao, int destino, Cor cor) {
+        // Sem restricao de saldo: custo minimo teorico.
+        return distanciaMinima(peao, destino, cor, paradas.size());
+    }
+
+    public int distanciaMinima(Peao peao, int destino, Cor cor, int cavalos) {
+        EstadoCaminho rota = encontrarRota(peao, destino, cor, cavalos);
+        return rota == null ? -1 : rota.gasto;
+    }
+
+    public List<Integer> consultarCaminho(Peao peao, int destino) {
+        return consultarCaminho(peao, destino, null);
+    }
+
+    public List<Integer> consultarCaminho(Peao peao, int destino, Cor cor) {
+        return consultarCaminho(peao, destino, cor, paradas.size());
+    }
+
+    public List<Integer> consultarCaminho(Peao peao, int destino, Cor cor, int cavalos) {
+        List<Integer> caminho = new ArrayList<Integer>();
+        EstadoCaminho rota = encontrarRota(peao, destino, cor, cavalos);
+        while (rota != null && rota.anterior != null) {
+            caminho.add(0, rota.parada.getId());
+            rota = rota.anterior;
+        }
+        return caminho;
+    }
+
+    public boolean moverPeaoAte(Peao peao, int destino, int cavalos) {
+        return moverPeaoAte(peao, destino, cavalos, null);
+    }
+
+    public boolean moverPeaoAte(Peao peao, int destino, int cavalos, Cor cor) {
+        if (!podeMoverAte(peao, destino, cavalos, cor)) {
             return false;
         }
-        return custo <= movimentosDisponiveis;
-    }
-
-    /** Busca em largura: devolve a quantidade minima de conexoes/saltos ate o destino. */
-    public int distanciaMinima(Peao peao, int idDestino) {
-        return distanciaMinima(peao, idDestino, null);
-    }
-
-    public int distanciaMinima(Peao peao, int idDestino, Cor corDoJogador) {
-        if (peao == null || !peoes.contains(peao)) {
-            return -1;
-        }
-        Parada origem = peao.getParadaAtual();
-        Parada destino = paradas.get(idDestino);
-        if (origem == null || destino == null || origem == destino) {
-            return -1;
-        }
-        if (ocupacao(destino, peao) >= destino.capacidade()) {
-            return -1;
-        }
-
-        Queue<Parada> fila = new ArrayDeque<Parada>();
-        HashMap<Integer, Integer> distancias = new HashMap<Integer, Integer>();
-        fila.add(origem);
-        distancias.put(origem.getId(), 0);
-
-        while (!fila.isEmpty()) {
-            Parada atual = fila.remove();
-            int distancia = distancias.get(atual.getId());
-            for (Parada proxima : destinosEmUmPasso(atual, peao, corDoJogador)) {
-                if (!distancias.containsKey(proxima.getId())) {
-                    int proximaDistancia = distancia + 1;
-                    if (proxima == destino) {
-                        return proximaDistancia;
-                    }
-                    distancias.put(proxima.getId(), proximaDistancia);
-                    fila.add(proxima);
-                }
-            }
-        }
-        return -1;
-    }
-
-    /** Retorna a sequencia de paradas realmente ocupadas, excluindo a origem. */
-    public List<Integer> consultarCaminho(Peao peao, int idDestino) {
-        return consultarCaminho(peao, idDestino, null);
-    }
-
-    public List<Integer> consultarCaminho(Peao peao, int idDestino, Cor corDoJogador) {
-        List<Integer> vazio = new ArrayList<Integer>();
-        if (peao == null || !peoes.contains(peao)) {
-            return vazio;
-        }
-        Parada origem = peao.getParadaAtual();
-        Parada destino = paradas.get(idDestino);
-        if (origem == null || destino == null || origem == destino) {
-            return vazio;
-        }
-        if (ocupacao(destino, peao) >= destino.capacidade()) {
-            return vazio;
-        }
-        Queue<Parada> fila = new ArrayDeque<Parada>();
-        HashMap<Integer, Integer> anterior = new HashMap<Integer, Integer>();
-        fila.add(origem);
-        anterior.put(origem.getId(), -1);
-        while (!fila.isEmpty()) {
-            Parada atual = fila.remove();
-            for (Parada proxima : destinosEmUmPasso(atual, peao, corDoJogador)) {
-                if (!anterior.containsKey(proxima.getId())) {
-                    anterior.put(proxima.getId(), atual.getId());
-                    fila.add(proxima);
-                }
-            }
-        }
-        if (!anterior.containsKey(idDestino)) {
-            return vazio;
-        }
-        int atual = idDestino;
-        while (atual != origem.getId()) {
-            vazio.add(0, atual);
-            atual = anterior.get(atual);
-        }
-        return vazio;
-    }
-
-    /** Valida a rota completa antes de alterar a posição do peão. */
-    public boolean moverPeaoAte(Peao peao, int idDestino, int movimentosDisponiveis) {
-        return moverPeaoAte(peao, idDestino, movimentosDisponiveis, null);
-    }
-
-    public boolean moverPeaoAte(Peao peao, int idDestino, int movimentosDisponiveis, Cor corDoJogador) {
-        boolean permitido = podeMoverAte(peao, idDestino, movimentosDisponiveis, corDoJogador);
-        if (permitido) {
-            peao.posicionarEm(paradas.get(idDestino));
-        }
-        return permitido;
-    }
-
-    private List<Parada> destinosEmUmPasso(Parada origem, Peao peao, Cor corDoJogador) {
-        LinkedHashSet<Parada> destinos = new LinkedHashSet<Parada>();
-        for (Parada vizinha : origem.getAdjacentes()) {
-            adicionarDestinoSeValido(destinos, vizinha, peao);
-            if (corDoJogador != null && temYurtDoJogador(vizinha.getId(), corDoJogador)) {
-                for (Parada aposSalto : vizinha.getAdjacentes()) {
-                    if (aposSalto != origem) {
-                        adicionarDestinoSeValido(destinos, aposSalto, peao);
-                    }
-                }
-            }
-        }
-        return new ArrayList<Parada>(destinos);
-    }
-
-    /**
-     * Paradas ocupadas continuam transitaveis. A capacidade impede apenas que
-     * um peao termine o deslocamento nelas, como verificado pelos metodos
-     * distanciaMinima e consultarCaminho antes da busca.
-     */
-    private void adicionarDestinoSeValido(Set<Parada> destinos, Parada destino, Peao peao) {
-        if (destino != null) {
-            destinos.add(destino);
-        }
+        peao.posicionarEm(paradas.get(destino));
+        return true;
     }
 
     /** O Khan pode entrar a partir de fora; movimentos seguintes exigem conexão. */
@@ -381,7 +374,8 @@ class Tabuleiro implements Serializable {
     /** Registra yurts: parada simples recebe 1; parada dupla pode receber 2; Karakorum nao recebe. */
     public boolean construirYurt(int idParada, Cor cor) {
         Parada parada = paradas.get(idParada);
-        if (parada == null || cor == null || cor == Cor.BRANCO) {
+        if (parada == null || cor == null || cor == Cor.BRANCO
+                || contarTotalYurtsNoMapa(cor) >= 12) {
             return false;
         }
 
@@ -406,7 +400,8 @@ class Tabuleiro implements Serializable {
 
     /** Habilidade especial de Tolui: posiciona 1 yurt inicial em Karakorum. */
     public boolean posicionarYurtInicialTolui(Cor cor) {
-        if (cor == null || cor == Cor.BRANCO || yurtToluiKarakorum != null) {
+        if (cor == null || cor == Cor.BRANCO || yurtToluiKarakorum != null
+                || contarTotalYurtsNoMapa(cor) >= 12) {
             return false;
         }
         yurtToluiKarakorum = cor;
@@ -419,7 +414,9 @@ class Tabuleiro implements Serializable {
 
     /** Posiciona 1 yurt no centro de uma cidade conquistada (conta para influencia regional). */
     public boolean registrarYurtConquista(NomeCidade cidade, Cor cor) {
-        if (cidade == null || cor == null || cor == Cor.BRANCO || yurtsConquistaCidade.containsKey(cidade)) {
+        if (cidade == null || cor == null || cor == Cor.BRANCO
+                || yurtsConquistaCidade.containsKey(cidade)
+                || contarTotalYurtsNoMapa(cor) >= 12) {
             return false;
         }
         yurtsConquistaCidade.put(cidade, cor);
@@ -514,6 +511,25 @@ class Tabuleiro implements Serializable {
         }
         if (yurtToluiKarakorum == cor) {
             total++;
+        }
+        return total;
+    }
+
+    /** Apenas yurts colocados em paradas normais da regiao, sem cidades ou Karakorum. */
+    public int contarYurtsNormaisNaRegiao(Cor cor, Regiao regiao,
+                                         Map<Integer, Regiao> regioes) {
+        if (cor == null || regiao == null || regioes == null) {
+            return 0;
+        }
+        int total = 0;
+        for (Map.Entry<Integer, ArrayList<Cor>> item : yurts.entrySet()) {
+            if (item.getKey() != 0 && regioes.get(item.getKey()) == regiao) {
+                for (Cor dono : item.getValue()) {
+                    if (dono == cor) {
+                        total++;
+                    }
+                }
+            }
         }
         return total;
     }
@@ -671,6 +687,69 @@ class Tabuleiro implements Serializable {
             }
         }
         return cidadesAtendidas;
+    }
+
+    /** Conta yurts distintos presentes nas paradas de acesso aos icones do Khan. */
+    public int contarYurtsAdjacentesProvinciasKhan(Cor cor,
+            Map<DestinoKhan, Set<Integer>> acessos) {
+        if (cor == null || acessos == null) {
+            return 0;
+        }
+        Set<Integer> paradasUnicas = new HashSet<Integer>();
+        for (Set<Integer> ids : acessos.values()) {
+            if (ids != null) {
+                paradasUnicas.addAll(ids);
+            }
+        }
+        int total = 0;
+        for (Integer id : paradasUnicas) {
+            total += contarYurtsDoJogadorNaParada(id, cor);
+        }
+        return total;
+    }
+
+    /** Conta yurts distintos adjacentes a uma ou mais cidades, sem duplicacao. */
+    public int contarYurtsAdjacentesCidades(Cor cor,
+            Map<NomeCidade, Set<Integer>> acessos) {
+        if (cor == null || acessos == null) {
+            return 0;
+        }
+        Set<Integer> paradasUnicas = new HashSet<Integer>();
+        for (Set<Integer> ids : acessos.values()) {
+            if (ids != null) {
+                paradasUnicas.addAll(ids);
+            }
+        }
+        int total = 0;
+        for (Integer id : paradasUnicas) {
+            total += contarYurtsDoJogadorNaParada(id, cor);
+        }
+        return total;
+    }
+
+    /** Conta locais de entrega distintos que possuem yurt em uma parada vizinha. */
+    public int contarPontosEntregaComYurtAdjacente(Cor cor, Collection<Integer> pontosEntrega) {
+        if (cor == null || pontosEntrega == null) {
+            return 0;
+        }
+        int total = 0;
+        Set<Integer> locaisVisitados = new HashSet<Integer>();
+        for (Integer id : pontosEntrega) {
+            if (id == null || !locaisVisitados.add(id)) {
+                continue;
+            }
+            Parada local = paradas.get(id);
+            if (local == null) {
+                continue;
+            }
+            for (Parada vizinha : local.getAdjacentes()) {
+                if (temYurtDoJogador(vizinha.getId(), cor)) {
+                    total++;
+                    break;
+                }
+            }
+        }
+        return total;
     }
 
     private int contarYurtsDoJogadorNaParada(int idParada, Cor cor) {

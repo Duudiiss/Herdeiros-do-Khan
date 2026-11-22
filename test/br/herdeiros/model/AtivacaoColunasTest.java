@@ -96,8 +96,8 @@ public class AtivacaoColunasTest {
         partida.ativarColunaJogadorAtual(0);
         assertTrue("O Khan deve ser movido antes de terminar a vez",
                 partida.realizarAcaoKhan(DestinoKhan.RUSSIA_OESTE));
-        partida.avancarJogador();
-        partida.avancarJogador();
+        TestesConselheirosAux.avancarSemResultado(partida);
+        TestesConselheirosAux.avancarSemResultado(partida);
         assertFalse("A coluna vermelha ainda tem uma peca de ativacao",
                 partida.ativarColunaJogadorAtual(0));
         assertTrue("A coluna verde continua livre", partida.ativarColunaJogadorAtual(1));
@@ -112,13 +112,13 @@ public class AtivacaoColunasTest {
         partida.ativarColunaJogadorAtual(0);
         assertTrue("O Khan deve ser movido antes de terminar a vez",
                 partida.realizarAcaoKhan(DestinoKhan.RUSSIA_OESTE));
-        partida.avancarJogador();
-        partida.avancarJogador();
+        TestesConselheirosAux.avancarSemResultado(partida);
+        TestesConselheirosAux.avancarSemResultado(partida);
         assertTrue("A branca deve ser ativavel", partida.ativarColunaJogadorAtual(3));
         assertTrue("Ao ativar a coluna branca, o Khan deve mudar de local",
                 partida.realizarAcaoKhan(DestinoKhan.PERSIA_SUL));
-        partida.avancarJogador();
-        partida.avancarJogador();
+        TestesConselheirosAux.avancarSemResultado(partida);
+        TestesConselheirosAux.avancarSemResultado(partida);
         assertTrue("A vermelha deve estar disponivel apos recuperacao",
                 partida.ativarColunaJogadorAtual(0));
     }
@@ -143,8 +143,8 @@ public class AtivacaoColunasTest {
         InterfacePartida partida = criarPartidaComMapa();
         partida.ativarColunaJogadorAtual(0);
         ResumoAtivacao resumo = partida.consultarAtivacaoJogadorAtual();
-        partida.avancarJogador();
-        partida.avancarJogador();
+        TestesConselheirosAux.avancarSemResultado(partida);
+        TestesConselheirosAux.avancarSemResultado(partida);
         assertTrue("O resumo registra a coluna ocupada", resumo.estaOcupada(0));
         assertFalse("A coluna original continua ocupada no Model",
                 partida.consultarAtivacaoJogadorAtual().podeAtivar(0));
@@ -156,7 +156,9 @@ public class AtivacaoColunasTest {
     @Test(timeout = 2000)
     public void testeJochiAmarelaPossuiDoisCavalos() {
         InterfacePartida partida = criarPartidaComMapa();
-        partida.avancarJogador();
+        TestesConselheirosAux.avancarSemResultado(partida);
+        assertTrue("Jochi escolhe sua melhoria inicial",
+                partida.escolherMelhoriaInicialJochi(0));
         assertTrue("Jochi pode ativar a coluna amarela", partida.ativarColunaJogadorAtual(2));
         assertEquals("Jochi amarela tem dois cavalos", 2,
                 partida.consultarAtivacaoJogadorAtual().getMovimentosRestantes());

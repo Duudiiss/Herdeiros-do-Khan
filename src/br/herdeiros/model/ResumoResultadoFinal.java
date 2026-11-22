@@ -13,11 +13,25 @@ public final class ResumoResultadoFinal {
     private final int distanciaKarakorum;
     private final String descricaoCartaSecreta;
     private final boolean vencedor;
+    private final int progressoConselheiro;
+    private final String nomeConselheiro;
 
     public ResumoResultadoFinal(String nomeJogador, Cor cor, String personagem,
                                 int votosTrilha, int votosRegioes, int votosConselheiroSecreto,
                                 int votosTotais, int tesourosNaoEntregues, int distanciaKarakorum,
                                 String descricaoCartaSecreta, boolean vencedor) {
+        this(nomeJogador, cor, personagem, votosTrilha, votosRegioes, votosConselheiroSecreto,
+                votosTotais, tesourosNaoEntregues, distanciaKarakorum,
+                descricaoCartaSecreta, vencedor, 0, "Nenhum");
+    }
+
+    public ResumoResultadoFinal(String nomeJogador, Cor cor, String personagem,
+                                int votosTrilha, int votosRegioes, int votosConselheiroSecreto,
+                                int votosTotais, int tesourosNaoEntregues, int distanciaKarakorum,
+                                String descricaoCartaSecreta, boolean vencedor,
+                                int progressoConselheiro, String nomeConselheiro) {
+        this.progressoConselheiro = progressoConselheiro;
+        this.nomeConselheiro = nomeConselheiro;
         this.nomeJogador = nomeJogador;
         this.cor = cor;
         this.personagem = personagem;
@@ -34,7 +48,7 @@ public final class ResumoResultadoFinal {
     ResumoResultadoFinal comVencedor(boolean ganhou) {
         return new ResumoResultadoFinal(nomeJogador, cor, personagem, votosTrilha, votosRegioes,
                 votosConselheiroSecreto, votosTotais, tesourosNaoEntregues, distanciaKarakorum,
-                descricaoCartaSecreta, ganhou);
+                descricaoCartaSecreta, ganhou, progressoConselheiro, nomeConselheiro);
     }
 
     public String getNomeJogador() { return nomeJogador; }
@@ -47,5 +61,7 @@ public final class ResumoResultadoFinal {
     public int getTesourosNaoEntregues() { return tesourosNaoEntregues; }
     public int getDistanciaKarakorum() { return distanciaKarakorum; }
     public String getDescricaoCartaSecreta() { return descricaoCartaSecreta; }
+    public int getProgressoConselheiro() { return progressoConselheiro; }
+    public String getNomeConselheiro() { return nomeConselheiro; }
     public boolean isVencedor() { return vencedor; }
 }

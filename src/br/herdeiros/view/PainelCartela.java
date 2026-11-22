@@ -1,6 +1,7 @@
 package br.herdeiros.view;
 
 import br.herdeiros.model.Cor;
+import br.herdeiros.layout.LayoutAreas;
 import br.herdeiros.layout.LayoutMarcadores;
 import br.herdeiros.layout.LayoutMarcadores.Posicao;
 import br.herdeiros.model.ResumoAtivacao;
@@ -10,6 +11,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.function.IntConsumer;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -30,13 +34,16 @@ public final class PainelCartela extends JPanel {
 
     private static final long serialVersionUID = 1L;
     private final BufferedImage[] imagens;
+    private IntConsumer aoSelecionarColuna;
     private int indiceCartela;
     private ResumoAtivacao ativacao;
     private int votos;
     private Cor corJogador;
     private List<ResumoMelhoria> melhoriasAdquiridas;
     private final Map<String, BufferedImage> cacheMelhorias;
+    private final Map<Cor, BufferedImage> cacheTokensAtivacao;
     private final LayoutMarcadores[] layoutsCartelas;
+    private final LayoutAreas[] areasCartelas;
 
     public PainelCartela() throws IOException {
         imagens = new BufferedImage[5];
@@ -50,12 +57,22 @@ public final class PainelCartela extends JPanel {
         indiceCartela = 0;
         melhoriasAdquiridas = new ArrayList<ResumoMelhoria>();
         cacheMelhorias = new HashMap<String, BufferedImage>();
+        cacheTokensAtivacao = new HashMap<Cor, BufferedImage>();
         layoutsCartelas = new LayoutMarcadores[5];
+        areasCartelas = new LayoutAreas[5];
         for (int i = 0; i < layoutsCartelas.length; i++) {
             layoutsCartelas[i] = new LayoutMarcadores(LayoutMarcadores.caminhoCartela(i + 1));
+            areasCartelas[i] = new LayoutAreas(LayoutAreas.caminhoCartela(i + 1));
         }
         
         setPreferredSize(new Dimension(900, 520));
+        setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent evento) {
+                selecionarColunaPeloClique(evento.getX(), evento.getY());
+            }
+        });
     }
 
     public void mostrarCartela(int indice, ResumoAtivacao novaAtivacao, int novosVotos,
@@ -73,6 +90,46 @@ public final class PainelCartela extends JPanel {
             melhoriasAdquiridas = new ArrayList<ResumoMelhoria>(novasMelhorias);
         }
         repaint();
+    }
+
+    public void mostrarColunasIndisponiveis(ResumoAtivacao estado) {
+        this.ativacao = estado;
+        repaint();
+    }
+
+    public void definirAcaoDeClique(IntConsumer acao) {
+        aoSelecionarColuna = acao;
+    }
+
+    private void selecionarColunaPeloClique(int cliqueX, int cliqueY) {
+        if (ativacao == null || aoSelecionarColuna == null) {
+            return;
+        }
+        BufferedImage imagem = imagens[indiceCartela];
+        double escala = Math.min((double) getWidth() / imagem.getWidth(),
+                (double) getHeight() / imagem.getHeight());
+        double origemX = (getWidth() - imagem.getWidth() * escala) / 2.0;
+        double origemY = (getHeight() - imagem.getHeight() * escala) / 2.0;
+        double normalX = (cliqueX - origemX) / (imagem.getWidth() * escala);
+        double normalY = (cliqueY - origemY) / (imagem.getHeight() * escala);
+        for (int coluna = 0; coluna < 4; coluna++) {
+            LayoutAreas.Area area = areasCartelas[indiceCartela].consultar("ativacao." + coluna);
+            Posicao ponto = layoutsCartelas[indiceCartela].consultar("ativacao." + coluna);
+            if (ponto == null && area == null) {
+                continue;
+            }
+            double cx = area == null ? ponto.getX() : area.x;
+            double largura = area == null ? 220.0 / imagem.getWidth() : area.largura;
+            // A coluna inteira, inclusive as cartas desenhadas acima da base,
+            // funciona como area de ativacao. O editor define a faixa horizontal.
+            if (Math.abs(normalX - cx) <= largura / 2
+                    && normalY >= 0.08 && normalY <= 0.97) {
+                if (ativacao.podeAtivar(coluna)) {
+                    aoSelecionarColuna.accept(coluna);
+                }
+                return;
+            }
+        }
     }
 
     @Override
@@ -109,12 +166,78 @@ public final class PainelCartela extends JPanel {
         }
 
         desenharMelhoriasAdquiridas(g, x, y, escala);
+        desenharColunasBloqueadas(g, x, y, escala);
     }
 
     /**
-     * A cartela individual nao deve mostrar marcadores "A", "KH" ou "M".
-     * O destaque da coluna ativa e feito apenas com um contorno sutil.
+     * Uma coluna que ja foi utilizada recebe uma ficha fisica da cor
+     * do jogador sobre a base da acao. O editor unificado define o centro
+     * da area de ativacao, portanto o token acompanha cada cartela.
      */
+    private void desenharColunasBloqueadas(Graphics2D g, int x, int y, double escala) {
+        if (ativacao == null || corJogador == null) {
+            return;
+        }
+        BufferedImage imagem = imagens[indiceCartela];
+        BufferedImage token = carregarTokenAtivacao(corJogador);
+        for (int coluna = 0; coluna < 4; coluna++) {
+            if (!ativacao.estaOcupada(coluna)) {
+                continue;
+            }
+            LayoutAreas.Area area = areasCartelas[indiceCartela].consultar("ativacao." + coluna);
+            Posicao ponto = layoutsCartelas[indiceCartela].consultar("ativacao." + coluna);
+            if (area == null && ponto == null) {
+                continue;
+            }
+            double centroX = area == null ? ponto.getX() : area.x;
+            double centroY = area == null ? ponto.getY() : area.y;
+            int cx = x + (int) Math.round(centroX * imagem.getWidth() * escala);
+            int cy = y + (int) Math.round(centroY * imagem.getHeight() * escala);
+            int diametro = Math.max(18, (int) Math.round(75 * escala));
+            Graphics2D marcador = (Graphics2D) g.create();
+            if (token != null) {
+                marcador.drawImage(token, cx - diametro / 2, cy - diametro / 2,
+                        diametro, diametro, null);
+            } else {
+                // Cor laranja e outras cores nao tem imagem fornecida:
+                // desenhar um marcador circular da propria cor.
+                marcador.setColor(CoresJogadores.obter(corJogador));
+                marcador.fillOval(cx - diametro / 2, cy - diametro / 2,
+                        diametro, diametro);
+                marcador.setColor(Color.WHITE);
+                marcador.setStroke(new BasicStroke(2f));
+                marcador.drawOval(cx - diametro / 2, cy - diametro / 2,
+                        diametro, diametro);
+            }
+            marcador.dispose();
+        }
+    }
+
+    private BufferedImage carregarTokenAtivacao(Cor cor) {
+        if (cacheTokensAtivacao.containsKey(cor)) {
+            return cacheTokensAtivacao.get(cor);
+        }
+        String arquivo;
+        switch (cor) {
+            case AZUL: arquivo = "azul.png"; break;
+            case AMARELO: arquivo = "amarelo.png"; break;
+            case PRETO: arquivo = "preto.png"; break;
+            case VERMELHO: arquivo = "vermelho.png"; break;
+            case VERDE: arquivo = "verde.png"; break;
+            default: arquivo = null;
+        }
+        BufferedImage imagemToken = null;
+        if (arquivo != null) {
+            try {
+                imagemToken = ImageIO.read(new File("assets/ativacoes/" + arquivo));
+            } catch (IOException erro) {
+                imagemToken = null;
+            }
+        }
+        cacheTokensAtivacao.put(cor, imagemToken);
+        return imagemToken;
+    }
+
     private void destacarColunaAtiva(Graphics2D g, int x, int y, double escala) {
         int coluna = ativacao.getColunaAtiva();
         Posicao ponto = layoutsCartelas[indiceCartela].consultar("ativacao." + coluna);
@@ -124,8 +247,15 @@ public final class PainelCartela extends JPanel {
         BufferedImage imagem = imagens[indiceCartela];
         int centroX = x + (int) Math.round(ponto.getX() * imagem.getWidth() * escala);
         int centroY = y + (int) Math.round(ponto.getY() * imagem.getHeight() * escala);
-        int largura = Math.max(8, (int) Math.round(220 * escala));
-        int altura = Math.max(8, (int) Math.round(105 * escala));
+        LayoutAreas.Area area = areasCartelas[indiceCartela].consultar("ativacao." + coluna);
+        if (area != null) {
+            centroX = x + (int) Math.round(area.x * imagem.getWidth() * escala);
+            centroY = y + (int) Math.round(area.y * imagem.getHeight() * escala);
+        }
+        int largura = Math.max(8, (int) Math.round(
+                (area == null ? 220 : area.largura * imagem.getWidth()) * escala));
+        int altura = Math.max(8, (int) Math.round(
+                (area == null ? 105 : area.altura * imagem.getHeight()) * escala));
         Graphics2D destaque = (Graphics2D) g.create();
         destaque.setColor(new Color(255, 220, 120, 55));
         destaque.fillRoundRect(centroX - largura / 2, centroY - altura / 2,
@@ -160,10 +290,16 @@ public final class PainelCartela extends JPanel {
             if (ponto == null) {
                 continue;
             }
-            int centroX = x + (int) Math.round(ponto.getX() * imagem.getWidth() * escala);
-            int centroY = y + (int) Math.round(ponto.getY() * imagem.getHeight() * escala);
-            desenharCartaMelhoria(g, melhoria, centroX - larguraCarta / 2,
-                    centroY - alturaCarta / 2, larguraCarta, alturaCarta);
+            LayoutAreas.Area area = areasCartelas[indiceCartela].consultar(
+                    "melhoria." + coluna + "." + linha);
+            int larguraAtual = area == null ? larguraCarta
+                    : Math.max(4, (int) Math.round(area.largura * imagem.getWidth() * escala));
+            int alturaAtual = area == null ? alturaCarta
+                    : Math.max(4, (int) Math.round(area.altura * imagem.getHeight() * escala));
+            int centroX = x + (int) Math.round((area == null ? ponto.getX() : area.x) * imagem.getWidth() * escala);
+            int centroY = y + (int) Math.round((area == null ? ponto.getY() : area.y) * imagem.getHeight() * escala);
+            desenharCartaMelhoria(g, melhoria, centroX - larguraAtual / 2,
+                    centroY - alturaAtual / 2, larguraAtual, alturaAtual);
         }
     }
 

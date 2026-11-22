@@ -13,7 +13,8 @@ public class ArquivoMapa {
         try (BufferedWriter escritor = Files.newBufferedWriter(caminho, StandardCharsets.UTF_8)) {
             for (MapaDados.Ponto ponto : mapa.getPontos().values()) {
                 escritor.write("P;" + ponto.getId() + ";" + ponto.getX() + ";"
-                        + ponto.getY() + ";" + ponto.isDupla() + ";" + ponto.getRaio());
+                        + ponto.getY() + ";" + ponto.isDupla() + ";" + ponto.getRaio()
+                        + ";" + ponto.getRaioVertical());
                 escritor.newLine();
             }
             for (MapaDados.Ligacao ligacao : mapa.getLigacoes()) {
@@ -40,7 +41,7 @@ public class ArquivoMapa {
                 }
                 String[] campos = linha.split(";", -1);
                 try {
-                    if ((campos.length == 5 || campos.length == 6) && campos[0].equals("P")) {
+                    if ((campos.length == 5 || campos.length == 6 || campos.length == 7) && campos[0].equals("P")) {
                         int id = Integer.parseInt(campos[1]);
                         double x = Double.parseDouble(campos[2]);
                         double y = Double.parseDouble(campos[3]);
@@ -57,8 +58,10 @@ public class ArquivoMapa {
                         } else if (!mapa.adicionar(id, x, y, dupla)) {
                             throw new IllegalArgumentException("ID duplicado ou inválido");
                         }
-                        if (campos.length == 6) {
-                            mapa.alterarRaio(id, Double.parseDouble(campos[5]));
+                        if (campos.length >= 6) {
+                            double horizontal = Double.parseDouble(campos[5]);
+                            double vertical = campos.length == 7 ? Double.parseDouble(campos[6]) : horizontal;
+                            mapa.alterarElipse(id, horizontal, vertical);
                         }
                     } else if (campos.length == 3 && campos[0].equals("C")) {
                         conexoes.add(campos);

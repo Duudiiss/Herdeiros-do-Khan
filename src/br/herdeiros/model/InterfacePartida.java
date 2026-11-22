@@ -15,6 +15,9 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import br.herdeiros.mapa.MapaDados;
+import br.herdeiros.mapa.IconesTabuleiro;
+import br.herdeiros.layout.KhanRecursosLayout;
+import java.nio.file.Paths;
 
 /** API mínima para a interface da segunda iteração; não expõe as classes internas. */
 public class InterfacePartida implements ObservadoPartida, Serializable {
@@ -34,17 +37,30 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
     /** Estruturas de Conselheiros, Tesouros, Bonus, Herdeiros e Pontuacao Final */
     private final List<LocalConselheiro> locaisConselheiros = new ArrayList<LocalConselheiro>();
     private final List<CartaConselheiroAberto> cartasAbertasAtivas = new ArrayList<CartaConselheiroAberto>();
+    private final List<CartaConselheiroAberto> pilhaCartasAbertas = new ArrayList<CartaConselheiroAberto>();
+    /** Jogadores elegiveis por carta; remove quem ja satisfazia a meta quando foi revelada. */
+    private final Map<CartaConselheiroAberto, Set<Integer>> elegiveisAbertas =
+            new EnumMap<CartaConselheiroAberto, Set<Integer>>(CartaConselheiroAberto.class);
+    private final Map<Jogador, Integer> bonusRecebidosPorJogador = new HashMap<Jogador, Integer>();
     private final List<TipoTesouro> pilhaTesouros = new ArrayList<TipoTesouro>();
+    /** Tesouros revelados em cada cidade: nao sao sorteados no saque. */
+    private final Map<NomeCidade, List<TipoTesouro>> tesourosExpostosCidades =
+            new EnumMap<NomeCidade, List<TipoTesouro>>(NomeCidade.class);
     private final List<TipoTesouro> descarteTesouros = new ArrayList<TipoTesouro>();
     private final List<PecaBonus> poolPecasBonus = new ArrayList<PecaBonus>();
     private final Map<Jogador, List<TipoTesouro>> tesourosPorJogador = new HashMap<Jogador, List<TipoTesouro>>();
     private final Map<Jogador, List<PecaBonus>> bonusPorJogador = new HashMap<Jogador, List<PecaBonus>>();
+    private final Map<Jogador, Set<PecaBonus>> bonusUtilizados = new HashMap<Jogador, Set<PecaBonus>>();
+    private final List<TipoTesouro> escolhaTesourosBonusPendente = new ArrayList<TipoTesouro>();
+    private boolean karakorumEspecial;
     private final Map<Jogador, List<CartaConselheiroSecreto>> opcoesSecretasPorJogador =
             new HashMap<Jogador, List<CartaConselheiroSecreto>>();
     private final Map<Jogador, CartaConselheiroSecreto> secretaPorJogador =
             new HashMap<Jogador, CartaConselheiroSecreto>();
     private final Map<Jogador, Integer> cidadesConquistadasPorJogador = new HashMap<Jogador, Integer>();
     private final Map<Jogador, Peao> peaoExtraAltaniPorJogador = new HashMap<Jogador, Peao>();
+    private final Map<Jogador, List<Melhoria>> opcoesIniciaisJochi =
+            new HashMap<Jogador, List<Melhoria>>();
 
     /**  Mapeamentos espaciais para influencia regional e cartas secretas*/
     private final Map<Integer, Regiao> regiaoPorParada = new HashMap<Integer, Regiao>();
@@ -52,6 +68,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
     private final Map<DestinoKhan, Set<Integer>> paradasPorProvinciaKhan =
             new HashMap<DestinoKhan, Set<Integer>>();
     private final Map<NomeCidade, Set<Integer>> paradasPorCidade = new HashMap<NomeCidade, Set<Integer>>();
+
+    private final List<Integer> estoquesIconesTributos = new ArrayList<Integer>();
 
     private int indiceAtual = 0;
     private transient MapaDados mapaDados = new MapaDados();
@@ -61,9 +79,12 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
     private int rodadasNoDisparoFim = -1;
     private boolean partidaEncerrada;
     private boolean usandoPeaoExtraAltani;
+    private boolean escolhaAltaniFeitaTurno;
     private boolean acaoRealizadaNoTurno;
     private int bonusMovimentosTurno;
     private int bonusPunhosTurno;
+    private boolean habilidadeChagataiUsada;
+    private boolean habilidadeOgedeiUsada;
 
     private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
         input.defaultReadObject();
@@ -86,8 +107,9 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return true;
     }
 
-    boolean podeSalvarEntreTurnos() {
+    public boolean podeSalvarEntreTurnos() {
         return estadoValidoParaSave()
+                && escolhaTesourosBonusPendente.isEmpty()
                 && participantes.get(indiceAtual).getTabuleiroIndividual().podeSalvarEntreTurnos();
     }
 
@@ -104,6 +126,13 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         dados.partida.pontuacaoKhan = pontuacaoKhan;
         dados.partida.rodadasNoDisparoFim = rodadasNoDisparoFim;
         dados.partida.encerrada = partidaEncerrada;
+        dados.partida.usandoPeaoExtraAltani = usandoPeaoExtraAltani;
+        dados.partida.escolhaAltaniFeitaTurno = escolhaAltaniFeitaTurno;
+        dados.partida.acaoRealizadaNoTurno = acaoRealizadaNoTurno;
+        dados.partida.bonusMovimentosTurno = bonusMovimentosTurno;
+        dados.partida.bonusPunhosTurno = bonusPunhosTurno;
+        dados.partida.habilidadeChagataiUsada = habilidadeChagataiUsada;
+        dados.partida.habilidadeOgedeiUsada = habilidadeOgedeiUsada;
 
         for (MapaDados.Ponto ponto : mapaDados.getPontos().values()) {
             SavePartidaData.Ponto salvo = new SavePartidaData.Ponto();
@@ -112,6 +141,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             salvo.y = ponto.getY();
             salvo.dupla = ponto.isDupla();
             salvo.raio = ponto.getRaio();
+            salvo.raioVertical = ponto.getRaioVertical();
             dados.mapa.paradas.add(salvo);
         }
         for (MapaDados.Ligacao ligacao : mapaDados.getLigacoes()) {
@@ -145,6 +175,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             salvo.parada = parada.getId();
             TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
             salvo.colunasOcupadas = cartela.getColunasOcupadas();
+            salvo.recursosDesenvolvedor.putAll(cartela.getRecursosDesenvolvedor());
             for (TipoTributo tipo : TipoTributo.values()) {
                 int quantidade = cartela.getQuantidadeTributoDoTipo(tipo);
                 if (quantidade > 0) {
@@ -154,15 +185,53 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             for (Melhoria melhoria : cartela.getMelhoriasAdquiridas()) {
                 salvo.melhorias.add(criarDadosMelhoria(melhoria));
             }
+            for (TipoTesouro tesouro : tesourosPorJogador.getOrDefault(jogador, Collections.emptyList())) {
+                salvo.tesouros.add(tesouro.name());
+            }
+            salvo.bonusRecebidos = bonusRecebidosPorJogador.getOrDefault(jogador, 0);
+            for (PecaBonus bonus : bonusPorJogador.getOrDefault(jogador, Collections.emptyList())) {
+                salvo.bonus.add(bonus.name());
+                if (bonusUtilizados.getOrDefault(jogador, Collections.emptySet()).contains(bonus)) {
+                    salvo.bonusUtilizados.add(bonus.name());
+                }
+            }
+            for (CartaConselheiroSecreto carta : opcoesSecretasPorJogador.getOrDefault(
+                    jogador, Collections.emptyList())) {
+                salvo.opcoesSecretas.add(carta.name());
+            }
+            CartaConselheiroSecreto secreta = secretaPorJogador.get(jogador);
+            salvo.cartaSecreta = secreta == null ? null : secreta.name();
+            salvo.cidadesConquistadas = cidadesConquistadasPorJogador.getOrDefault(jogador, 0);
+            Peao extra = peaoExtraAltaniPorJogador.get(jogador);
+            if (extra != null && extra.getParadaAtual() != null) {
+                salvo.paradaPeaoExtraAltani = extra.getParadaAtual().getId();
+            }
+            for (Melhoria opcao : opcoesIniciaisJochi.getOrDefault(
+                    jogador, Collections.emptyList())) {
+                SavePartidaData.Melhoria item = new SavePartidaData.Melhoria();
+                item.codigo = opcao.getCodigo();
+                item.coluna = opcao.getColuna();
+                salvo.opcoesIniciaisJochi.add(item);
+            }
             dados.jogadores.add(salvo);
         }
 
         Tabuleiro tabuleiro = jogo.getTabuleiro();
         Parada paradaKhan = tabuleiro.getPeaoDoKhan().getParadaAtual();
         dados.tabuleiro.paradaKhan = paradaKhan == null ? -1 : paradaKhan.getId();
+        Cor tolui = tabuleiro.getYurtToluiKarakorum();
+        dados.tabuleiro.yurtToluiKarakorum = tolui == null ? null : tolui.name();
+        for (Map.Entry<NomeCidade, Cor> entrada : tabuleiro.getYurtsConquistaCidade().entrySet()) {
+            dados.tabuleiro.yurtsConquistaCidade.put(
+                    entrada.getKey().name(), entrada.getValue().name());
+        }
         dados.tabuleiro.destinoKhan = tabuleiro.getDestinoKhan() == null
                 ? null : tabuleiro.getDestinoKhan().name();
         for (Parada parada : tabuleiro.getParadas()) {
+            if (parada.getId() == 0) {
+                // A yurt inicial de Tolui e armazenada separadamente.
+                continue;
+            }
             for (Cor cor : tabuleiro.getDonosYurt(parada.getId())) {
                 SavePartidaData.Yurt yurt = new SavePartidaData.Yurt();
                 yurt.parada = parada.getId();
@@ -188,6 +257,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             dados.baralhos.melhoriasRestantes.add(criarDadosMelhoria(melhoria));
         }
 
+        inicializarEstoquesIconesSeNecessario();
+        dados.estoquesIconesTributos.addAll(estoquesIconesTributos);
         for (Map.Entry<Provincia, ReservaProvincia> entrada : reservas.entrySet()) {
             SavePartidaData.Provincia provincia = new SavePartidaData.Provincia();
             provincia.nome = entrada.getKey().name();
@@ -201,12 +272,66 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             provincia.acessos.addAll(entrada.getValue().getAcessos());
             dados.provincias.add(provincia);
         }
+        for (LocalConselheiro local : locaisConselheiros) {
+            SavePartidaData.Local salvo = new SavePartidaData.Local();
+            salvo.parada = local.getIdParada();
+            salvo.nome = local.getNome();
+            salvo.votos = local.getVotosConcedidos();
+            TipoTesouro[] demanda = local.getTesourosExigidos();
+            if (demanda != null) {
+                salvo.demanda = new ArrayList<>();
+                for (TipoTesouro tipo : demanda) {
+                    salvo.demanda.add(tipo.name());
+                }
+            }
+            salvo.bonus = local.getPecaBonus() == null ? null : local.getPecaBonus().name();
+            dados.conselheiros.locais.add(salvo);
+        }
+        for (CartaConselheiroAberto carta : cartasAbertasAtivas) {
+            dados.conselheiros.cartasAbertas.add(carta.name());
+            dados.conselheiros.elegiveisAbertas.put(carta.name(),
+                    new ArrayList<Integer>(elegiveisAbertas.getOrDefault(carta, Collections.<Integer>emptySet())));
+        }
+        for (CartaConselheiroAberto carta : pilhaCartasAbertas) {
+            dados.conselheiros.pilhaCartasAbertas.add(carta.name());
+        }
+        for (Map.Entry<NomeCidade, List<TipoTesouro>> entrada : tesourosExpostosCidades.entrySet()) {
+            List<String> tipos = new ArrayList<String>();
+            for (TipoTesouro tipo : entrada.getValue()) {
+                tipos.add(tipo.name());
+            }
+            dados.conselheiros.tesourosExpostosCidades.put(entrada.getKey().name(), tipos);
+        }
+        for (TipoTesouro tesouro : pilhaTesouros) {
+            dados.conselheiros.pilhaTesouros.add(tesouro.name());
+        }
+        for (TipoTesouro tesouro : descarteTesouros) {
+            dados.conselheiros.descarteTesouros.add(tesouro.name());
+        }
+        dados.conselheiros.karakorumEspecial = karakorumEspecial;
+        for (PecaBonus bonus : poolPecasBonus) {
+            dados.conselheiros.poolPecasBonus.add(bonus.name());
+        }
+        for (Map.Entry<Integer, Regiao> entry : regiaoPorParada.entrySet()) {
+            dados.influencia.regiaoPorParada.put(entry.getKey(), entry.getValue().name());
+        }
+        for (Map.Entry<NomeCidade, Regiao> entry : regiaoPorCidade.entrySet()) {
+            dados.influencia.regiaoPorCidade.put(entry.getKey().name(), entry.getValue().name());
+        }
+        for (Map.Entry<DestinoKhan, Set<Integer>> entry : paradasPorProvinciaKhan.entrySet()) {
+            dados.influencia.paradasPorProvinciaKhan.put(entry.getKey().name(),
+                    new ArrayList<>(entry.getValue()));
+        }
+        for (Map.Entry<NomeCidade, Set<Integer>> entry : paradasPorCidade.entrySet()) {
+            dados.influencia.paradasPorCidade.put(entry.getKey().name(),
+                    new ArrayList<>(entry.getValue()));
+        }
         return dados;
     }
 
     static InterfacePartida restaurarDadosSave(SavePartidaData dados) {
         if (dados == null || dados.meta == null || !"herdeiros-save".equals(dados.meta.formato)
-                || dados.meta.versao != 1
+                || (dados.meta.versao != 1 && dados.meta.versao != 2)
                 || !("partida".equals(dados.meta.tipo) || "cenario".equals(dados.meta.tipo))
                 || dados.meta.descricao == null || dados.partida == null || dados.mapa == null
                 || dados.jogadores == null || dados.jogadores.size() < 2
@@ -254,6 +379,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
                 melhorias.add(restaurarMelhoria(melhoria));
             }
             cartela.restaurarEstado(tributos, melhorias, salvo.colunasOcupadas);
+            cartela.restaurarRecursosDesenvolvedor(salvo.recursosDesenvolvedor);
             jogadores.add(new Jogador(salvo.nome, cor, salvo.descendentes, personagem,
                     cartela, salvo.votos));
             posicoes.put(cor, salvo.parada);
@@ -290,6 +416,28 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         this.pontuacaoKhan = dados.partida.pontuacaoKhan;
         this.rodadasNoDisparoFim = dados.partida.rodadasNoDisparoFim;
         this.partidaEncerrada = dados.partida.encerrada;
+        this.usandoPeaoExtraAltani = dados.partida.usandoPeaoExtraAltani;
+        this.escolhaAltaniFeitaTurno = dados.partida.escolhaAltaniFeitaTurno;
+        this.acaoRealizadaNoTurno = dados.partida.acaoRealizadaNoTurno;
+        this.bonusMovimentosTurno = dados.partida.bonusMovimentosTurno;
+        this.bonusPunhosTurno = dados.partida.bonusPunhosTurno;
+        this.karakorumEspecial = dados.conselheiros.karakorumEspecial;
+        this.habilidadeChagataiUsada = dados.partida.habilidadeChagataiUsada;
+        this.habilidadeOgedeiUsada = dados.partida.habilidadeOgedeiUsada;
+        if (dados.estoquesIconesTributos != null && !dados.estoquesIconesTributos.isEmpty()) {
+            for (Integer quantidade : dados.estoquesIconesTributos) {
+                if (quantidade == null || quantidade < 0 || quantidade > 3) {
+                    throw new IllegalArgumentException("Estoque de icone invalido no salvamento");
+                }
+                estoquesIconesTributos.add(quantidade);
+            }
+        }
+        if (dados.meta.versao >= 2) {
+            restaurarMecanicasAvancadas(dados);
+        } else {
+            // Compatibilidade com saves antigos: reconstroi as estruturas inexistentes.
+            inicializarMecanicasRecuperadasLegado();
+        }
         for (Map.Entry<String, List<Integer>> acesso : dados.mapa.acessosCidades.entrySet()) {
             NomeCidade.valueOf(acesso.getKey());
             if (acesso.getValue() == null || acesso.getValue().isEmpty()) {
@@ -363,6 +511,213 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         }
     }
 
+    private void restaurarMecanicasAvancadas(SavePartidaData dados) {
+        if (dados.conselheiros == null || dados.influencia == null
+                || dados.conselheiros.locais == null || dados.conselheiros.cartasAbertas == null
+                || dados.conselheiros.pilhaTesouros == null || dados.conselheiros.descarteTesouros == null
+                || dados.conselheiros.poolPecasBonus == null) {
+            throw new IllegalArgumentException("Save de conselheiros incompleto.");
+        }
+        for (SavePartidaData.Local salvo : dados.conselheiros.locais) {
+            if (salvo == null || salvo.nome == null) {
+                throw new IllegalArgumentException("Conselheiro invalido no save.");
+            }
+            TipoTesouro[] demanda = null;
+            if (salvo.demanda != null) {
+                demanda = new TipoTesouro[salvo.demanda.size()];
+                for (int i = 0; i < demanda.length; i++) {
+                    demanda[i] = TipoTesouro.valueOf(salvo.demanda.get(i));
+                }
+            }
+            // Saves antigos trazem requisitos embaralhados. Corrige pelo ID oficial.
+            switch (salvo.parada) {
+                case 0:
+                    demanda = new TipoTesouro[] {
+                            TipoTesouro.FERRO, TipoTesouro.PORCELANA, TipoTesouro.GADO};
+                    break;
+                case 29:
+                    demanda = new TipoTesouro[] {TipoTesouro.GADO, TipoTesouro.GADO};
+                    break;
+                case 23:
+                    demanda = null;
+                    break;
+                case 30:
+                    demanda = new TipoTesouro[] {TipoTesouro.PORCELANA, TipoTesouro.PORCELANA};
+                    break;
+                case 32:
+                    demanda = new TipoTesouro[] {TipoTesouro.PELES, TipoTesouro.PELES};
+                    break;
+                case 31:
+                    demanda = new TipoTesouro[] {TipoTesouro.SEDA, TipoTesouro.SEDA};
+                    break;
+                case 28:
+                    demanda = new TipoTesouro[] {TipoTesouro.FERRO, TipoTesouro.FERRO};
+                    break;
+                default:
+                    break;
+            }
+            PecaBonus bonus = salvo.bonus == null ? null : PecaBonus.valueOf(salvo.bonus);
+            locaisConselheiros.add(new LocalConselheiro(
+                    salvo.parada, salvo.nome, demanda, salvo.votos, bonus));
+        }
+        if (procurarParada(33) != null) {
+            registrarParadaDuplaConselheiro(33);
+        }
+        for (String carta : dados.conselheiros.cartasAbertas) {
+            cartasAbertasAtivas.add(CartaConselheiroAberto.valueOf(carta));
+        }
+        if (dados.conselheiros.pilhaCartasAbertas != null) {
+            for (String carta : dados.conselheiros.pilhaCartasAbertas) {
+                CartaConselheiroAberto tipo = CartaConselheiroAberto.valueOf(carta);
+                if (!cartasAbertasAtivas.contains(tipo) && !pilhaCartasAbertas.contains(tipo)) {
+                    pilhaCartasAbertas.add(tipo);
+                }
+            }
+        }
+        // Compatibilidade com saves antigos que nao guardavam a pilha.
+        if (dados.conselheiros.pilhaCartasAbertas == null) {
+            for (CartaConselheiroAberto tipo : CartaConselheiroAberto.values()) {
+                if (!cartasAbertasAtivas.contains(tipo)) {
+                    pilhaCartasAbertas.add(tipo);
+                }
+            }
+        }
+        for (CartaConselheiroAberto carta : cartasAbertasAtivas) {
+            Set<Integer> indices = new HashSet<Integer>();
+            if (dados.conselheiros.elegiveisAbertas != null
+                    && dados.conselheiros.elegiveisAbertas.containsKey(carta.name())) {
+                indices.addAll(dados.conselheiros.elegiveisAbertas.get(carta.name()));
+            } else {
+                for (int indice = 0; indice < participantes.size(); indice++) {
+                    indices.add(indice);
+                }
+            }
+            elegiveisAbertas.put(carta, indices);
+        }
+        for (String tesouro : dados.conselheiros.pilhaTesouros) {
+            pilhaTesouros.add(TipoTesouro.valueOf(tesouro));
+        }
+        if (dados.conselheiros.tesourosExpostosCidades != null
+                && !dados.conselheiros.tesourosExpostosCidades.isEmpty()) {
+            for (Map.Entry<String, List<String>> entrada :
+                    dados.conselheiros.tesourosExpostosCidades.entrySet()) {
+                List<TipoTesouro> tipos = new ArrayList<TipoTesouro>();
+                for (String tipo : entrada.getValue()) {
+                    tipos.add(TipoTesouro.valueOf(tipo));
+                }
+                tesourosExpostosCidades.put(NomeCidade.valueOf(entrada.getKey()), tipos);
+            }
+        } else {
+            // Saves antigos ainda nao registravam os tesouros visiveis das cidades.
+            for (Cidade cidade : jogo.getTabuleiro().getCidadesDisponiveis()) {
+                revelarTesourosCidade(cidade);
+            }
+        }
+        for (String tesouro : dados.conselheiros.descarteTesouros) {
+            descarteTesouros.add(TipoTesouro.valueOf(tesouro));
+        }
+        for (String bonus : dados.conselheiros.poolPecasBonus) {
+            poolPecasBonus.add(PecaBonus.valueOf(bonus));
+        }
+        for (int i = 0; i < participantes.size(); i++) {
+            Jogador jogador = participantes.get(i);
+            SavePartidaData.Jogador salvo = dados.jogadores.get(i);
+            if (salvo.tesouros == null || salvo.bonus == null || salvo.opcoesSecretas == null) {
+                throw new IllegalArgumentException("Cartas do jogador incompletas no save.");
+            }
+            List<TipoTesouro> tesouros = new ArrayList<>();
+            for (String tipo : salvo.tesouros) {
+                tesouros.add(TipoTesouro.valueOf(tipo));
+            }
+            tesourosPorJogador.put(jogador, tesouros);
+            List<PecaBonus> bonus = new ArrayList<>();
+            for (String tipo : salvo.bonus) {
+                bonus.add(PecaBonus.valueOf(tipo));
+            }
+            bonusPorJogador.put(jogador, bonus);
+            Set<PecaBonus> usados = new HashSet<PecaBonus>();
+            if (salvo.bonusUtilizados != null) {
+                for (String tipo : salvo.bonusUtilizados) usados.add(PecaBonus.valueOf(tipo));
+            }
+            bonusUtilizados.put(jogador, usados);
+            bonusRecebidosPorJogador.put(jogador, salvo.bonusRecebidos == null ? bonus.size() : salvo.bonusRecebidos);
+            List<CartaConselheiroSecreto> opcoes = new ArrayList<>();
+            for (String carta : salvo.opcoesSecretas) {
+                opcoes.add(CartaConselheiroSecreto.valueOf(carta));
+            }
+            opcoesSecretasPorJogador.put(jogador, opcoes);
+            if (salvo.cartaSecreta != null) {
+                secretaPorJogador.put(jogador,
+                        CartaConselheiroSecreto.valueOf(salvo.cartaSecreta));
+            }
+            cidadesConquistadasPorJogador.put(jogador, salvo.cidadesConquistadas);
+            if (salvo.opcoesIniciaisJochi != null
+                    && !salvo.opcoesIniciaisJochi.isEmpty()) {
+                List<Melhoria> opcoesJochi = new ArrayList<Melhoria>();
+                for (SavePartidaData.Melhoria carta : salvo.opcoesIniciaisJochi) {
+                    opcoesJochi.add(MercadoMelhorias.criarPorCodigo(carta.codigo, carta.coluna));
+                }
+                opcoesIniciaisJochi.put(jogador, opcoesJochi);
+            }
+            if (salvo.paradaPeaoExtraAltani != null) {
+                Parada destino = procurarParada(salvo.paradaPeaoExtraAltani);
+                if (destino == null) {
+                    throw new IllegalArgumentException("Posicao do peao extra invalida.");
+                }
+                Peao extra = new Peao(jogador.getCor());
+                jogo.getTabuleiro().posicionarPeaoInicial(extra);
+                extra.posicionarEm(destino);
+                peaoExtraAltaniPorJogador.put(jogador, extra);
+            }
+        }
+        if (dados.influencia.regiaoPorParada == null || dados.influencia.regiaoPorCidade == null
+                || dados.influencia.paradasPorCidade == null
+                || dados.influencia.paradasPorProvinciaKhan == null) {
+            throw new IllegalArgumentException("Dados de influencia incompletos.");
+        }
+        for (Map.Entry<Integer, String> e : dados.influencia.regiaoPorParada.entrySet()) {
+            regiaoPorParada.put(e.getKey(), Regiao.valueOf(e.getValue()));
+        }
+        for (Map.Entry<String, String> e : dados.influencia.regiaoPorCidade.entrySet()) {
+            regiaoPorCidade.put(NomeCidade.valueOf(e.getKey()), Regiao.valueOf(e.getValue()));
+        }
+        for (Map.Entry<String, List<Integer>> e : dados.influencia.paradasPorCidade.entrySet()) {
+            paradasPorCidade.put(NomeCidade.valueOf(e.getKey()), new HashSet<>(e.getValue()));
+        }
+        for (Map.Entry<String, List<Integer>> e : dados.influencia.paradasPorProvinciaKhan.entrySet()) {
+            paradasPorProvinciaKhan.put(DestinoKhan.valueOf(e.getKey()), new HashSet<>(e.getValue()));
+        }
+    }
+
+    private Parada procurarParada(int id) {
+        for (Parada parada : jogo.getTabuleiro().getParadas()) {
+            if (parada.getId() == id) {
+                return parada;
+            }
+        }
+        return null;
+    }
+
+    private void inicializarMecanicasRecuperadasLegado() {
+        for (Jogador jogador : participantes) {
+            tesourosPorJogador.put(jogador, new ArrayList<>());
+            bonusPorJogador.put(jogador, new ArrayList<>());
+            bonusUtilizados.put(jogador, new HashSet<PecaBonus>());
+            opcoesSecretasPorJogador.put(jogador, new ArrayList<>());
+            cidadesConquistadasPorJogador.put(jogador, 0);
+            if (jogador.getPersonagem() == Personagem.ALTANI) {
+                Peao extra = new Peao(jogador.getCor());
+                jogo.getTabuleiro().posicionarPeaoInicial(extra);
+                peaoExtraAltaniPorJogador.put(jogador, extra);
+            }
+        }
+        for (Cidade cidade : jogo.getTabuleiro().getCidadesDisponiveis()) {
+            regiaoPorCidade.put(cidade.getNomeCidade(), cidade.getRegiao());
+        }
+        // Arquivos antigos nao guardavam escolhas e ordem dos baralhos deste modulo.
+        // Evita erros ao consultar, mas nao e possivel recuperar escolhas perdidas.
+    }
+
     private static SavePartidaData.Meta copiarMeta(SavePartidaData.Meta original) {
         SavePartidaData.Meta copia = new SavePartidaData.Meta();
         if (original != null) {
@@ -394,7 +749,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             }
             double raio = ponto.raio == null
                     ? MapaDados.raioPadrao(ponto.id, ponto.dupla) : ponto.raio;
-            if (!mapa.alterarRaio(ponto.id, raio)) {
+            double raioY = ponto.raioVertical == null ? raio : ponto.raioVertical;
+            if (!mapa.alterarElipse(ponto.id, raio, raioY)) {
                 throw new IllegalArgumentException("Raio de parada inválido.");
             }
         }
@@ -479,7 +835,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             } else {
                 copia.adicionar(ponto.getId(), ponto.getX(), ponto.getY(), ponto.isDupla());
             }
-            copia.alterarRaio(ponto.getId(), ponto.getRaio());
+            copia.alterarElipse(ponto.getId(), ponto.getRaio(), ponto.getRaioVertical());
         }
         for (MapaDados.Ligacao ligacao : origem.getLigacoes()) {
             copia.conectar(ligacao.getOrigem(), ligacao.getDestino());
@@ -568,6 +924,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         for (Jogador j : participantes) {
             tesourosPorJogador.put(j, new ArrayList<TipoTesouro>());
             bonusPorJogador.put(j, new ArrayList<PecaBonus>());
+            bonusUtilizados.put(j, new HashSet<PecaBonus>());
+            bonusRecebidosPorJogador.put(j, 0);
             cidadesConquistadasPorJogador.put(j, 0);
 
             if (j.getPersonagem() == Personagem.ALTANI) {
@@ -579,6 +937,20 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             }
         }
 
+        // Jochi escolhe uma entre duas melhorias sorteadas para a coluna branca.
+        for (Jogador jogador : participantes) {
+            if (jogador.getPersonagem() == Personagem.JOCHI) {
+                List<Melhoria> opcoes = new ArrayList<Melhoria>();
+                for (int i = 0; i < 2; i++) {
+                    Melhoria sorteada = mercadoMelhorias.retirarAleatoria();
+                    if (sorteada != null) {
+                        opcoes.add(sorteada);
+                    }
+                }
+                opcoesIniciaisJochi.put(jogador, opcoes);
+            }
+        }
+
         // 2. Baralho de 40 tesouros (8 de cada um dos 5 tipos)
         for (TipoTesouro tipo : TipoTesouro.values()) {
             for (int i = 0; i < 8; i++) {
@@ -586,16 +958,16 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             }
         }
         Collections.shuffle(pilhaTesouros);
+        for (Cidade cidade : jogo.getTabuleiro().getCidadesDisponiveis()) {
+            revelarTesourosCidade(cidade);
+        }
+
 
         // 3. Embaralha as 7 pecas de bonus e cria o local de Karakorum (id 0)
         poolPecasBonus.addAll(Arrays.asList(PecaBonus.values()));
         Collections.shuffle(poolPecasBonus);
 
-        List<TipoTesouro> tiposKarakorum = new ArrayList<TipoTesouro>(Arrays.asList(TipoTesouro.values()));
-        Collections.shuffle(tiposKarakorum);
-        TipoTesouro[] demandaKarakorum = {
-            tiposKarakorum.get(0), tiposKarakorum.get(1), tiposKarakorum.get(2)
-        };
+        TipoTesouro[] demandaKarakorum = demandaKarakorum();
         PecaBonus bonusKarakorum = poolPecasBonus.isEmpty() ? null : poolPecasBonus.remove(0);
         locaisConselheiros.add(new LocalConselheiro(0, "Karakorum", demandaKarakorum, 2, bonusKarakorum));
 
@@ -603,8 +975,12 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         List<CartaConselheiroAberto> todasAbertas =
                 new ArrayList<CartaConselheiroAberto>(Arrays.asList(CartaConselheiroAberto.values()));
         Collections.shuffle(todasAbertas);
-        for (int i = 0; i < 4 && i < todasAbertas.size(); i++) {
-            cartasAbertasAtivas.add(todasAbertas.get(i));
+        for (int i = 0; i < todasAbertas.size(); i++) {
+            if (i < 4) {
+                revelarCartaAberta(todasAbertas.get(i));
+            } else {
+                pilhaCartasAbertas.add(todasAbertas.get(i));
+            }
         }
 
         // 5. Distribui 2 opcoes de Conselheiro Secreto para cada jogador
@@ -622,27 +998,58 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         }
     }
 
+    /** A peca especial altera somente a demanda; nao integra as sete pecas sorteadas. */
+    private TipoTesouro[] demandaKarakorum() {
+        return karakorumEspecial
+                ? new TipoTesouro[] {TipoTesouro.FERRO, TipoTesouro.SEDA, TipoTesouro.PELES}
+                : new TipoTesouro[] {TipoTesouro.FERRO, TipoTesouro.PORCELANA, TipoTesouro.GADO};
+    }
+
+    public boolean configurarKarakorumEspecial(boolean ativo) {
+        if (rodadasConcluidas != 0 || acaoRealizadaNoTurno) return false;
+        karakorumEspecial = ativo;
+        for (LocalConselheiro local : locaisConselheiros) {
+            if (local.getIdParada() == 0) local.alterarDemanda(demandaKarakorum());
+        }
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean isKarakorumEspecial() { return karakorumEspecial; }
+
     private void registrarParadaDuplaConselheiro(int idParada) {
         for (LocalConselheiro existente : locaisConselheiros) {
             if (existente.getIdParada() == idParada) {
                 return;
             }
         }
-        int indiceDupla = locaisConselheiros.size() - 1; // descontando Karakorum
-        if (indiceDupla >= 6) {
-            return;
+        TipoTesouro[] demanda;
+        switch (idParada) {
+            case 29:
+                demanda = new TipoTesouro[] {TipoTesouro.GADO, TipoTesouro.GADO};
+                break;
+            case 23:
+            case 33:
+                demanda = null; // Tres tesouros quaisquer.
+                break;
+            case 30:
+                demanda = new TipoTesouro[] {TipoTesouro.PORCELANA, TipoTesouro.PORCELANA};
+                break;
+            case 32:
+                demanda = new TipoTesouro[] {TipoTesouro.PELES, TipoTesouro.PELES};
+                break;
+            case 31:
+                demanda = new TipoTesouro[] {TipoTesouro.SEDA, TipoTesouro.SEDA};
+                break;
+            case 28:
+                demanda = new TipoTesouro[] {TipoTesouro.FERRO, TipoTesouro.FERRO};
+                break;
+            default:
+                return; // Apenas as seis paradas oficiais tem conselheiros.
         }
-        TipoTesouro[][] demandas = {
-            {TipoTesouro.PELES, TipoTesouro.PELES},
-            {TipoTesouro.SEDA, TipoTesouro.SEDA},
-            {TipoTesouro.PORCELANA, TipoTesouro.PORCELANA},
-            {TipoTesouro.FERRO, TipoTesouro.FERRO},
-            {TipoTesouro.GADO, TipoTesouro.GADO},
-            null // 6a parada dupla: 3 tesouros quaisquer
-        };
         PecaBonus bonus = poolPecasBonus.isEmpty() ? null : poolPecasBonus.remove(0);
         locaisConselheiros.add(new LocalConselheiro(
-                idParada, "Conselheiro (Parada " + idParada + ")", demandas[indiceDupla], 1, bonus));
+                idParada, "Conselheiro (Parada " + idParada + ")", demanda, 1, bonus));
     }
 
     private static String[] criarNomesJogadores(int quantidadeJogadores) {
@@ -675,7 +1082,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
                 if (!jogo.getTabuleiro().adicionarParada(ponto.getId(), ponto.isDupla())) {
                     return false;
                 }
-                if (ponto.isDupla()) {
+                if (ponto.isDupla() || ponto.getId() == 33) {
                     registrarParadaDuplaConselheiro(ponto.getId());
                 }
             }
@@ -694,7 +1101,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
     public boolean cadastrarParada(int id, boolean dupla) {
         boolean adicionado = jogo.getTabuleiro().adicionarParada(id, dupla);
         if (adicionado) {
-            if (dupla && id != 0) {
+            if ((dupla || id == 33) && id != 0) {
                 registrarParadaDuplaConselheiro(id);
             }
             notificarObservadores();
@@ -729,20 +1136,95 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return jogador.getMeuPeao();
     }
 
-    /** Habilidade de Altani: alterna entre os 2 peoes enquanto nao executou acoes no turno. */
-    public boolean alternarPeaoAtivoAltani() {
+    /** Chagatai troca um cavalo ainda disponivel por uma espada, uma vez por turno. */
+    public boolean usarHabilidadeChagatai() {
+        if (partidaEncerrada || habilidadeChagataiUsada) {
+            return false;
+        }
+        Jogador jogador = participantes.get(indiceAtual);
+        if (jogador.getPersonagem() != Personagem.CHAGATAI
+                || !jogador.getTabuleiroIndividual().consumirMovimentos(1)) {
+            return false;
+        }
+        jogador.receberTributos(TipoTributo.ESPADA, 1);
+        habilidadeChagataiUsada = true;
+        acaoRealizadaNoTurno = true;
+        notificarObservadores();
+        return true;
+    }
+
+    /** Ogedei compra um tesouro visivel de qualquer cidade por 1 moeda, uma vez por turno. */
+    public boolean usarHabilidadeOgedei(String nomeCidade, TipoTesouro escolhido) {
+        if (partidaEncerrada || habilidadeOgedeiUsada || escolhido == null) {
+            return false;
+        }
+        Jogador jogador = participantes.get(indiceAtual);
+        if (jogador.getPersonagem() != Personagem.OGEDEI) {
+            return false;
+        }
+        NomeCidade nome = interpretarCidade(nomeCidade);
+        Cidade cidade = nome == null ? null : encontrarCidadeDisponivel(nome);
+        if (cidade == null || cidade.getQuantidadeTesouros() <= 1) {
+            return false;
+        }
+        List<TipoTesouro> fichas = tesourosExpostosCidades.get(nome);
+        if (fichas == null || !fichas.contains(escolhido)) {
+            return false;
+        }
+        if (!jogador.getTabuleiroIndividual().removerTributosPorTipo(TipoTributo.MOEDA, 1)) {
+            return false;
+        }
+        // Ha pelo menos dois tesouros: esta compra nunca conquista a cidade.
+        cidade.saquearTesouro();
+        fichas.remove(escolhido);
+        tesourosPorJogador.get(jogador).add(escolhido);
+        habilidadeOgedeiUsada = true;
+        acaoRealizadaNoTurno = true;
+        verificarCartasConselheiroAberto(jogador);
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean habilidadeEspecialDisponivel() {
+        Jogador jogador = participantes.get(indiceAtual);
         if (partidaEncerrada) {
             return false;
         }
-        Jogador atual = participantes.get(indiceAtual);
-        if (atual.getPersonagem() != Personagem.ALTANI || acaoRealizadaNoTurno) {
+        if (jogador.getPersonagem() == Personagem.CHAGATAI) {
+            return !habilidadeChagataiUsada;
+        }
+        if (jogador.getPersonagem() == Personagem.OGEDEI) {
+            return !habilidadeOgedeiUsada;
+        }
+        return jogador.getPersonagem() == Personagem.ALTANI && !acaoRealizadaNoTurno;
+    }
+
+    /** Altani escolhe exatamente um peao para executar as acoes do turno. */
+    public boolean escolherPeaoAtivoAltani(boolean segundoPeao) {
+        if (partidaEncerrada || escolhaAltaniFeitaTurno || acaoRealizadaNoTurno) {
             return false;
         }
-        usandoPeaoExtraAltani = !usandoPeaoExtraAltani;
+        Jogador atual = participantes.get(indiceAtual);
+        if (atual.getPersonagem() != Personagem.ALTANI
+                || atual.getTabuleiroIndividual().consultarAtivacao(Personagem.ALTANI)
+                        .getColunaAtiva() >= 0) {
+            return false;
+        }
+        usandoPeaoExtraAltani = segundoPeao;
+        escolhaAltaniFeitaTurno = true;
         paradasVisitadasTurno.clear();
         registrarParadaAtualNoTurno();
         notificarObservadores();
         return true;
+    }
+
+    public boolean escolhaPeaoAltaniRealizada() {
+        return escolhaAltaniFeitaTurno;
+    }
+
+    /** Compatibilidade: alterna uma unica vez antes das acoes do turno. */
+    public boolean alternarPeaoAtivoAltani() {
+        return escolherPeaoAtivoAltani(!usandoPeaoExtraAltani);
     }
 
     public boolean movimentarJogador(int indice, int destino) {
@@ -757,11 +1239,15 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return realizado;
     }
 
-    /** Consulta o custo minimo do destino para o jogador da vez, sem movimentar. */
+    /** Custo de uma rota praticavel com os cavalos ainda disponiveis. */
     public int consultarCustoMovimentoAtual(int destino) {
         Jogador jogador = participantes.get(indiceAtual);
+        Peao peao = obterPeaoAtivo(jogador);
+        int cavalos = jogador.getTabuleiroIndividual()
+                .consultarAtivacao(jogador.getPersonagem()).getMovimentosRestantes()
+                + bonusMovimentosTurno;
         return jogo.getTabuleiro().distanciaMinima(
-                obterPeaoAtivo(jogador), destino, jogador.getCor());
+                peao, destino, jogador.getCor(), cavalos);
     }
 
     /** Jogador ativo da rodada visual. */
@@ -772,7 +1258,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
     public boolean movimentarJogadorAtual(int destino, int movimentosDisponiveis) {
         Jogador jogador = participantes.get(indiceAtual);
         Peao peao = obterPeaoAtivo(jogador);
-        List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(peao, destino, jogador.getCor());
+        List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(
+                peao, destino, jogador.getCor(), movimentosDisponiveis);
         boolean realizado = jogo.getTabuleiro().moverPeaoAte(
                 peao, destino, movimentosDisponiveis, jogador.getCor());
         if (realizado) {
@@ -788,6 +1275,10 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             return false;
         }
         Jogador jogador = participantes.get(indiceAtual);
+        if (jogador.getPersonagem() == Personagem.JOCHI
+                && !consultarOpcoesIniciaisJochi().isEmpty()) {
+            return false;
+        }
         boolean ativada = jogador.getTabuleiroIndividual().ativarColuna(
                 coluna, jogador.getPersonagem());
         if (ativada) {
@@ -812,12 +1303,12 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         int movimentosTotais = ativacao.getMovimentosRestantes() + bonusMovimentosTurno;
         int custo = consultarCustoMovimentoAtual(destino);
 
-        if (custo <= 0 || custo > movimentosTotais) {
+        if (custo < 0 || custo > movimentosTotais) {
             return false;
         }
         Peao peao = obterPeaoAtivo(jogador);
         List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(
-                peao, destino, jogador.getCor());
+                peao, destino, jogador.getCor(), movimentosTotais);
         boolean realizado = jogo.getTabuleiro().moverPeaoAte(
                 peao, destino, movimentosTotais, jogador.getCor());
         if (!realizado) {
@@ -837,10 +1328,14 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
 
     /** Encerra o turno somente apos a acao obrigatoria do Khan, quando houver. */
     public boolean tentarAvancarJogador() {
-        if (partidaEncerrada) {
+        if (partidaEncerrada || !escolhaTesourosBonusPendente.isEmpty()) {
             return false;
         }
-        TabuleiroIndividual cartela = participantes.get(indiceAtual).getTabuleiroIndividual();
+        Jogador jogadorDaVez = participantes.get(indiceAtual);
+        if (!secretaPorJogador.containsKey(jogadorDaVez)) {
+            return false;
+        }
+        TabuleiroIndividual cartela = jogadorDaVez.getTabuleiroIndividual();
         if (cartela.getLinhasBrancasPendentes() > 0) {
             return false;
         }
@@ -851,9 +1346,12 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         paradasVisitadasTurno.clear();
         saquesNaCidadeNoTurno.clear();
         usandoPeaoExtraAltani = false;
+        escolhaAltaniFeitaTurno = false;
         acaoRealizadaNoTurno = false;
         bonusMovimentosTurno = 0;
         bonusPunhosTurno = 0;
+        habilidadeChagataiUsada = false;
+        habilidadeOgedeiUsada = false;
 
         indiceAtual++;
         if (indiceAtual >= participantes.size()) {
@@ -885,6 +1383,32 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             return -1;
         }
         return parada.getId();
+    }
+
+    public int consultarRodadasConcluidas() {
+        return rodadasConcluidas;
+    }
+
+    /** Posicoes independentes dos dois peoes de Altani, inclusive quando nao estao ativos. */
+    public int consultarParadaPeaoPrincipal(int indice) {
+        if (indice < 0 || indice >= participantes.size()) {
+            return -1;
+        }
+        Parada parada = participantes.get(indice).getMeuPeao().getParadaAtual();
+        return parada == null ? -1 : parada.getId();
+    }
+
+    public int consultarParadaSegundoPeaoAltani(int indice) {
+        if (indice < 0 || indice >= participantes.size()) {
+            return -1;
+        }
+        Peao extra = peaoExtraAltaniPorJogador.get(participantes.get(indice));
+        return extra == null || extra.getParadaAtual() == null
+                ? -1 : extra.getParadaAtual().getId();
+    }
+
+    public boolean estaUsandoSegundoPeaoAltani() {
+        return usandoPeaoExtraAltani;
     }
 
     public int getQuantidadeJogadores() {
@@ -984,6 +1508,31 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return consultarCartela(indiceAtual);
     }
 
+    public Map<TipoTesouro, Integer> consultarTesourosPorTipoJogadorAtual() {
+        Map<TipoTesouro, Integer> quantidades = new EnumMap<TipoTesouro, Integer>(TipoTesouro.class);
+        for (TipoTesouro tipo : TipoTesouro.values()) {
+            quantidades.put(tipo, 0);
+        }
+        for (TipoTesouro tipo : tesourosPorJogador.getOrDefault(
+                participantes.get(indiceAtual), Collections.emptyList())) {
+            quantidades.put(tipo, quantidades.get(tipo) + 1);
+        }
+        return Collections.unmodifiableMap(quantidades);
+    }
+
+    public int consultarQuantidadeTesourosJogadorAtual() {
+        return tesourosPorJogador.getOrDefault(participantes.get(indiceAtual),
+                Collections.emptyList()).size();
+    }
+
+    public int consultarCavalosRestantesJogadorAtual() {
+        return consultarAtivacaoJogadorAtual().getMovimentosRestantes() + bonusMovimentosTurno;
+    }
+
+    public int consultarPunhosRestantesJogadorAtual() {
+        return consultarAtivacaoJogadorAtual().getPunhosDaColuna() + bonusPunhosTurno;
+    }
+
     public int consultarVotosJogadorAtual() {
         return participantes.get(indiceAtual).getVotosKurultai();
     }
@@ -993,6 +1542,138 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             return 0;
         }
         return participantes.get(indiceJogador).getVotosKurultai();
+    }
+
+    /** Acoes administrativas para testes manuais; nao sao movimentos normais. */
+    public boolean desenvolvimentoAjustarTributo(int indiceJogador, String nomeTributo, int variacao) {
+        if (partidaEncerrada || indiceJogador < 0 || indiceJogador >= participantes.size()
+                || nomeTributo == null || variacao == 0 || Math.abs((long) variacao) > 999) {
+            return false;
+        }
+        TipoTributo tipo;
+        try {
+            tipo = TipoTributo.valueOf(nomeTributo);
+        } catch (IllegalArgumentException erro) {
+            return false;
+        }
+        TabuleiroIndividual cartela = participantes.get(indiceJogador).getTabuleiroIndividual();
+        if (variacao < 0 && cartela.getQuantidadeTributoDoTipo(tipo) < -variacao) {
+            return false;
+        }
+        if (variacao > 0) {
+            participantes.get(indiceJogador).receberTributos(tipo, variacao);
+        } else {
+            cartela.removerTributosPorTipo(tipo, -variacao);
+        }
+        notificarObservadores();
+        return true;
+    }
+
+    /** Ajusta recursos virtuais temporarios e recursos da rodada sem criar tributos fisicos. */
+    public boolean desenvolvimentoAjustarRecursoEspecial(int indiceJogador, String recurso, int variacao) {
+        if (partidaEncerrada || indiceJogador < 0 || indiceJogador >= participantes.size()
+                || recurso == null || variacao == 0 || Math.abs((long) variacao) > 999) {
+            return false;
+        }
+        if (!participantes.get(indiceJogador).getTabuleiroIndividual()
+                .desenvolvimentoAjustarVirtual(recurso, variacao)) {
+            return false;
+        }
+        verificarCartasConselheiroAberto(participantes.get(indiceJogador));
+        notificarObservadores();
+        return true;
+    }
+
+    /** Permite montar maos de tesouros e fichas de bonus para testes de aceitacao. */
+    public boolean desenvolvimentoAjustarItemEspecial(int indiceJogador, String item, int variacao) {
+        if (partidaEncerrada || indiceJogador < 0 || indiceJogador >= participantes.size()
+                || item == null || variacao == 0 || Math.abs((long) variacao) > 999) {
+            return false;
+        }
+        Jogador jogador = participantes.get(indiceJogador);
+        if (item.startsWith("TESOURO_")) {
+            TipoTesouro tipo;
+            try {
+                tipo = TipoTesouro.valueOf(item.substring("TESOURO_".length()));
+            } catch (IllegalArgumentException erro) {
+                return false;
+            }
+            List<TipoTesouro> mao = tesourosPorJogador.get(jogador);
+            if (variacao < 0 && Collections.frequency(mao, tipo) < -variacao) {
+                return false;
+            }
+            for (int i = 0; i < Math.abs(variacao); i++) {
+                if (variacao > 0) {
+                    mao.add(tipo);
+                } else {
+                    mao.remove(tipo);
+                }
+            }
+        } else if (item.startsWith("BONUS_")) {
+            PecaBonus tipo;
+            try {
+                tipo = PecaBonus.valueOf(item.substring("BONUS_".length()));
+            } catch (IllegalArgumentException erro) {
+                return false;
+            }
+            List<PecaBonus> mao = bonusPorJogador.get(jogador);
+            if (variacao < 0 && Collections.frequency(mao, tipo) < -variacao) {
+                return false;
+            }
+            for (int i = 0; i < Math.abs(variacao); i++) {
+                if (variacao > 0) {
+                    mao.add(tipo);
+                } else {
+                    mao.remove(tipo);
+                }
+            }
+        } else {
+            return false;
+        }
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean desenvolvimentoAlterarVotos(int indiceJogador, int quantidade) {
+        if (partidaEncerrada || indiceJogador < 0 || indiceJogador >= participantes.size()
+                || quantidade <= 0 || quantidade > 999) {
+            return false;
+        }
+        concederVotosAoJogador(participantes.get(indiceJogador), quantidade);
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean desenvolvimentoPosicionarKhan(DestinoKhan destino) {
+        if (partidaEncerrada || destino == null) {
+            return false;
+        }
+        if (!jogo.getTabuleiro().deslocarKhan(destino)) {
+            return false;
+        }
+        aplicarEfeitoDestinoKhan(destino);
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean desenvolvimentoAjustarPontuacaoKhan(int variacao) {
+        if (partidaEncerrada || variacao == 0 || Math.abs((long) variacao) > 999
+                || (long) pontuacaoKhan + variacao < 0) {
+            return false;
+        }
+        pontuacaoKhan = Math.min(consultarCasaFinal(), pontuacaoKhan + variacao);
+        verificarFimPorKhan();
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean desenvolvimentoEncerrarPartida() {
+        if (partidaEncerrada) {
+            return false;
+        }
+        partidaEncerrada = true;
+        notificarObservadores();
+        return true;
     }
 
     public int consultarPontuacaoKhan() {
@@ -1022,11 +1703,27 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         if (jogador == null || quantidade <= 0) {
             return;
         }
-        jogador.ganharVotos(quantidade);
-        pontuacaoKhan += quantidade;
-        if (rodadasNoDisparoFim < 0
-                && pontuacaoKhan >= consultarCasaFinal()) {
-            rodadasNoDisparoFim = rodadasConcluidas;
+        if (partidaEncerrada) {
+            return;
+        }
+        int votosConcedidos = Math.min(quantidade, consultarCasaFinal() - pontuacaoKhan);
+        if (votosConcedidos <= 0) {
+            verificarFimPorKhan();
+            return;
+        }
+        jogador.ganharVotos(votosConcedidos);
+        pontuacaoKhan += votosConcedidos;
+        verificarFimPorKhan();
+    }
+
+    private void verificarFimPorKhan() {
+        if (pontuacaoKhan >= consultarCasaFinal()) {
+            pontuacaoKhan = consultarCasaFinal();
+            if (rodadasNoDisparoFim < 0) {
+                rodadasNoDisparoFim = rodadasConcluidas;
+            }
+            // A ficha branca atingiu a casa FIM: encerra imediatamente a partida.
+            partidaEncerrada = true;
         }
     }
 
@@ -1066,11 +1763,10 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         Jogador jogador = participantes.get(indiceAtual);
         boolean alcanceValido = paradasVisitadasTurno.contains(idParada);
         if (!alcanceValido && jogador.getPersonagem() == Personagem.TOLUI) {
-            for (Integer visitada : paradasVisitadasTurno) {
-                if (jogo.getTabuleiro().saoAdjacentes(visitada, idParada)) {
-                    alcanceValido = true;
-                    break;
-                }
+            Parada posicaoAtual = obterPeaoAtivo(jogador).getParadaAtual();
+            if (posicaoAtual != null) {
+                alcanceValido = jogo.getTabuleiro().saoAdjacentes(
+                        posicaoAtual.getId(), idParada);
             }
         }
         if (!alcanceValido) {
@@ -1213,13 +1909,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         if (espadas >= custo) {
             return true;
         }
-        // Habilidade de Ogedei: pode gastar 1 moeda no lugar de espada no primeiro saque
-        if (anteriores == 0 && jogadorAtual.getPersonagem() == Personagem.OGEDEI) {
-            int moedas = jogadorAtual.quantidadeTributo(TipoTributo.MOEDA)
-                    + jogadorAtual.getTabuleiroIndividual().getQuantidadeMoedasVirtuais();
-            return moedas >= 1;
-        }
-        return false;
+        return false; // A habilidade propria de Ogedei nao exige acesso a cidade.
     }
 
     private Cidade encontrarCidadeDisponivel(NomeCidade nome) {
@@ -1231,8 +1921,48 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return null;
     }
 
+    /** Distribui as fichas no momento em que a cidade e revelada. */
+    private void revelarTesourosCidade(Cidade cidade) {
+        if (cidade == null || cidade.getNomeCidade() == null
+                || tesourosExpostosCidades.containsKey(cidade.getNomeCidade())) {
+            return;
+        }
+        List<TipoTesouro> fichas = new ArrayList<TipoTesouro>();
+        for (int i = 0; i < cidade.getQuantidadeTesouros(); i++) {
+            TipoTesouro ficha = comprarTesouroDaPilha();
+            if (ficha != null) {
+                fichas.add(ficha);
+            }
+        }
+        tesourosExpostosCidades.put(cidade.getNomeCidade(), fichas);
+    }
+
+    /** Fichas efetivamente visiveis sobre a cidade, em ordem. */
+    public List<TipoTesouro> consultarTesourosCidade(String nomeCidade) {
+        NomeCidade nome = interpretarCidade(nomeCidade);
+        if (nome == null || encontrarCidadeDisponivel(nome) == null) {
+            return Collections.emptyList();
+        }
+        Cidade cidade = encontrarCidadeDisponivel(nome);
+        revelarTesourosCidade(cidade);
+        return Collections.unmodifiableList(new ArrayList<TipoTesouro>(
+                tesourosExpostosCidades.get(nome)));
+    }
+
     /** Saque completo: valida visita, gasta espadas/moedas (Ogedei), entrega tesouro e revela nova cidade. */
     public boolean saquearCidadeAtual(String nomeCidade) {
+        List<TipoTesouro> opcoes = consultarTesourosCidade(nomeCidade);
+        if (opcoes.isEmpty()) {
+            return false;
+        }
+        return saquearCidadeAtual(nomeCidade, opcoes.get(0));
+    }
+
+    /** Saque de ficha escolhida previamente entre as fichas expostas. */
+    public boolean saquearCidadeAtual(String nomeCidade, TipoTesouro tipoEscolhido) {
+        if (tipoEscolhido == null || !consultarTesourosCidade(nomeCidade).contains(tipoEscolhido)) {
+            return false;
+        }
         if (partidaEncerrada || !podeSaquearCidadeAtual(nomeCidade)) {
             return false;
         }
@@ -1247,37 +1977,39 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             anteriores = saquesNaCidadeNoTurno.get(chave);
         }
         Jogador jogadorAtual = participantes.get(indiceAtual);
-        boolean saqueOk = jogadorAtual.saquearCidade(cidade, anteriores);
-        if (!saqueOk && anteriores == 0 && jogadorAtual.getPersonagem() == Personagem.OGEDEI) {
-            int moedasVirtuais = jogadorAtual.getTabuleiroIndividual().getQuantidadeMoedasVirtuais();
-            int moedasReais = Math.max(0, 1 - moedasVirtuais);
-            if (moedasReais == 0
-                    || jogadorAtual.getTabuleiroIndividual().removerTributosPorTipo(TipoTributo.MOEDA, moedasReais)) {
-                saqueOk = cidade.saquearTesouro();
-            }
+        // A conquista deposita uma yurt. Nao permita exceder as 12 fichas do jogador.
+        if (cidade.getQuantidadeTesouros() == 1
+                && jogo.getTabuleiro().contarTotalYurtsNoMapa(jogadorAtual.getCor()) >= 12) {
+            return false;
         }
+        boolean saqueOk = jogadorAtual.saquearCidade(cidade, anteriores);
         if (!saqueOk) {
             return false;
         }
 
         acaoRealizadaNoTurno = true;
         saquesNaCidadeNoTurno.put(chave, anteriores + 1);
-        TipoTesouro tesouroSaqueado = comprarTesouroDaPilha();
-        if (tesouroSaqueado != null) {
-            tesourosPorJogador.get(jogadorAtual).add(tesouroSaqueado);
-        }
+        // A ficha foi sorteada ao revelar a cidade; o jogador escolhe qual retirar.
+        tesourosExpostosCidades.get(nome).remove(tipoEscolhido);
+        tesourosPorJogador.get(jogadorAtual).add(tipoEscolhido);
 
         if (cidade.isConquistada()) {
+            tesourosExpostosCidades.remove(nome);
             cidadesConquistadas.put(chave, jogadorAtual.getCor());
             jogo.getTabuleiro().registrarYurtConquista(nome, jogadorAtual.getCor());
             cidadesConquistadasPorJogador.put(
                     jogadorAtual, cidadesConquistadasPorJogador.get(jogadorAtual) + 1);
 
             Cidade proxima = jogo.revelarProximaCidade();
+            while (proxima != null && proxima.getNomeCidade() != null
+                    && cidadesConquistadas.containsKey(proxima.getNomeCidade().name())) {
+                proxima = jogo.revelarProximaCidade();
+            }
             if (proxima != null && proxima.getNomeCidade() != null && proxima.getRegiao() != null) {
                 regiaoPorCidade.put(proxima.getNomeCidade(), proxima.getRegiao());
             }
             jogo.getTabuleiro().substituirCidadeConquistada(cidade, proxima);
+            revelarTesourosCidade(proxima);
 
             if (rodadasNoDisparoFim < 0 && cidadesConquistadas.size() >= 9) {
                 rodadasNoDisparoFim = rodadasConcluidas;
@@ -1314,6 +2046,106 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
 
     public DestinoKhan consultarDestinoKhan() {
         return jogo.getTabuleiro().getDestinoKhan();
+    }
+
+    /** Os icones do mapa possuem estoques independentes, inicializados com uma ficha. */
+    private void inicializarEstoquesIconesSeNecessario() {
+        if (!estoquesIconesTributos.isEmpty()) {
+            return;
+        }
+        try {
+            IconesTabuleiro mapa = IconesTabuleiro.carregar(
+                    Paths.get("assets", "icones_tabuleiro.csv"));
+            for (int i = 0; i < mapa.getTributos().size(); i++) {
+                estoquesIconesTributos.add(1);
+            }
+        } catch (IOException erro) {
+            throw new IllegalStateException("Nao foi possivel carregar os icones de tributo", erro);
+        }
+    }
+
+    public int consultarQuantidadeTributoIcone(int indice) {
+        inicializarEstoquesIconesSeNecessario();
+        if (indice < 0 || indice >= estoquesIconesTributos.size()) {
+            return 0;
+        }
+        return estoquesIconesTributos.get(indice);
+    }
+
+    /** Coleta somente da ficha clicada, sem consumir a de outro icone da mesma provincia. */
+    public boolean coletarTributoDoIcone(int indice, Provincia[] provincias, String tipoEscolhido) {
+        if (partidaEncerrada || provincias == null || tipoEscolhido == null) {
+            return false;
+        }
+        inicializarEstoquesIconesSeNecessario();
+        if (indice < 0 || indice >= estoquesIconesTributos.size()
+                || estoquesIconesTributos.get(indice) <= 0) {
+            return false;
+        }
+        TipoTributo tipo;
+        try {
+            tipo = TipoTributo.valueOf(tipoEscolhido);
+        } catch (IllegalArgumentException erro) {
+            return false;
+        }
+        try {
+            IconesTabuleiro mapa = IconesTabuleiro.carregar(
+                    Paths.get("assets", "icones_tabuleiro.csv"));
+            IconesTabuleiro.IconeTributo icone = mapa.getTributos().get(indice);
+            if (!icone.getTipo().equals(tipo.name())
+                    || !java.util.Arrays.equals(icone.getProvincias(), provincias)) {
+                return false;
+            }
+        } catch (IOException | IndexOutOfBoundsException erro) {
+            return false;
+        }
+        boolean acesso = false;
+        for (Provincia provincia : provincias) {
+            ReservaProvincia reserva = reservas.get(provincia);
+            if (reserva != null && reserva.acessivelPelas(paradasVisitadasTurno)) {
+                acesso = true;
+                break;
+            }
+        }
+        if (!acesso) {
+            return false;
+        }
+        Jogador jogador = participantes.get(indiceAtual);
+        TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
+        if (!cartela.podeGastarPunho() && bonusPunhosTurno <= 0) {
+            return false;
+        }
+        estoquesIconesTributos.set(indice, estoquesIconesTributos.get(indice) - 1);
+        jogador.receberTributos(tipo, 1);
+        if (bonusPunhosTurno > 0) {
+            bonusPunhosTurno--;
+        } else {
+            cartela.gastarPunho();
+        }
+        verificarCartasConselheiroAberto(jogador);
+        notificarObservadores();
+        return true;
+    }
+
+    private void reporIconesKhan(DestinoKhan destino) {
+        inicializarEstoquesIconesSeNecessario();
+        try {
+            IconesTabuleiro mapa = IconesTabuleiro.carregar(
+                    Paths.get("assets", "icones_tabuleiro.csv"));
+            KhanRecursosLayout configuracao = KhanRecursosLayout.carregar();
+            java.util.Set<Integer> indices = new java.util.HashSet<Integer>();
+            // Apenas os tres icones explicitamente associados no editor podem ser repostos.
+            // Sem configuracao nao inventamos reposicoes por provincias vizinhas.
+            indices.addAll(configuracao.consultar(destino));
+            for (Integer indice : indices) {
+                if (indice != null && indice >= 0 && indice < estoquesIconesTributos.size()) {
+                    int quantidade = estoquesIconesTributos.get(indice);
+                    estoquesIconesTributos.set(indice, Math.min(3, quantidade + 1));
+                }
+            }
+        } catch (IOException erro) {
+            throw new IllegalStateException("Nao foi possivel repor os tributos do Khan", erro);
+        }
     }
 
     public boolean coletarTributo(Provincia provincia, String tipoEscolhido) {
@@ -1539,15 +2371,78 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return mercadoMelhorias.consultarResumos();
     }
 
+    /** Escolha inicial de Jochi: uma das duas melhorias sorteadas vai para a branca. */
+    public List<ResumoMelhoria> consultarOpcoesIniciaisJochi() {
+        Jogador jogadorAtual = participantes.get(indiceAtual);
+        if (jogadorAtual.getPersonagem() != Personagem.JOCHI) {
+            return Collections.emptyList();
+        }
+        for (Jogador jogador : Collections.singletonList(jogadorAtual)) {
+            List<Melhoria> opcoes = opcoesIniciaisJochi.get(jogador);
+            if (opcoes != null && !opcoes.isEmpty()) {
+                List<ResumoMelhoria> resumos = new ArrayList<ResumoMelhoria>();
+                for (Melhoria melhoria : opcoes) {
+                    resumos.add(new ResumoMelhoria(melhoria.getCodigo(),
+                            melhoria.getDescdescricao(), 3));
+                }
+                return Collections.unmodifiableList(resumos);
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    public boolean escolherMelhoriaInicialJochi(int indiceOpcao) {
+        if (partidaEncerrada) {
+            return false;
+        }
+        for (Jogador jogador : Collections.singletonList(participantes.get(indiceAtual))) {
+            if (jogador.getPersonagem() != Personagem.JOCHI) {
+                return false;
+            }
+            List<Melhoria> opcoes = opcoesIniciaisJochi.get(jogador);
+            if (opcoes == null || opcoes.isEmpty()) {
+                continue;
+            }
+            if (indiceOpcao < 0 || indiceOpcao >= opcoes.size()) {
+                return false;
+            }
+            Melhoria escolhida = opcoes.get(indiceOpcao);
+            jogador.getTabuleiroIndividual().adicionarMelhoriaInicial(new Melhoria(
+                    escolhida.getDescdescricao(), escolhida.getCustoEmMoedas(),
+                    escolhida.getVotosBonus(), escolhida.getCodigo(), 3));
+            for (int i = 0; i < opcoes.size(); i++) {
+                if (i != indiceOpcao) {
+                    mercadoMelhorias.devolverAoFundo(opcoes.get(i));
+                }
+            }
+            opcoesIniciaisJochi.remove(jogador);
+            notificarObservadores();
+            return true;
+        }
+        return false;
+    }
+
     /** Compra uma melhoria real do mercado por duas moedas. */
     public boolean comprarMelhoriaAtual(int posicao) {
+        return comprarMelhoriaAtual(posicao, -1);
+    }
+
+    /** Jochi pode escolher qualquer coluna; os demais respeitam a cor original. */
+    public boolean comprarMelhoriaAtual(int posicao, int colunaEscolhida) {
         Melhoria melhoria = mercadoMelhorias.consultar(posicao);
         if (melhoria == null || partidaEncerrada) {
             return false;
         }
         Jogador jogador = participantes.get(indiceAtual);
         TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
-        if (!cartela.podeAdicionarMelhoria(melhoria.getColuna())) {
+        int coluna = melhoria.getColuna();
+        if (colunaEscolhida >= 0) {
+            if (jogador.getPersonagem() != Personagem.JOCHI || colunaEscolhida > 3) {
+                return false;
+            }
+            coluna = colunaEscolhida;
+        }
+        if (!cartela.podeAdicionarMelhoria(coluna)) {
             return false;
         }
         int custo = melhoria.getCustoEmMoedas();
@@ -1565,6 +2460,11 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             return false;
         }
         Melhoria retirada = mercadoMelhorias.retirar(posicao);
+        if (coluna != retirada.getColuna()) {
+            retirada = new Melhoria(retirada.getDescdescricao(),
+                    retirada.getCustoEmMoedas(), retirada.getVotosBonus(),
+                    retirada.getCodigo(), coluna);
+        }
         cartela.adicionarMelhoria(retirada);
         verificarCartasConselheiroAberto(jogador);
         notificarObservadores();
@@ -1620,7 +2520,41 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         if (!jogo.getTabuleiro().deslocarKhan(destino)) {
             return false;
         }
+        aplicarEfeitoDestinoKhan(destino);
+        cartela.concluirAcaoKhan();
+        verificarCartasConselheiroAberto(participantes.get(indiceAtual));
+        notificarObservadores();
+        return true;
+    }
+
+    private void aplicarEfeitoDestinoKhan(DestinoKhan destino) {
         if (destino.ehProvincia()) {
+            reporIconesKhan(destino);
+            // Mantem o estoque legado de provincia para compatibilidade com testes anteriores.
+            // Quando ha mapeamento manual, ele substitui a reposicao por provincia.
+            try {
+                KhanRecursosLayout configuracao = KhanRecursosLayout.carregar();
+                if (configuracao.configurado(destino)) {
+                    IconesTabuleiro icones = IconesTabuleiro.carregar(
+                            Paths.get("assets", "icones_tabuleiro.csv"));
+                    for (Integer indice : configuracao.consultar(destino)) {
+                        if (indice >= icones.getTributos().size()) {
+                            continue;
+                        }
+                        IconesTabuleiro.IconeTributo icone = icones.getTributos().get(indice);
+                        TipoTributo recurso = TipoTributo.valueOf(icone.getTipo());
+                        for (Provincia provincia : icone.getProvincias()) {
+                            ReservaProvincia reserva = reservas.get(provincia);
+                            if (reserva != null) {
+                                reserva.reporUma(recurso);
+                            }
+                        }
+                    }
+                    return;
+                }
+            } catch (IOException erro) {
+                throw new IllegalStateException("Mapeamento dos recursos do Khan invalido", erro);
+            }
             Provincia escolhida = Provincia.valueOf(destino.name());
             reporTributo(escolhida);
             Provincia[] adjacentes = vizinhasDoKhan.get(escolhida);
@@ -1636,10 +2570,6 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             participantes.get(indiceAtual).receberTributos(TipoTributo.MOEDA, 1);
             participantes.get(indiceAtual).receberTributos(TipoTributo.ESPADA, 1);
         }
-        cartela.concluirAcaoKhan();
-        verificarCartasConselheiroAberto(participantes.get(indiceAtual));
-        notificarObservadores();
-        return true;
     }
 
     private void reporTributo(Provincia provincia) {
@@ -1676,6 +2606,12 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
     }
 
     public boolean entregarTesourosConselheiro(int idParadaConselheiro) {
+        return entregarTesourosConselheiro(idParadaConselheiro, null);
+    }
+
+    /** Para conselheiros de demanda livre, consome precisamente as tres fichas escolhidas. */
+    public boolean entregarTesourosConselheiro(int idParadaConselheiro,
+                                                List<TipoTesouro> escolha) {
         if (partidaEncerrada) {
             return false;
         }
@@ -1700,13 +2636,37 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         if (mao == null || !alvo.podeEntregar(mao, null, false)) {
             return false;
         }
-
-        alvo.consumirTesouros(mao, null, false, descarteTesouros);
+        if (alvo.getTesourosExigidos() == null) {
+            // Uma entrega livre precisa indicar quais fichas serao descartadas.
+            // Nao se admite mais consumir automaticamente as primeiras da mao.
+            if (escolha == null || escolha.size() != 3 || escolha.contains(null)) {
+                return false;
+            }
+            List<TipoTesouro> restante = new ArrayList<TipoTesouro>(mao);
+            for (TipoTesouro tipo : escolha) {
+                if (!restante.remove(tipo)) {
+                    return false;
+                }
+            }
+            for (TipoTesouro tipo : escolha) {
+                mao.remove(tipo);
+                descarteTesouros.add(tipo);
+            }
+        } else {
+            alvo.consumirTesouros(mao, null, false, descarteTesouros);
+        }
         acaoRealizadaNoTurno = true;
         concederVotosAoJogador(atual, alvo.getVotosConcedidos());
 
         if (alvo.temPecaBonus()) {
-            bonusPorJogador.get(atual).add(alvo.recolherPecaBonus());
+            PecaBonus recebida = alvo.recolherPecaBonus();
+            bonusPorJogador.get(atual).add(recebida);
+            if (recebida == PecaBonus.VOTO_IMEDIATO) {
+                concederVotosAoJogador(atual, 1);
+                bonusUtilizados.get(atual).add(recebida);
+            }
+            bonusRecebidosPorJogador.put(atual,
+                    bonusRecebidosPorJogador.getOrDefault(atual, 0) + 1);
         }
 
         verificarCartasConselheiroAberto(atual);
@@ -1714,21 +2674,50 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return true;
     }
 
-    public boolean usarPecaBonusJogadorAtual(int indiceBonus) {
-        if (partidaEncerrada) {
-            return false;
+    /** Consulta somente de leitura: a View nao altera o estado dos bonus. */
+    public List<PecaBonus> consultarBonusJogadorAtual() {
+        return Collections.unmodifiableList(new ArrayList<PecaBonus>(
+                bonusPorJogador.get(participantes.get(indiceAtual))));
+    }
+
+    public boolean isBonusUtilizadoJogadorAtual(int indice) {
+        List<PecaBonus> lista = bonusPorJogador.get(participantes.get(indiceAtual));
+        return indice >= 0 && indice < lista.size()
+                && bonusUtilizados.get(participantes.get(indiceAtual)).contains(lista.get(indice));
+    }
+
+    public int consultarTotalBonusAdquiridosJogadorAtual() {
+        return bonusRecebidosPorJogador.getOrDefault(participantes.get(indiceAtual), 0);
+    }
+
+    public List<TipoTesouro> consultarEscolhaTesourosBonusPendente() {
+        return Collections.unmodifiableList(new ArrayList<TipoTesouro>(escolhaTesourosBonusPendente));
+    }
+
+    public boolean escolherTesouroBonus(int indice) {
+        if (indice < 0 || indice >= escolhaTesourosBonusPendente.size() || partidaEncerrada) return false;
+        Jogador atual = participantes.get(indiceAtual);
+        tesourosPorJogador.get(atual).add(escolhaTesourosBonusPendente.get(indice));
+        for (int i = 0; i < escolhaTesourosBonusPendente.size(); i++) {
+            if (i != indice) descarteTesouros.add(escolhaTesourosBonusPendente.get(i));
         }
+        escolhaTesourosBonusPendente.clear();
+        bonusUtilizados.get(atual).add(PecaBonus.ESCOLHER_TESOURO);
+        verificarCartasConselheiroAberto(atual);
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean usarPecaBonusJogadorAtual(int indiceBonus) {
+        if (partidaEncerrada || !escolhaTesourosBonusPendente.isEmpty()) return false;
         Jogador atual = participantes.get(indiceAtual);
         List<PecaBonus> lista = bonusPorJogador.get(atual);
-        if (lista == null || indiceBonus < 0 || indiceBonus >= lista.size()) {
-            return false;
-        }
-
-        PecaBonus escolhida = lista.remove(indiceBonus);
+        if (lista == null || indiceBonus < 0 || indiceBonus >= lista.size()) return false;
+        PecaBonus escolhida = lista.get(indiceBonus);
+        if (bonusUtilizados.get(atual).contains(escolhida)) return false;
         switch (escolhida) {
             case VOTO_IMEDIATO:
-                concederVotosAoJogador(atual, 1);
-                break;
+                return false; // Efeito automatico no recebimento.
             case DUAS_ESPADAS:
                 atual.receberTributos(TipoTributo.ESPADA, 2);
                 break;
@@ -1740,22 +2729,24 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
                 break;
             case TRES_MOVIMENTOS_UM_PUNHO:
                 bonusMovimentosTurno += 3;
-                bonusPunhosTurno += 1;
+                bonusPunhosTurno++;
                 break;
             case DOIS_PUNHOS:
                 bonusPunhosTurno += 2;
                 break;
-            case ESCOLHER_TESOURO: {
-                TipoTesouro comprado = comprarTesouroDaPilha();
-                if (comprado != null) {
-                    tesourosPorJogador.get(atual).add(comprado);
+            case ESCOLHER_TESOURO:
+                for (int i = 0; i < 3; i++) {
+                    TipoTesouro comprado = comprarTesouroDaPilha();
+                    if (comprado == null) break;
+                    escolhaTesourosBonusPendente.add(comprado);
                 }
-                break;
-            }
+                if (escolhaTesourosBonusPendente.isEmpty()) return false;
+                notificarObservadores();
+                return true; // Consumo so ocorre depois da escolha obrigatoria.
             default:
-                break;
+                return false;
         }
-
+        bonusUtilizados.get(atual).add(escolhida);
         verificarCartasConselheiroAberto(atual);
         notificarObservadores();
         return true;
@@ -1781,6 +2772,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
                     local.getDescricaoDemanda(),
                     local.getVotosConcedidos(),
                     descBonus,
+                    local.temPecaBonus() ? local.getPecaBonus().getArquivoImagem() : null,
                     presente,
                     podeEntregar));
         }
@@ -1807,7 +2799,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
 
         List<String> bonusDesc = new ArrayList<String>();
         for (PecaBonus b : bonusPorJogador.get(atual)) {
-            bonusDesc.add(b.getDescricao());
+            bonusDesc.add(b.getDescricao() + (bonusUtilizados.get(atual).contains(b) ? " [UTILIZADA]" : " [DISPONIVEL]"));
         }
 
         List<String> tesourosDesc = new ArrayList<String>();
@@ -1822,6 +2814,45 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
                 bonusDesc,
                 tesourosDesc,
                 cidadesConquistadasPorJogador.get(atual));
+    }
+
+    private List<Integer> consultarIdsPontosEntrega() {
+        List<Integer> ids = new ArrayList<Integer>();
+        for (LocalConselheiro local : locaisConselheiros) {
+            ids.add(local.getIdParada());
+        }
+        return ids;
+    }
+
+    /** Consulta somente as opcoes do jogador atual. A carta escolhida continua secreta. */
+    public List<CartaConselheiroSecreto> consultarOpcoesConselheiroSecretoJogadorAtual() {
+        Jogador jogador = participantes.get(indiceAtual);
+        if (secretaPorJogador.containsKey(jogador)) {
+            return Collections.emptyList();
+        }
+        List<CartaConselheiroSecreto> opcoes = opcoesSecretasPorJogador.get(jogador);
+        if (opcoes == null) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(new ArrayList<CartaConselheiroSecreto>(opcoes));
+    }
+
+    public CartaConselheiroSecreto consultarConselheiroSecretoJogadorAtual() {
+        return secretaPorJogador.get(participantes.get(indiceAtual));
+    }
+
+    /** Progresso atual do objetivo secreto do jogador da vez, sem conceder votos. */
+    public int consultarProgressoSecretoJogadorAtual() {
+        Jogador atual = participantes.get(indiceAtual);
+        CartaConselheiroSecreto carta = secretaPorJogador.get(atual);
+        if (carta == null) {
+            return 0;
+        }
+        List<ResumoMelhoria> melhorias = consultarCartela(indiceAtual).getMelhoriasDetalhadas();
+        return AvaliadorPontuacaoFinal.progressoConselheiroSecreto(
+                atual, carta, melhorias, jogo.getTabuleiro(), regiaoPorParada,
+                regiaoPorCidade, paradasPorProvinciaKhan, paradasPorCidade,
+                consultarIdsPontosEntrega());
     }
 
     public List<ResumoResultadoFinal> consultarResultadoFinal() {
@@ -1840,96 +2871,131 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
                 regiaoPorParada,
                 regiaoPorCidade,
                 paradasPorProvinciaKhan,
-                paradasPorCidade);
+                paradasPorCidade,
+                consultarIdsPontosEntrega());
     }
 
-    private void verificarCartasConselheiroAberto(Jogador j) {
-        Tabuleiro tab = jogo.getTabuleiro();
-        int idx = participantes.indexOf(j);
-        List<ResumoMelhoria> melhorias = (idx >= 0)
-                ? consultarCartela(idx).getMelhoriasDetalhadas()
-                : Collections.<ResumoMelhoria>emptyList();
-        List<TipoTesouro> tesouros = tesourosPorJogador.get(j);
-        List<PecaBonus> bonus = bonusPorJogador.get(j);
-        int conquistas = cidadesConquistadasPorJogador.get(j);
+    /** Cartas reveladas sao verificadas automaticamente, inclusive requisitos ja ultrapassados. */
+    private void revelarCartaAberta(CartaConselheiroAberto carta) {
+        cartasAbertasAtivas.add(carta);
+        Set<Integer> elegiveis = new HashSet<Integer>();
+        for (int i = 0; i < participantes.size(); i++) elegiveis.add(i);
+        elegiveisAbertas.put(carta, elegiveis);
+    }
 
-        Iterator<CartaConselheiroAberto> it = cartasAbertasAtivas.iterator();
-        while (it.hasNext()) {
-            CartaConselheiroAberto carta = it.next();
-            boolean cumpriu = false;
-            switch (carta) {
-                case QUATRO_ESPADAS:
-                    cumpriu = j.quantidadeTributo(TipoTributo.ESPADA) >= 4;
-                    break;
-                case SEIS_YURTS:
-                    cumpriu = tab.contarTotalYurtsNoMapa(j.getCor()) >= 6;
-                    break;
-                case DEZ_YURTS:
-                    cumpriu = tab.contarTotalYurtsNoMapa(j.getCor()) >= 10;
-                    break;
-                case QUATRO_TESOUROS:
-                    cumpriu = tesouros != null && tesouros.size() >= 4;
-                    break;
-                case CINCO_TESOUROS_DIFERENTES:
-                    cumpriu = tesouros != null && new HashSet<TipoTesouro>(tesouros).size() >= 5;
-                    break;
-                case UM_YURT_CADA_REGIAO:
-                    cumpriu = tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.CHINA, regiaoPorParada, regiaoPorCidade) >= 1
-                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.PERSIA, regiaoPorParada, regiaoPorCidade) >= 1
-                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.RUSSIA, regiaoPorParada, regiaoPorCidade) >= 1;
-                    break;
-                case DOIS_YURTS_CADA_REGIAO:
-                    cumpriu = tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.CHINA, regiaoPorParada, regiaoPorCidade) >= 2
-                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.PERSIA, regiaoPorParada, regiaoPorCidade) >= 2
-                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.RUSSIA, regiaoPorParada, regiaoPorCidade) >= 2;
-                    break;
-                case DOIS_BONUS:
-                    cumpriu = bonus != null && bonus.size() >= 2;
-                    break;
-                case TRES_BONUS:
-                    cumpriu = bonus != null && bonus.size() >= 3;
-                    break;
-                case DUAS_CIDADES:
-                    cumpriu = conquistas >= 2;
-                    break;
-                case TRES_CIDADES:
-                    cumpriu = conquistas >= 3;
-                    break;
-                case DUAS_COLUNAS_DUAS_MELHORIAS: {
-                    int[] porCol = new int[4];
-                    int colunasComDuas = 0;
-                    for (ResumoMelhoria m : melhorias) {
-                        if (m.getColuna() >= 0 && m.getColuna() < 4) {
-                            porCol[m.getColuna()]++;
-                        }
-                    }
-                    for (int qtd : porCol) {
-                        if (qtd >= 2) {
-                            colunasComDuas++;
-                        }
-                    }
-                    cumpriu = colunasComDuas >= 2;
-                    break;
-                }
-                case QUATRO_MELHORIAS_COLUNA: {
-                    int[] porCol = new int[4];
-                    for (ResumoMelhoria m : melhorias) {
-                        if (m.getColuna() >= 0 && m.getColuna() < 4) {
-                            porCol[m.getColuna()]++;
-                            if (porCol[m.getColuna()] >= 4) {
-                                cumpriu = true;
-                            }
-                        }
-                    }
-                    break;
-                }
-                default:
-                    break;
+    /** Consulta publica para a View, mantendo a colecao interna protegida. */
+    public List<CartaConselheiroAberto> consultarCartasAbertasAtivas() {
+        return Collections.unmodifiableList(new ArrayList<CartaConselheiroAberto>(cartasAbertasAtivas));
+    }
+
+    public int consultarQuantidadeCartasAbertasNaPilha() {
+        return pilhaCartasAbertas.size();
+    }
+
+    /** O reconhecimento ocorre logo apos cada acao que altera o requisito. */
+    private void verificarCartasConselheiroAberto(Jogador jogador) {
+        if (partidaEncerrada || jogador == null) {
+            return;
+        }
+        int indice = participantes.indexOf(jogador);
+        if (indice < 0) {
+            return;
+        }
+        // A rodada de avaliacao trata somente as cartas ja reveladas no instante da acao.
+        List<CartaConselheiroAberto> candidatas =
+                new ArrayList<CartaConselheiroAberto>(cartasAbertasAtivas);
+        List<CartaConselheiroAberto> concluidas = new ArrayList<CartaConselheiroAberto>();
+        for (CartaConselheiroAberto carta : candidatas) {
+            Set<Integer> elegiveis = elegiveisAbertas.get(carta);
+            if (elegiveis != null && elegiveis.contains(indice)
+                    && cumpreCartaAberta(carta, jogador)) {
+                concluidas.add(carta);
             }
-            if (cumpriu) {
-                it.remove();
-                concederVotosAoJogador(j, 1);
+        }
+        // Concede todas as recompensas da mesma acao antes de revelar substitutas.
+        for (CartaConselheiroAberto carta : concluidas) {
+            if (cartasAbertasAtivas.remove(carta)) {
+                elegiveisAbertas.remove(carta);
+                concederVotosAoJogador(jogador, 1);
+            }
+        }
+        for (int i = 0; i < concluidas.size() && !pilhaCartasAbertas.isEmpty(); i++) {
+            revelarCartaAberta(pilhaCartasAbertas.remove(0));
+        }
+        // Uma carta nova pode ter seu requisito ja satisfeito: premiar sem clique adicional.
+        if (!concluidas.isEmpty()) {
+            for (Jogador participante : participantes) {
+                if (!cartasAbertasAtivas.isEmpty()) verificarCartasConselheiroAberto(participante);
             }
         }
     }
+
+    private boolean cumpreCartaAberta(CartaConselheiroAberto carta, Jogador jogador) {
+        int indice = participantes.indexOf(jogador);
+        if (indice < 0) {
+            return false;
+        }
+        List<ResumoMelhoria> melhorias = consultarCartela(indice).getMelhoriasDetalhadas();
+        List<TipoTesouro> tesouros = tesourosPorJogador.get(jogador);
+        int[] colunas = new int[4];
+        for (ResumoMelhoria melhoria : melhorias) {
+            if (melhoria.getColuna() >= 0 && melhoria.getColuna() < 4) {
+                colunas[melhoria.getColuna()]++;
+            }
+        }
+        Cor cor = jogador.getCor();
+        Tabuleiro tabuleiro = jogo.getTabuleiro();
+        switch (carta) {
+            case QUATRO_ESPADAS:
+                return jogador.quantidadeTributo(TipoTributo.ESPADA) >= 4;
+            case SEIS_YURTS:
+                return tabuleiro.contarTotalYurtsNoMapa(cor) >= 6;
+            case DEZ_YURTS:
+                return tabuleiro.contarTotalYurtsNoMapa(cor) >= 10;
+            case QUATRO_TESOUROS:
+                return tesouros != null && tesouros.size() >= 4;
+            case CINCO_TESOUROS_DIFERENTES:
+                return tesouros != null && new HashSet<TipoTesouro>(tesouros).size() == 5;
+            case UM_YURT_CADA_REGIAO:
+                return yurtsNormaisNasTresRegioes(cor, 1);
+            case DOIS_YURTS_CADA_REGIAO:
+                return yurtsNormaisNasTresRegioes(cor, 2);
+            case DOIS_BONUS:
+                return bonusRecebidosPorJogador.getOrDefault(jogador, 0) >= 2;
+            case TRES_BONUS:
+                return bonusRecebidosPorJogador.getOrDefault(jogador, 0) >= 3;
+            case DUAS_CIDADES:
+                return cidadesConquistadasPorJogador.getOrDefault(jogador, 0) >= 2;
+            case TRES_CIDADES:
+                return cidadesConquistadasPorJogador.getOrDefault(jogador, 0) >= 3;
+            case UMA_LINHA_MELHORIAS:
+                return colunas[0] >= 1 && colunas[1] >= 1 && colunas[2] >= 1;
+            case DUAS_COLUNAS_DUAS_MELHORIAS: {
+                int quantidade = 0;
+                for (int coluna : colunas) {
+                    if (coluna >= 2) {
+                        quantidade++;
+                    }
+                }
+                return quantidade >= 2;
+            }
+            case QUATRO_MELHORIAS_COLUNA:
+                for (int coluna : colunas) {
+                    if (coluna >= 4) {
+                        return true;
+                    }
+                }
+                return false;
+            default:
+                return false;
+        }
+    }
+
+    private boolean yurtsNormaisNasTresRegioes(Cor cor, int minimo) {
+        Tabuleiro tabuleiro = jogo.getTabuleiro();
+        return tabuleiro.contarYurtsNormaisNaRegiao(cor, Regiao.CHINA, regiaoPorParada) >= minimo
+                && tabuleiro.contarYurtsNormaisNaRegiao(cor, Regiao.PERSIA, regiaoPorParada) >= minimo
+                && tabuleiro.contarYurtsNormaisNaRegiao(cor, Regiao.RUSSIA, regiaoPorParada) >= minimo;
+    }
+
 }

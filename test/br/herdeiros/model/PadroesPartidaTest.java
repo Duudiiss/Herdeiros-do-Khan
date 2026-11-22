@@ -92,7 +92,7 @@ public class PadroesPartidaTest {
         ObservadorDeTeste observador = new ObservadorDeTeste();
         partida.registrarObservador(observador);
         partida.removerObservador(observador);
-        partida.avancarJogador();
+        TestesConselheirosAux.avancarSemResultado(partida);
         assertEquals("Observador removido nao pode receber eventos", 0,
                 observador.notificacoes);
     }
@@ -104,6 +104,7 @@ public class PadroesPartidaTest {
     public void testeRegistroDuplicadoNaoDuplicaNotificacao() {
         InterfacePartida partida = new InterfacePartida();
         ObservadorDeTeste observador = new ObservadorDeTeste();
+        TestesConselheirosAux.escolherSeNecessario(partida);
         partida.registrarObservador(observador);
         partida.registrarObservador(observador);
         partida.avancarJogador();

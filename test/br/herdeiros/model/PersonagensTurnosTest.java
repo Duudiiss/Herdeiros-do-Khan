@@ -20,6 +20,10 @@ public class PersonagensTurnosTest {
         mapa.conectar(1, 2);
         mapa.conectar(2, 3);
         assertTrue("Mapa de teste deve ser valido", partida.carregarMapa(mapa));
+        // Na versao atual Altani deve escolher o peao antes de andar.
+        assertTrue(partida.escolherPeaoAtivoAltani(false));
+        assertTrue(partida.desenvolvimentoAjustarRecursoEspecial(0, "CAVALO", 8));
+        assertTrue(partida.ativarColunaJogadorAtual(1));
         return partida;
     }
 
@@ -74,9 +78,13 @@ public class PersonagensTurnosTest {
         ControladorTabuleiro controller = new ControladorTabuleiro(partida, new MapaDados());
         controller.configurarMovimentos(3);
         assertTrue("Primeiro deslocamento deve funcionar", controller.tentarMoverPara(1));
+        TestesConselheirosAux.escolherSeNecessario(partida);
         assertTrue("O turno deve ser confirmado como concluido", controller.passarVez());
         assertEquals("A vez deve ser do proximo jogador", 1, partida.getIndiceJogadorAtual());
         assertEquals("Novo turno recebe o limite completo", 3, controller.getMovimentosRestantes());
+        assertTrue(partida.escolherMelhoriaInicialJochi(0));
+        assertTrue(partida.desenvolvimentoAjustarRecursoEspecial(1, "CAVALO", 8));
+        assertTrue(partida.ativarColunaJogadorAtual(2));
         assertTrue("O proximo jogador pode atravessar a parada ocupada", controller.tentarMoverPara(2));
     }
 

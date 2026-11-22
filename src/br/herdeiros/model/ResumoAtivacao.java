@@ -3,6 +3,7 @@ package br.herdeiros.model;
 /** Dados de leitura da ativacao de colunas. Nao expoe colecoes mutaveis. */
 public final class ResumoAtivacao {
     private final boolean[] colunasOcupadas;
+    private final boolean[] colunasBloqueadasPorMelhoria;
     private final int colunaAtiva;
     private final int movimentosRestantes;
     private final int punhosDaColuna;
@@ -11,11 +12,17 @@ public final class ResumoAtivacao {
     private final boolean acaoMelhoria;
     private final int[] cavalosPorColuna;
 
-    ResumoAtivacao(boolean[] colunasOcupadas, int colunaAtiva,
-                   int movimentosRestantes, int punhosDaColuna,
-                   boolean acaoKhan, boolean acaoMelhoria,
-                   int[] cavalosPorColuna, int moedasVirtuaisDaColuna) {
+    ResumoAtivacao(boolean[] colunasOcupadas,
+                   boolean[] colunasBloqueadasPorMelhoria,
+                   int colunaAtiva,
+                   int movimentosRestantes,
+                   int punhosDaColuna,
+                   boolean acaoKhan,
+                   boolean acaoMelhoria,
+                   int[] cavalosPorColuna,
+                   int moedasVirtuaisDaColuna) {
         this.colunasOcupadas = colunasOcupadas.clone();
+        this.colunasBloqueadasPorMelhoria = colunasBloqueadasPorMelhoria.clone();
         this.colunaAtiva = colunaAtiva;
         this.movimentosRestantes = movimentosRestantes;
         this.punhosDaColuna = punhosDaColuna;
@@ -26,9 +33,17 @@ public final class ResumoAtivacao {
     }
 
     public boolean estaOcupada(int coluna) {
-        if (coluna < 0 || coluna >= colunasOcupadas.length) {
-            throw new IllegalArgumentException("Coluna invalida");
-        }
+        validarColuna(coluna);
+        return colunasOcupadas[coluna];
+    }
+
+    public boolean estaBloqueadaPorMelhoria(int coluna) {
+        validarColuna(coluna);
+        return false;
+    }
+
+    public boolean foiUtilizada(int coluna) {
+        validarColuna(coluna);
         return colunasOcupadas[coluna];
     }
 
@@ -36,7 +51,8 @@ public final class ResumoAtivacao {
         if (coluna < 0 || coluna >= colunasOcupadas.length) {
             return false;
         }
-        return colunaAtiva < 0 && !colunasOcupadas[coluna];
+        return colunaAtiva < 0
+                && !colunasOcupadas[coluna];
     }
 
     public int getColunaAtiva() {
@@ -64,9 +80,13 @@ public final class ResumoAtivacao {
     }
 
     public int getCavalosDaColuna(int coluna) {
-        if (coluna < 0 || coluna >= cavalosPorColuna.length) {
+        validarColuna(coluna);
+        return cavalosPorColuna[coluna];
+    }
+
+    private void validarColuna(int coluna) {
+        if (coluna < 0 || coluna >= colunasOcupadas.length) {
             throw new IllegalArgumentException("Coluna invalida");
         }
-        return cavalosPorColuna[coluna];
     }
 }
