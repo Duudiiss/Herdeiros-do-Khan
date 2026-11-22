@@ -178,10 +178,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(construirYurt);
 
-        destinosKhan = new JComboBox<DestinoKhan>(DestinoKhan.values());
-        destinosKhan.setFont(EstiloImperial.FONTE_TEXTO);
-        destinosKhan.setBackground(EstiloImperial.COR_TEXTO_CLARO);
-        destinosKhan.setForeground(EstiloImperial.COR_MARROM_COURO);
+        destinosKhan = EstiloImperial.criarComboBoxEstilizado(DestinoKhan.values());
         ferramentas.add(destinosKhan);
 
         moverKhan = EstiloImperial.criarBotaoImperial("Mover Khan");
