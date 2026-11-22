@@ -150,30 +150,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 EstiloImperial.COR_VERMELHO_ESCURO,
                 EstiloImperial.COR_VERMELHO_HOVER,
                 EstiloImperial.COR_TEXTO_CLARO);
-        salvar = new JButton("Salvar partida");
-        salvar.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-                abrirOpcoesSalvar();
-            }
-        });
-        ferramentas.add(salvar);
-
-        passar = new JButton("Passar turno");
-
-        passar.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-                if (controlador != null) {
-                    if (controlador.passarVez()) {
-                        salvarAutomaticamente();
-                    }
-                }
-            }
-        });
 
         ferramentas.add(passar);
-
+        
         abrirCartela = EstiloImperial.criarBotaoImperial("Abrir cartela do jogador");
         abrirCartela.addActionListener(new ActionListener() {
             @Override
@@ -262,6 +241,16 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         ferramentas.add(instrucoes1);
         ferramentas.add(instrucoes2);
         ferramentas.add(instrucoes3);
+
+        salvar = EstiloImperial.criarBotaoImperial("Salvar partida");
+        salvar.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                abrirOpcoesSalvar();
+            }
+        });
+        ferramentas.add(salvar);
+
 
         lateral.add(indicadorVez, BorderLayout.CENTER);
         lateral.add(ferramentas, BorderLayout.NORTH);
