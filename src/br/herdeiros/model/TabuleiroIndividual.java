@@ -439,20 +439,46 @@ class TabuleiroIndividual implements Serializable {
         }
     }
 
+    /**
+     * Consome tributos virtuais primeiro e completa com tributos fisicos.
+     * A verificacao integral ocorre antes de qualquer alteracao, evitando gasto parcial.
+     */
+    boolean gastarTributoComVirtuais(TipoTributo tipo, int quantidade) {
+        if (tipo == null || quantidade <= 0) return false;
+        int virtuais;
+        switch (tipo) {
+            case MOEDA: virtuais = moedasVirtuaisDaColuna; break;
+            case ESPADA: virtuais = espadasVirtuaisDaColuna; break;
+            case YURT: virtuais = yurtsVirtuaisDaColuna; break;
+            default: return false;
+        }
+        int usadosVirtuais = Math.min(quantidade, virtuais);
+        int usadosReais = quantidade - usadosVirtuais;
+        if (getQuantidadeTributoDoTipo(tipo) < usadosReais) return false;
+        if (usadosReais > 0 && !removerTributosPorTipo(tipo, usadosReais)) return false;
+        switch (tipo) {
+            case MOEDA: moedasVirtuaisDaColuna -= usadosVirtuais; break;
+            case ESPADA: espadasVirtuaisDaColuna -= usadosVirtuais; break;
+            case YURT: yurtsVirtuaisDaColuna -= usadosVirtuais; break;
+            default: break;
+        }
+        return true;
+    }
+
     public int getQuantidadeMoedasVirtuais() {
-        return moedasVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("MOEDA_VIRTUAL", 0);
+        return moedasVirtuaisDaColuna;
     }
 
     public int getMoedasVirtuaisDaColuna() {
-        return moedasVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("MOEDA_VIRTUAL", 0);
+        return moedasVirtuaisDaColuna;
     }
 
     public int getQuantidadeEspadasVirtuais() {
-        return espadasVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("ESPADA_VIRTUAL", 0);
+        return espadasVirtuaisDaColuna;
     }
 
     public int getQuantidadeYurtsVirtuais() {
-        return yurtsVirtuaisDaColuna + recursosDesenvolvedor.getOrDefault("YURT_VIRTUAL", 0);
+        return yurtsVirtuaisDaColuna;
     }
 
     public int getQuantidadeCavalosVirtuais() {

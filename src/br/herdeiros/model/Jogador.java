@@ -121,13 +121,8 @@ class Jogador implements Serializable {
             return false;
         }
 
-        int espadasReaisNecessarias = custo - espadasVirtuais;
-        if (espadasReaisNecessarias < 0) {
-            espadasReaisNecessarias = 0;
-        }
-
-        if (espadasReaisNecessarias > 0) {
-            tabuleiroIndividual.removerTributosPorTipo(TipoTributo.ESPADA, espadasReaisNecessarias);
+        if (!tabuleiroIndividual.gastarTributoComVirtuais(TipoTributo.ESPADA, custo)) {
+            throw new IllegalStateException("Pagamento de espadas mudou durante o saque");
         }
         return true;
     }

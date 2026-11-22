@@ -1171,7 +1171,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         if (fichas == null || !fichas.contains(escolhido)) {
             return false;
         }
-        if (!jogador.getTabuleiroIndividual().removerTributosPorTipo(TipoTributo.MOEDA, 1)) {
+        if (!jogador.getTabuleiroIndividual().gastarTributoComVirtuais(TipoTributo.MOEDA, 1)) {
             return false;
         }
         // Ha pelo menos dois tesouros: esta compra nunca conquista a cidade.
@@ -1811,13 +1811,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         if (!jogo.getTabuleiro().construirYurt(idParada, jogador.getCor())) {
             return false;
         }
-        int yurtsReaisNecessarios = 1 - yurtsVirtuais;
-        if (yurtsReaisNecessarios < 0) {
-            yurtsReaisNecessarios = 0;
-        }
-        if (yurtsReaisNecessarios > 0) {
-            jogador.getTabuleiroIndividual().removerTributosPorTipo(TipoTributo.YURT,
-                    yurtsReaisNecessarios);
+        if (!cartela.gastarTributoComVirtuais(TipoTributo.YURT, 1)) {
+            throw new IllegalStateException("Pagamento de yurt mudou durante a construcao");
         }
         acaoRealizadaNoTurno = true;
         verificarCartasConselheiroAberto(jogador);
@@ -2498,12 +2493,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         if (moedasDisponiveis < custo) {
             return false;
         }
-        int moedasReaisNecessarias = custo - moedasVirtuais;
-        if (moedasReaisNecessarias < 0) {
-            moedasReaisNecessarias = 0;
-        }
-        if (moedasReaisNecessarias > 0
-                && !cartela.removerTributosPorTipo(TipoTributo.MOEDA, moedasReaisNecessarias)) {
+        if (!cartela.gastarTributoComVirtuais(TipoTributo.MOEDA, custo)) {
             return false;
         }
         Melhoria retirada = mercadoMelhorias.retirar(posicao);

@@ -1,10 +1,10 @@
 Trabalho INF1636 - Herdeiros do Khan
 
 Integrantes:
-Maria Eduarda de Menezes Queiroz - matrícula
+Maria Eduarda de Menezes Queiroz - 2320625
 Matheus da Silva Oliveira - 2320452
-Saulo Canto - matrícula
+Saulo Canto - 2320940
 
 Classe que contem o metodo main: Main
 
-Link para assistir ao video (Drive/Google Drive, nao YouTube): pendente
+Link para assistir ao video (Google Drive): https://drive.google.com/file/d/1dBbqmqRYTE4yD7O2lw8jnS7d2JlSPLUH/view?usp=drive_link

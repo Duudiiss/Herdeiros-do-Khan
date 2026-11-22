@@ -57,6 +57,11 @@ public class Janela extends JFrame{
 	public Janela() throws IOException{
 		super("Herdeiros de Khan");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent evento) {
+                fecharTodasAsJanelasDaPartida();
+            }
+        });
         setSize(1120, 900);
         setLocationRelativeTo(null);
         
@@ -87,7 +92,20 @@ public class Janela extends JFrame{
         });
 	}
 	
-	private void mostrarTabuleiro() {
+	private void fecharTodasAsJanelasDaPartida() {
+        if (janelaJogo != null) janelaJogo.fecharJanelasAuxiliares();
+        for (java.awt.Window outra : java.awt.Window.getWindows()) {
+            if (outra != this && outra.isDisplayable()) outra.dispose();
+        }
+    }
+
+    @Override
+    public void dispose() {
+        fecharTodasAsJanelasDaPartida();
+        super.dispose();
+    }
+
+    private void mostrarTabuleiro() {
         cardLayout.show(painelContainer, "Tabuleiro");
     }
 
