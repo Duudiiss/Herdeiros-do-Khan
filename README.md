@@ -14,6 +14,9 @@ O projeto foi modelado para aplicar os conceitos fundamentais de Orientação a 
 
 - **Linguagem:** Java
 - **Padrões de Projeto Aplicados:**
+  - **Singleton:** `GerenciadorPartida` centraliza o acesso à partida ativa.
+  - **Facade:** `InterfacePartida` oferece à interface gráfica operações e consultas sobre a partida.
+  - **Observer:** as telas interessadas registram-se na partida e são notificadas quando seu estado muda.
 
 ## 👨‍💻 Autores
 **Maria Eduarda de Menezes Queiroz**
@@ -21,3 +24,14 @@ O projeto foi modelado para aplicar os conceitos fundamentais de Orientação a 
 **Matheus da Silva Oliveira**
 
 **Saulo Canto**
+
+## 💾 Saves de partidas
+
+Os saves ficam na pasta `saves/` e usam JSON legível, com metadados versionados,
+estado da partida, mapa, jogadores, tabuleiro, baralhos e províncias. É possível
+duplicar e editar um arquivo para preparar cenários de teste; o carregamento
+valida os campos e as referências entre eles.
+
+O projeto Eclipse inclui Gson em `lib/gson-2.11.0.jar`, configurado no `.classpath`;
+a licença Apache 2.0 está em `lib/LICENSE-GSON.txt`. Saves anteriores no formato
+binário/Base64 continuam podendo ser carregados.
