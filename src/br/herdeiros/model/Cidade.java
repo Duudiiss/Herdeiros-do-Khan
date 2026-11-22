@@ -1,18 +1,28 @@
 package br.herdeiros.model;
 
-class Cidade {
+import java.io.Serializable;
+
+class Cidade implements Serializable {
+    private static final long serialVersionUID = 1L;
+
 	private NomeCidade nome;
     private Regiao regiao;
     private int quantidadeTesouros;
     private boolean conquistada;
 
     public Cidade(NomeCidade nome, Regiao regiao) {
+        this(nome, regiao, 4, false);
+    }
+
+    Cidade(NomeCidade nome, Regiao regiao, int quantidadeTesouros, boolean conquistada) {
+        if (nome == null || regiao == null || quantidadeTesouros < 0
+                || quantidadeTesouros > 4 || conquistada != (quantidadeTesouros == 0)) {
+            throw new IllegalArgumentException("Estado de cidade inválido");
+        }
         this.nome = nome;
         this.regiao = regiao;
-        
-        // Uma nova cidade revelada recebe 4 tesouros
-        this.quantidadeTesouros = 4;
-        this.conquistada = false;
+        this.quantidadeTesouros = quantidadeTesouros;
+        this.conquistada = conquistada;
     }
     
     // Um Peão tentará saquear a cidade

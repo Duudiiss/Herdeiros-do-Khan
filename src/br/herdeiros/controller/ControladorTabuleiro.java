@@ -62,18 +62,18 @@ public class ControladorTabuleiro extends MouseAdapter {
     }
 
     /** Apenas este comando encerra o turno, mesmo apos uma movimentacao. */
-    public void passarVez() {
+    public boolean passarVez() {
         if (partida.consultarMelhoriasBrancasPendentes() > 0) {
             escrever("Complete a recompensa: abra a cartela e escolha a melhoria branca antes de passar o turno.");
-            return;
+            return false;
         }
         if (partida.isPartidaEncerrada()) {
             escrever("A partida foi encerrada. O Khan atingiu o limite e as rodadas finais terminaram.");
-            return;
+            return false;
         }
         if (!partida.tentarAvancarJogador()) {
             escrever("Antes de passar o turno, mova o Khan: esta ação é obrigatória.");
-            return;
+            return false;
         }
         iniciouMovimento = false;
         modoConstrucaoYurt = false;
@@ -82,6 +82,7 @@ public class ControladorTabuleiro extends MouseAdapter {
             seletorMovimentos.setEnabled(true);
         }
         atualizarEstado();
+        return true;
     }
 
     public int getMovimentosRestantes() {
