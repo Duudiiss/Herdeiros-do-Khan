@@ -65,9 +65,20 @@ final class MercadoMelhorias implements Serializable {
         }
         if (sigla.equals("BOI") || sigla.equals("PER") || sigla.equals("CUI")
                 || sigla.equals("MOB") || sigla.equals("MOP")) {
-            return "Um tesouro virtual";
+            return "Um tesouro virtual: " + descricaoTesouroVirtual(sigla);
         }
         return "Melhoria de " + sigla;
+    }
+
+    private static String descricaoTesouroVirtual(String sigla) {
+        switch (sigla) {
+            case "BOI": return "Gado";
+            case "CUI": return "Especiarias";
+            case "MOP": return "Peles";
+            case "PER": return "Seda";
+            case "MOB": return "Ferro";
+            default: return "desconhecido";
+        }
     }
 
     private int colunaDaCor(char cor) {
@@ -104,7 +115,7 @@ final class MercadoMelhorias implements Serializable {
             descricao = "Um yurt virtual";
         } else if (sigla.equals("BOI") || sigla.equals("PER") || sigla.equals("CUI")
                 || sigla.equals("MOB") || sigla.equals("MOP")) {
-            descricao = "Um tesouro virtual";
+            descricao = "Um tesouro virtual: " + descricaoTesouroVirtual(sigla);
         } else {
             throw new IllegalArgumentException("Código de melhoria desconhecido: " + codigo);
         }

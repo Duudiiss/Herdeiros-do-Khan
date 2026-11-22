@@ -14,6 +14,7 @@ public final class IconesTabuleiro {
     public static final class IconeTributo {
         private final Provincia[] provincias;
         private final String tipo;
+        private final java.util.Set<Integer> paradasPermitidas = new java.util.LinkedHashSet<Integer>();
         private double x;
         private double y;
         private double raio;
@@ -32,6 +33,23 @@ public final class IconesTabuleiro {
 
         public String getTipo() {
             return tipo;
+        }
+
+        /** Restricao especifica do icone; vazia preserva o acesso tradicional por provincia. */
+        public java.util.Set<Integer> getParadasPermitidas() {
+            return java.util.Collections.unmodifiableSet(paradasPermitidas);
+        }
+
+        public void definirParadasPermitidas(java.util.Collection<Integer> paradas) {
+            paradasPermitidas.clear();
+            if (paradas != null) {
+                for (Integer parada : paradas) {
+                    if (parada == null || parada.intValue() < 0) {
+                        throw new IllegalArgumentException("Parada invalida");
+                    }
+                    paradasPermitidas.add(parada);
+                }
+            }
         }
 
         public double getX() {
@@ -102,7 +120,7 @@ public final class IconesTabuleiro {
                 continue;
             }
             String[] campos = texto.split(";");
-            if (campos.length != 6) {
+            if (campos.length != 6 && !(campos[0].equals("T") && campos.length == 7)) {
                 throw new IOException("Linha de icone invalida: " + texto);
             }
             try {
@@ -122,7 +140,15 @@ public final class IconesTabuleiro {
                     if (!tipo.equals("ESPADA") && !tipo.equals("MOEDA") && !tipo.equals("YURT")) {
                         throw new IOException("Tipo de tributo invalido: " + texto);
                     }
-                    mapa.tributos.add(new IconeTributo(provincias, tipo, x, y, raio));
+                    IconeTributo tributo = new IconeTributo(provincias, tipo, x, y, raio);
+                    if (campos.length == 7 && !campos[6].trim().isEmpty()) {
+                        java.util.Set<Integer> paradas = new java.util.LinkedHashSet<Integer>();
+                        for (String id : campos[6].split(",")) {
+                            paradas.add(Integer.valueOf(id.trim()));
+                        }
+                        tributo.definirParadasPermitidas(paradas);
+                    }
+                    mapa.tributos.add(tributo);
                 } else if (campos[0].equals("C")) {
                     mapa.cidades.add(new IconeCidade(campos[1].trim(), x, y, raio));
                 } else {
@@ -144,7 +170,7 @@ public final class IconesTabuleiro {
 
     public void salvar(Path arquivo) throws IOException {
         StringBuilder conteudo = new StringBuilder(
-                "# T;PROVINCIAS;TIPO;x;y;raio | C;NOME;TIPO;x;y;raio\n");
+                "# T;PROVINCIAS;TIPO;x;y;raio;PARADAS_PERMITIDAS(opcional) | C;NOME;TIPO;x;y;raio\n");
         for (IconeTributo icone : tributos) {
             StringBuilder nomes = new StringBuilder();
             for (Provincia provincia : icone.provincias) {
@@ -153,8 +179,13 @@ public final class IconesTabuleiro {
                 }
                 nomes.append(provincia.name());
             }
-            conteudo.append(String.format(java.util.Locale.ROOT, "T;%s;%s;%.7f;%.7f;%.7f%n",
-                    nomes, icone.tipo, icone.x, icone.y, icone.raio));
+            StringBuilder paradas = new StringBuilder();
+            for (Integer parada : icone.paradasPermitidas) {
+                if (paradas.length() > 0) paradas.append(',');
+                paradas.append(parada);
+            }
+            conteudo.append(String.format(java.util.Locale.ROOT, "T;%s;%s;%.7f;%.7f;%.7f;%s%n",
+                    nomes, icone.tipo, icone.x, icone.y, icone.raio, paradas));
         }
         for (IconeCidade icone : cidades) {
             conteudo.append(String.format(java.util.Locale.ROOT, "C;%s;CIDADE;%.7f;%.7f;%.7f%n",

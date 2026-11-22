@@ -27,6 +27,7 @@ public class JanelaInicial extends JPanel {
     private JButton Iniciar_btn;
     private JButton Sair_btn;
     private JCheckBox modoDesenvolvedor;
+    private JComboBox<String> ordemJogadores;
     private JLabel qtdJogadores_lbl;
     private JButton Mais_btn;
     private JButton Menos_btn;
@@ -187,11 +188,11 @@ public class JanelaInicial extends JPanel {
                 return;
             }
 
-            // A ordem dos participantes sera embaralhada ao criar a partida.
+            // Ordem manual preserva a sequencia exibida de cima para baixo.
             String[] nomesArray = nomes.toArray(new String[0]);
             Cor[] coresArray = cores.toArray(new Cor[0]);
             try {
-                janela.iniciarPartida(numeroJogadores, nomesArray, coresArray, personagens, modoDesenvolvedor.isSelected());
+                janela.iniciarPartida(numeroJogadores, nomesArray, coresArray, personagens, modoDesenvolvedor.isSelected(), ordemJogadores.getSelectedIndex() == 0);
             } catch (IOException erro) {
                 JOptionPane.showMessageDialog(JanelaInicial.this,
                     "Nao foi possivel carregar o mapa: " + erro.getMessage(),
@@ -230,33 +231,75 @@ public class JanelaInicial extends JPanel {
         modoDesenvolvedor.setFont(new Font("Serif", Font.BOLD, 18));
         modoDesenvolvedor.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        ordemJogadores = new JComboBox<String>(new String[] {
+                "Ordem aleatoria", "Ordem escolhida (de cima para baixo)"});
+        ordemJogadores.setMaximumSize(new Dimension(410, 36));
+        ordemJogadores.setAlignmentX(Component.CENTER_ALIGNMENT);
+        ordemJogadores.setFont(new Font("Serif", Font.BOLD, 19));
+        ordemJogadores.setToolTipText("Na ordem escolhida, o primeiro jogador cadastrado joga primeiro.");
+        JLabel tituloOrdem = criarLabelComBorda("Ordem dos jogadores",
+                new Font("Serif", Font.BOLD, 23), corDouradaImperial, corBordaTexto);
+        tituloOrdem.setAlignmentX(Component.CENTER_ALIGNMENT);
         // Montagem do menu principal
         painelH.add(textoJogadores);
         painelH.add(Box.createVerticalStrut(5));
         painelH.add(selecao);
-        painelH.add(Box.createVerticalStrut(15));
-        
+        painelH.add(Box.createVerticalStrut(16));
+
+        JPanel painelOrdem = new JPanel();
+        painelOrdem.setLayout(new BoxLayout(painelOrdem, BoxLayout.Y_AXIS));
+        painelOrdem.setOpaque(false);
+        painelOrdem.setAlignmentY(Component.TOP_ALIGNMENT);
+        painelOrdem.setPreferredSize(new Dimension(410, 245));
+        painelOrdem.setMinimumSize(new Dimension(410, 245));
+        painelOrdem.setMaximumSize(new Dimension(410, 245));
+        tituloOrdem.setAlignmentX(Component.CENTER_ALIGNMENT);
+        ordemJogadores.setAlignmentX(Component.CENTER_ALIGNMENT);
+        ordemJogadores.setPreferredSize(new Dimension(410, 36));
+        painelOrdem.add(tituloOrdem);
+        painelOrdem.add(Box.createVerticalStrut(6));
+        painelOrdem.add(ordemJogadores);
+        painelOrdem.add(Box.createVerticalStrut(15));
+
         painelV.add(Iniciar_btn);
         painelV.add(Box.createRigidArea(new Dimension(15, 0)));
         painelV.add(Sair_btn);
         painelCarregar.add(carregar_btn);
-        
-        painelBackground.add(Box.createVerticalStrut(10));
+
+        // Todos os comandos ficam centralizados sob o seletor de ordem,
+        // independentemente da quantidade de jogadores cadastrados.
+        painelV.setAlignmentX(Component.CENTER_ALIGNMENT);
+        painelV.setMaximumSize(new Dimension(410, 48));
+        painelCarregar.setAlignmentX(Component.CENTER_ALIGNMENT);
+        painelCarregar.setMaximumSize(new Dimension(410, 52));
+        modoDesenvolvedor.setAlignmentX(Component.CENTER_ALIGNMENT);
+        painelOrdem.add(painelV);
+        painelOrdem.add(Box.createVerticalStrut(4));
+        painelOrdem.add(painelCarregar);
+        painelOrdem.add(Box.createVerticalStrut(8));
+        painelOrdem.add(modoDesenvolvedor);
+
+        JPanel painelOrdemEJogadores = new JPanel();
+        painelOrdemEJogadores.setLayout(new BoxLayout(painelOrdemEJogadores, BoxLayout.X_AXIS));
+        painelOrdemEJogadores.setOpaque(false);
+        painelOrdemEJogadores.setAlignmentX(Component.LEFT_ALIGNMENT);
+        painelOrdemEJogadores.add(painelOrdem);
+        painelOrdemEJogadores.add(Box.createRigidArea(new Dimension(26, 0)));
+        painelOrdemEJogadores.add(painelInputsJogadores);
+
+        painelBackground.add(Box.createVerticalStrut(95));
         painelBackground.add(painelH);
-        painelBackground.add(painelV);
-        painelBackground.add(painelCarregar);
-        painelBackground.add(modoDesenvolvedor);
+        painelBackground.add(painelOrdemEJogadores);
         painelBackground.add(Box.createVerticalStrut(10));
         
         painelBackgroundH.add(painelBackground);
-        painelBackgroundH.add(painelInputsJogadores); // Adiciona a área dinâmica de nomes/cores
         
         // --- POSICIONAMENTO: CENTRO-ESQUERDO ---
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 1.0;
         gbc.anchor = GridBagConstraints.WEST; 
-        gbc.insets = new Insets(0, 75, 0, 0); 
+        gbc.insets = new Insets(30, 75, 0, 0); 
 
         add(painelBackgroundH, gbc);
     }
@@ -310,7 +353,7 @@ public class JanelaInicial extends JPanel {
 
             String[] coresDisponiveis = {"Vermelho", "Azul", "Verde", "Amarelo", "Preto", "Laranja"};
 
-            painelInputsJogadores.add(Box.createVerticalStrut(20));
+            painelInputsJogadores.add(Box.createVerticalStrut(0));
             
             for (int i = 1; i <= numeroJogadores; i++) {
                 JPanel linhaJogador = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
@@ -349,7 +392,7 @@ public class JanelaInicial extends JPanel {
             }
             painelInputsJogadores.setAlignmentY(Component.TOP_ALIGNMENT);
 
-            painelInputsJogadores.setMaximumSize(new Dimension(560, 20+(numeroJogadores*34)));
+            painelInputsJogadores.setMaximumSize(new Dimension(560, 10 + (numeroJogadores * 34)));
             painelInputsJogadores.revalidate();
             painelInputsJogadores.repaint();
         }

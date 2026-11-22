@@ -40,23 +40,21 @@ final class EscolhaConselheiroSecreto {
             JPanel painel = EstiloImperial.criarPainelFundo(new BorderLayout(4, 6));
             // O botao estilizado padrao fixa a altura ao texto; para cartas
             // usamos JButton normal com tamanho proporcional a ilustracao.
-            JButton imagem = new JButton(
-                    ImagensConselheirosSecretos.imagem(carta, 175, 270));
+            PainelImagemJava2D imagem = new PainelImagemJava2D();
+            imagem.setImagem(ImagensConselheirosSecretos.imagem(carta, 175, 270));
             imagem.setPreferredSize(new java.awt.Dimension(188, 282));
             imagem.setBorder(BorderFactory.createLineBorder(
                     EstiloImperial.COR_DOURADA_IMPERIAL, 2));
-            imagem.setContentAreaFilled(false);
+            
             imagem.setCursor(java.awt.Cursor.getPredefinedCursor(
                     java.awt.Cursor.HAND_CURSOR));
             imagem.setToolTipText(carta.getDescricao());
-            imagem.addActionListener(evento -> {
-                if (partida.escolherConselheiroSecretoJogadorAtual(indice)) {
+            imagem.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { if (partida.escolherConselheiroSecretoJogadorAtual(indice)) {
                     dialogo.dispose();
                 } else {
                     JOptionPane.showMessageDialog(dialogo,
                             "Nao foi possivel selecionar esta carta.");
-                }
-            });
+                } } });
             JLabel descricao = new JLabel("<html><center>"
                     + carta.getDescricao() + "</center></html>");
             descricao.setForeground(EstiloImperial.COR_TEXTO_CLARO);
@@ -67,7 +65,7 @@ final class EscolhaConselheiroSecreto {
         conteudo.add(cartas, BorderLayout.CENTER);
         JPanel rodape = EstiloImperial.criarPainelFundo(new FlowLayout(FlowLayout.RIGHT));
         JButton cancelar = EstiloImperial.criarBotaoImperial("Decidir depois");
-        cancelar.addActionListener(evento -> dialogo.dispose());
+        cancelar.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { dialogo.dispose(); } });
         rodape.add(cancelar);
         conteudo.add(rodape, BorderLayout.SOUTH);
         dialogo.setContentPane(conteudo);

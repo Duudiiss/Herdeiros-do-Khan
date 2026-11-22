@@ -19,7 +19,6 @@ import br.herdeiros.model.Personagem;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import br.herdeiros.model.CartaConselheiroSecreto;
-import br.herdeiros.model.ResumoCartaObjetivo;
 
 /**
  * View da cartela do jogador da vez. Recebe notificacoes de mudancas pelo Observer
@@ -32,15 +31,16 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
     private final PainelCartela painelImagem;
     private final PainelBonusJogador painelBonus;
     private final JLabel avisoBonus;
-    private final javax.swing.JCheckBox karakorumEspecial;
     private final JLabel nome;
     private final JLabel tributos;
     private final JLabel resumoAtivacao;
+    private final JLabel recursosRodada;
     private final JLabel colunasUtilizadas;
+    private final JLabel tesourosVirtuaisLabel;
     private final JButton botaoHabilidade;
     private final Runnable acaoHabilidade;
     private final JLabel conselheiroSecreto;
-    private final JLabel imagemConselheiroSecreto;
+    private final PainelImagemJava2D imagemConselheiroSecreto;
     private final JLabel detalhesConselheiroSecreto;
     private final JButton confirmarSecreta;
     private final JButton revelarSecreta;
@@ -62,16 +62,9 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         this.painelBonus = new PainelBonusJogador();
         this.avisoBonus = new JLabel(" ");
         avisoBonus.setForeground(EstiloImperial.COR_DOURADA_IMPERIAL);
-        karakorumEspecial = new javax.swing.JCheckBox("Karakorum especial (antes da partida)");
-        karakorumEspecial.setOpaque(false);
-        karakorumEspecial.setForeground(EstiloImperial.COR_TEXTO_CLARO);
-        karakorumEspecial.addActionListener(evento -> {
-            if (!this.partida.configurarKarakorumEspecial(karakorumEspecial.isSelected())) {
-                karakorumEspecial.setSelected(this.partida.isKarakorumEspecial());
-                avisoBonus.setText("Karakorum especial so pode ser alterada na preparacao.");
-            }
+        painelBonus.definirAcaoClique(new java.util.function.IntConsumer() {
+            @Override public void accept(int indice) { ativarBonus(indice); }
         });
-        painelBonus.definirAcaoClique(indice -> ativarBonus(indice));
         this.nome = EstiloImperial.criarLabelComBorda(
                 "",
                 EstiloImperial.FONTE_SUBTITULO,
@@ -80,79 +73,135 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         this.tributos = new JLabel();
         this.tributos.setFont(EstiloImperial.FONTE_TEXTO);
         this.tributos.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        this.tesourosVirtuaisLabel = new JLabel();
+        tesourosVirtuaisLabel.setFont(EstiloImperial.FONTE_TEXTO_NEGRITO);
+        tesourosVirtuaisLabel.setForeground(EstiloImperial.COR_DOURADA_IMPERIAL);
         this.colunasUtilizadas = new JLabel();
         this.colunasUtilizadas.setForeground(EstiloImperial.COR_TEXTO_CLARO);
         this.colunasUtilizadas.setFont(EstiloImperial.FONTE_TEXTO);
         this.resumoAtivacao = new JLabel();
         this.resumoAtivacao.setForeground(EstiloImperial.COR_TEXTO_CLARO);
         this.resumoAtivacao.setFont(EstiloImperial.FONTE_TEXTO);
-        painelImagem.definirAcaoDeClique(coluna ->
-                new ControladorAtivacao(JanelaCartela.this.partida, coluna).actionPerformed(null));
+        this.recursosRodada = new JLabel("Recursos da rodada: aguardando ativacao");
+        recursosRodada.setForeground(EstiloImperial.COR_DOURADA_IMPERIAL);
+        recursosRodada.setFont(EstiloImperial.FONTE_TEXTO_NEGRITO);
+        painelImagem.definirAcaoDeClique(new java.util.function.IntConsumer() {
+            @Override public void accept(int coluna) {
+                new ControladorAtivacao(JanelaCartela.this.partida, coluna).actionPerformed(null);
+            }
+        });
 
-        JPanel cabecalho = EstiloImperial.criarPainelFundo(new GridLayout(3, 1, 3, 3));
+        JPanel cabecalho = EstiloImperial.criarPainelFundo(new GridLayout(5, 1, 3, 3));
         cabecalho.add(nome);
         cabecalho.add(tributos);
+        cabecalho.add(recursosRodada);
         cabecalho.add(colunasUtilizadas);
+        cabecalho.add(tesourosVirtuaisLabel);
 
         conselheiroSecreto = new JLabel("Conselheiro secreto: nao escolhido");
         conselheiroSecreto.setFont(EstiloImperial.FONTE_TEXTO_NEGRITO);
         conselheiroSecreto.setForeground(EstiloImperial.COR_DOURADA_IMPERIAL);
-        imagemConselheiroSecreto = new JLabel("Carta oculta");
-        imagemConselheiroSecreto.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        imagemConselheiroSecreto = new PainelImagemJava2D();
+        imagemConselheiroSecreto.setPreferredSize(new Dimension(175, 245));
+        imagemConselheiroSecreto.setMinimumSize(new Dimension(175, 245));
+        imagemConselheiroSecreto.setText("Carta oculta");
+
         detalhesConselheiroSecreto = new JLabel();
         detalhesConselheiroSecreto.setForeground(EstiloImperial.COR_TEXTO_CLARO);
         detalhesConselheiroSecreto.setVerticalAlignment(JLabel.TOP);
         confirmarSecreta = EstiloImperial.criarBotaoImperial("Escolher conselheiro secreto");
-        confirmarSecreta.addActionListener(evento ->
-                EscolhaConselheiroSecreto.mostrar(JanelaCartela.this, partida));
-        revelarSecreta = EstiloImperial.criarBotaoImperial("Revelar carta");
-        revelarSecreta.addActionListener(evento -> {
-            cartaRevelada = !cartaRevelada;
-            atualizar(partida);
+        confirmarSecreta.addActionListener(new java.awt.event.ActionListener() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent evento) {
+                EscolhaConselheiroSecreto.mostrar(JanelaCartela.this, partida);
+            }
         });
-        JPanel areaSecreta = EstiloImperial.criarPainelFundo(new java.awt.BorderLayout(6, 6));
+        revelarSecreta = EstiloImperial.criarBotaoImperial("Revelar carta");
+        revelarSecreta.addActionListener(new java.awt.event.ActionListener() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent evento) {
+                cartaRevelada = !cartaRevelada;
+                atualizar(partida);
+            }
+        });
+        JPanel areaSecreta = EstiloImperial.criarPainelFundo(new java.awt.BorderLayout(8, 8));
         areaSecreta.setBorder(javax.swing.BorderFactory.createTitledBorder(
                 javax.swing.BorderFactory.createLineBorder(EstiloImperial.COR_DOURADA_IMPERIAL),
                 "Conselheiro secreto", 0, 0, EstiloImperial.FONTE_TEXTO_NEGRITO,
                 EstiloImperial.COR_DOURADA_IMPERIAL));
+        areaSecreta.setPreferredSize(new Dimension(0, 305));
         areaSecreta.add(conselheiroSecreto, java.awt.BorderLayout.NORTH);
-        JPanel escolhaSecreta = EstiloImperial.criarPainelFundo(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
-        escolhaSecreta.add(imagemConselheiroSecreto);
-        escolhaSecreta.add(confirmarSecreta);
-        escolhaSecreta.add(revelarSecreta);
-        areaSecreta.add(escolhaSecreta, java.awt.BorderLayout.WEST);
-        areaSecreta.add(detalhesConselheiroSecreto, java.awt.BorderLayout.CENTER);
 
-        JPanel rodape = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
+        JPanel botoesSecreta = EstiloImperial.criarPainelFundo(new java.awt.GridLayout(2, 1, 6, 6));
+        botoesSecreta.add(confirmarSecreta);
+        botoesSecreta.add(revelarSecreta);
+        JPanel esquerdaSecreta = EstiloImperial.criarPainelFundo(new java.awt.BorderLayout(6, 6));
+        esquerdaSecreta.add(imagemConselheiroSecreto, java.awt.BorderLayout.CENTER);
+        esquerdaSecreta.add(botoesSecreta, java.awt.BorderLayout.SOUTH);
+
+        areaSecreta.add(esquerdaSecreta, java.awt.BorderLayout.WEST);
+        javax.swing.JScrollPane rolagemDetalhes = new javax.swing.JScrollPane(detalhesConselheiroSecreto,
+                javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        rolagemDetalhes.setBorder(null);
+        rolagemDetalhes.getViewport().setOpaque(false);
+        rolagemDetalhes.setOpaque(false);
+        areaSecreta.add(rolagemDetalhes, java.awt.BorderLayout.CENTER);
+
+        JPanel areaHabilidade = EstiloImperial.criarPainelFundo(new BorderLayout(4, 4));
+        areaHabilidade.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(EstiloImperial.COR_DOURADA_IMPERIAL),
+                "Habilidade especial", 0, 0, EstiloImperial.FONTE_TEXTO_NEGRITO,
+                EstiloImperial.COR_DOURADA_IMPERIAL));
         botaoHabilidade = EstiloImperial.criarBotaoImperial("Usar habilidade do personagem");
-        botaoHabilidade.addActionListener(evento -> {
-            if (this.acaoHabilidade != null) {
-                this.acaoHabilidade.run();
+        botaoHabilidade.addActionListener(new java.awt.event.ActionListener() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent evento) {
+                if (JanelaCartela.this.acaoHabilidade != null) {
+                    JanelaCartela.this.acaoHabilidade.run();
+                }
             }
         });
-        rodape.add(areaSecreta, BorderLayout.NORTH);
-        JPanel acoesRodape = EstiloImperial.criarPainelFundo(new BorderLayout(4, 4));
-        acoesRodape.add(botaoHabilidade, BorderLayout.NORTH);
-        acoesRodape.add(resumoAtivacao, BorderLayout.SOUTH);
-        rodape.add(acoesRodape, BorderLayout.SOUTH);
+        areaHabilidade.add(botaoHabilidade, BorderLayout.CENTER);
 
         setLayout(new BorderLayout(8, 8));
         add(cabecalho, BorderLayout.NORTH);
-        JPanel tabuleiroPessoal = EstiloImperial.criarPainelFundo(new BorderLayout(4, 4));
+
+        JPanel tabuleiroPessoal = EstiloImperial.criarPainelFundo(new BorderLayout(6, 6));
         tabuleiroPessoal.add(painelImagem, BorderLayout.CENTER);
-        JPanel zonaBonus = EstiloImperial.criarPainelFundo(new BorderLayout(2, 2));
-        zonaBonus.add(new javax.swing.JScrollPane(painelBonus,
+
+        JPanel zonaBonus = EstiloImperial.criarPainelFundo(new BorderLayout(4, 4));
+        zonaBonus.setBorder(javax.swing.BorderFactory.createTitledBorder(
+                javax.swing.BorderFactory.createLineBorder(EstiloImperial.COR_DOURADA_IMPERIAL),
+                "Peças de bônus", 0, 0, EstiloImperial.FONTE_TEXTO_NEGRITO,
+                EstiloImperial.COR_DOURADA_IMPERIAL));
+        javax.swing.JScrollPane rolagemBonus = new javax.swing.JScrollPane(painelBonus,
                 javax.swing.JScrollPane.VERTICAL_SCROLLBAR_NEVER,
-                javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED), BorderLayout.CENTER);
+                javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        rolagemBonus.setBorder(null);
+        zonaBonus.add(rolagemBonus, BorderLayout.CENTER);
         JPanel estadoBonus = EstiloImperial.criarPainelFundo(new BorderLayout(4, 4));
         estadoBonus.add(avisoBonus, BorderLayout.CENTER);
-        estadoBonus.add(karakorumEspecial, BorderLayout.EAST);
         zonaBonus.add(estadoBonus, BorderLayout.SOUTH);
-        zonaBonus.setPreferredSize(new Dimension(0, 155));
-        tabuleiroPessoal.add(zonaBonus, BorderLayout.SOUTH);
-        add(tabuleiroPessoal, BorderLayout.CENTER);
-        add(rodape, BorderLayout.SOUTH);
-        setSize(new Dimension(1080, 850));
+        zonaBonus.setPreferredSize(new Dimension(0, 195));
+
+        JPanel painelInferior = EstiloImperial.criarPainelFundo(new BorderLayout());
+        painelInferior.setLayout(new javax.swing.BoxLayout(painelInferior, javax.swing.BoxLayout.Y_AXIS));
+        areaHabilidade.setAlignmentX(LEFT_ALIGNMENT);
+        areaSecreta.setAlignmentX(LEFT_ALIGNMENT);
+        zonaBonus.setAlignmentX(LEFT_ALIGNMENT);
+        painelInferior.add(areaHabilidade);
+        painelInferior.add(javax.swing.Box.createVerticalStrut(8));
+        painelInferior.add(areaSecreta);
+        painelInferior.add(javax.swing.Box.createVerticalStrut(8));
+        painelInferior.add(zonaBonus);
+        painelInferior.setPreferredSize(new Dimension(0, 560));
+
+        tabuleiroPessoal.add(painelInferior, BorderLayout.SOUTH);
+
+        javax.swing.JScrollPane rolagemCartela = new javax.swing.JScrollPane(tabuleiroPessoal,
+                javax.swing.JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        rolagemCartela.getVerticalScrollBar().setUnitIncrement(20);
+        add(rolagemCartela, BorderLayout.CENTER);
+        setSize(new Dimension(1320, 1040));
         setLocationByPlatform(true);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setBackground(new Color(48, 32, 22));
@@ -184,22 +233,22 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         revelarSecreta.setText(cartaRevelada ? "Ocultar carta" : "Revelar carta");
         if (faltaEscolher) {
             conselheiroSecreto.setText("Conselheiro secreto: escolha obrigatoria no 1o turno");
-            imagemConselheiroSecreto.setIcon(null);
+            imagemConselheiroSecreto.setImagem(null);
             imagemConselheiroSecreto.setText("Ainda nao escolhido");
             detalhesConselheiroSecreto.setText("");
         } else if (!cartaRevelada) {
             conselheiroSecreto.setText("Conselheiro secreto: oculto");
-            imagemConselheiroSecreto.setIcon(null);
+            imagemConselheiroSecreto.setImagem(null);
             imagemConselheiroSecreto.setText("Carta oculta");
             detalhesConselheiroSecreto.setText("");
         } else {
             conselheiroSecreto.setText("Conselheiro secreto: " + cartaEscolhida.name());
             imagemConselheiroSecreto.setText("");
-            imagemConselheiroSecreto.setIcon(
-                    ImagensConselheirosSecretos.imagem(cartaEscolhida, 135, 195));
+            imagemConselheiroSecreto.setImagem(
+                    ImagensConselheirosSecretos.imagem(cartaEscolhida, 165, 235));
             int progresso = partida.consultarProgressoSecretoJogadorAtual();
             int[] metas = cartaEscolhida.getMetas();
-            StringBuilder detalhes = new StringBuilder("<html><div style='width:360px'>");
+            StringBuilder detalhes = new StringBuilder("<html><div style='width:480px'>");
             detalhes.append("<b>Objetivo:</b> ").append(cartaEscolhida.getDescricao());
             detalhes.append("<br><b>Progresso atual:</b> ").append(progresso);
             for (int i = 0; i < metas.length; i++) {
@@ -227,15 +276,37 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
                 + formatarVirtual(resumo.getYurtsVirtuais()));
         java.util.Map<br.herdeiros.model.TipoTesouro, Integer> individuais =
                 partida.consultarTesourosPorTipoJogadorAtual();
+        java.util.Map<br.herdeiros.model.TipoTesouro, Integer> virtuais =
+                partida.consultarTesourosVirtuaisJogadorAtual();
         StringBuilder listaTesouros = new StringBuilder("Tesouros por tipo: ");
         for (br.herdeiros.model.TipoTesouro tipo : br.herdeiros.model.TipoTesouro.values()) {
             if (tipo != br.herdeiros.model.TipoTesouro.PELES) {
                 listaTesouros.append("  |  ");
             }
             listaTesouros.append(tipo.getDescricao()).append(": ")
-                    .append(individuais.getOrDefault(tipo, 0));
+                    .append(individuais.getOrDefault(tipo, 0))
+                    .append(formatarVirtual(virtuais.getOrDefault(tipo, 0)));
         }
         ResumoAtivacao ativacao = partida.consultarAtivacaoJogadorAtual();
+        recursosRodada.setText("RECURSOS DA RODADA  |  Cavalos (movimentos): "
+                + partida.consultarCavalosRestantesJogadorAtual()
+                + "   Punhos (coletas): " + partida.consultarPunhosRestantesJogadorAtual()
+                + "   Moedas virtuais: " + ativacao.getMoedasVirtuaisDaColuna()
+                + "   Khan: " + (ativacao.temAcaoKhan() ? "Disponível" : "Não")
+                + "   Melhoria: " + (ativacao.temAcaoMelhoria() ? "Disponível" : "Não"));
+        StringBuilder tesourosVirtuais = new StringBuilder("  |  Virtuais: ");
+        boolean primeiro = true;
+        for (br.herdeiros.model.TipoTesouro tipo : br.herdeiros.model.TipoTesouro.values()) {
+            int quantidade = virtuais.getOrDefault(tipo, 0);
+            if (quantidade > 0) {
+                if (!primeiro) tesourosVirtuais.append(", ");
+                tesourosVirtuais.append(tipo.getDescricao()).append(": ").append(quantidade);
+                primeiro = false;
+            }
+        }
+        if (primeiro) tesourosVirtuais.append("nenhum");
+        tesourosVirtuaisLabel.setText("TESOUROS VIRTUAIS DA RODADA: " +
+                tesourosVirtuais.substring("  |  Virtuais: ".length()));
         colunasUtilizadas.setText(listaTesouros.toString());
         java.util.List<br.herdeiros.model.PecaBonus> pecas = partida.consultarBonusJogadorAtual();
         java.util.List<Boolean> estadosBonus = new java.util.ArrayList<Boolean>();
@@ -243,13 +314,11 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
             estadosBonus.add(partida.isBonusUtilizadoJogadorAtual(i));
         }
         painelBonus.atualizarPecas(pecas, estadosBonus);
-        karakorumEspecial.setSelected(partida.isKarakorumEspecial());
         painelImagem.mostrarCartela(
                 partida.getIndiceCartelaJogador(resumo.getIndiceJogador()),
                 ativacao, partida.consultarVotosJogadorAtual(), resumo.getCorJogador(),
                 resumo.getMelhoriasDetalhadas());
 
-        String[] nomesColunas = {"Vermelha", "Verde", "Amarela", "Branca"};
         StringBuilder estadoColunas = new StringBuilder("Colunas indisponiveis: ");
         String[] nomesColunasEstado = {"Vermelha", "Verde", "Amarela", "Branca"};
         boolean alguma = false;
@@ -268,14 +337,9 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         colunasUtilizadas.setToolTipText(estadoColunas.toString());
         painelImagem.mostrarColunasIndisponiveis(ativacao);
         if (ativacao.getColunaAtiva() < 0) {
-            resumoAtivacao.setText("Clique na coluna desejada na cartela para ativar sua acao.");
+            resumoAtivacao.setText("");
         } else {
-            resumoAtivacao.setText("Coluna ativa: "
-                    + nomesColunas[ativacao.getColunaAtiva()]
-                    + ". Cavalos restantes: " + partida.consultarCavalosRestantesJogadorAtual()
-                    + ". Punhos restantes: " + partida.consultarPunhosRestantesJogadorAtual()
-                    + ". Moedas virtuais da coluna: " + ativacao.getMoedasVirtuaisDaColuna()
-                    + ". Acao do Khan: " + (ativacao.temAcaoKhan() ? "pendente" : "nao pendente") + ".");
+            resumoAtivacao.setText("");
         }
 
     }

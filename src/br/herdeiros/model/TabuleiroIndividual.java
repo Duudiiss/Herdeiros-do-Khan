@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
-public class TabuleiroIndividual implements Serializable {
+class TabuleiroIndividual implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final List<Tributo> tributosArmazenados;
@@ -23,6 +23,9 @@ public class TabuleiroIndividual implements Serializable {
     private int yurtsVirtuaisDaColuna;
     private int cavalosVirtuaisDaColuna;
     private int punhosVirtuaisDaColuna;
+    /** Cada tipo de tesouro virtual pertence apenas ao turno ativado. */
+    private final java.util.EnumMap<TipoTesouro, Integer> tesourosVirtuaisDaColuna =
+            new java.util.EnumMap<TipoTesouro, Integer>(TipoTesouro.class);
     /** Recursos de teste aplicados antes da ativacao, mantidos no save entre turnos. */
     private final Map<String, Integer> recursosDesenvolvedor = new HashMap<String, Integer>();
     private int linhasBrancasPendentes;
@@ -63,6 +66,12 @@ public class TabuleiroIndividual implements Serializable {
                 + contarMelhoriasValidasDaColuna("MOE", coluna);
         espadasVirtuaisDaColuna = contarMelhoriasValidasDaColuna("ESP", coluna);
         yurtsVirtuaisDaColuna = contarMelhoriasValidasDaColuna("CAS", coluna);
+        tesourosVirtuaisDaColuna.clear();
+        for (TipoTesouro tipo : TipoTesouro.values()) {
+            int quantidade = contarMelhoriasValidasDaColuna(codigoTesouroVirtual(tipo), coluna);
+            quantidade += recursosDesenvolvedor.getOrDefault("TESOURO_VIRTUAL_" + tipo.name(), 0);
+            if (quantidade > 0) tesourosVirtuaisDaColuna.put(tipo, quantidade);
+        }
         acaoKhan = acoes.temKhan();
         acaoMelhoria = acoes.temMelhoria();
         movimentosRestantes += recursosDesenvolvedor.getOrDefault("CAVALO", 0)
@@ -126,6 +135,7 @@ public class TabuleiroIndividual implements Serializable {
         yurtsVirtuaisDaColuna = 0;
         cavalosVirtuaisDaColuna = 0;
         punhosVirtuaisDaColuna = 0;
+        tesourosVirtuaisDaColuna.clear();
         acaoKhan = false;
         acaoMelhoria = false;
     }
@@ -335,7 +345,8 @@ public class TabuleiroIndividual implements Serializable {
                 || "YURT_VIRTUAL".equals(recurso)
                 || "CAVALO_VIRTUAL".equals(recurso)
                 || "PUNHO_VIRTUAL".equals(recurso)
-                || "CAVALO".equals(recurso) || "PUNHO".equals(recurso);
+                || "CAVALO".equals(recurso) || "PUNHO".equals(recurso)
+                || tipoTesouroVirtual(recurso) != null;
         if (!conhecido) {
             return false;
         }
@@ -345,6 +356,14 @@ public class TabuleiroIndividual implements Serializable {
                 return false;
             }
             recursosDesenvolvedor.put(recurso, atual + variacao);
+            return true;
+        }
+        TipoTesouro tipoVirtual = tipoTesouroVirtual(recurso);
+        if (tipoVirtual != null) {
+            int atualVirtual = tesourosVirtuaisDaColuna.getOrDefault(tipoVirtual, 0);
+            if ((long) atualVirtual + variacao < 0 || (long) atualVirtual + variacao > 9999)
+                return false;
+            tesourosVirtuaisDaColuna.put(tipoVirtual, atualVirtual + variacao);
             return true;
         }
         int atual;
@@ -374,6 +393,50 @@ public class TabuleiroIndividual implements Serializable {
             punhosDaColuna += variacao;
         }
         return true;
+    }
+
+    private static TipoTesouro tipoTesouroVirtual(String recurso) {
+        if (recurso == null || !recurso.startsWith("TESOURO_VIRTUAL_")) return null;
+        try {
+            return TipoTesouro.valueOf(recurso.substring("TESOURO_VIRTUAL_".length()));
+        } catch (IllegalArgumentException erro) {
+            return null;
+        }
+    }
+
+    /** Correspondencia com os desenhos originais das cinco melhorias. */
+    private static String codigoTesouroVirtual(TipoTesouro tipo) {
+        switch (tipo) {
+            case GADO: return "BOI";
+            case PELES: return "CUI";       // arte de especiarias
+            case PORCELANA: return "MOP";   // arte de peles
+            case SEDA: return "PER";
+            case FERRO: return "MOB";
+            default: throw new IllegalArgumentException("Tipo nao reconhecido");
+        }
+    }
+
+    Map<TipoTesouro, Integer> consultarTesourosVirtuais() {
+        java.util.EnumMap<TipoTesouro, Integer> copia =
+                new java.util.EnumMap<TipoTesouro, Integer>(TipoTesouro.class);
+        for (TipoTesouro tipo : TipoTesouro.values()) {
+            int quantidade = tesourosVirtuaisDaColuna.getOrDefault(tipo, 0);
+            copia.put(tipo, quantidade);
+        }
+        return java.util.Collections.unmodifiableMap(copia);
+    }
+
+    /** Consome apenas recursos virtuais realmente usados, nunca cria tesouro fisico. */
+    void consumirTesourosVirtuais(Map<TipoTesouro, Integer> consumidos) {
+        for (Map.Entry<TipoTesouro, Integer> entrada : consumidos.entrySet()) {
+            int atual = tesourosVirtuaisDaColuna.getOrDefault(entrada.getKey(), 0);
+            if (entrada.getValue() < 0 || atual < entrada.getValue())
+                throw new IllegalStateException("Tesouro virtual indisponivel");
+        }
+        for (Map.Entry<TipoTesouro, Integer> entrada : consumidos.entrySet()) {
+            tesourosVirtuaisDaColuna.put(entrada.getKey(),
+                    tesourosVirtuaisDaColuna.getOrDefault(entrada.getKey(), 0) - entrada.getValue());
+        }
     }
 
     public int getQuantidadeMoedasVirtuais() {

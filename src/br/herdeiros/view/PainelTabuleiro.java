@@ -128,8 +128,8 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
         alturaImagem = (int) Math.round(imagem.getHeight() * escala);
         xImagem = (getWidth() - larguraImagem) / 2;
         yImagem = (getHeight() - alturaImagem) / 2;
-        g.drawImage(imagem, xImagem, yImagem, larguraImagem, alturaImagem, null);
-        desenharYurts(g);
+        // O fundo ja foi desenhado por drawMapa(). Os peoes ficam por cima
+        // das fichas de bonus e nao podem redesenhar o tabuleiro aqui.
         for (int i = 0; i < partida.getQuantidadeJogadores(); i++) {
             int principal = partida.consultarParadaPeaoPrincipal(i);
             int segundo = partida.consultarParadaSegundoPeaoAltani(i);
@@ -163,10 +163,13 @@ public final class PainelTabuleiro extends JPanel implements ObservadorPartida {
         super.paintComponent(graficos);
         Graphics2D g = (Graphics2D) graficos.create();
         drawMapa(graficos);
-        drawPeoes(graficos);
         desenharContadores(g);
         desenharMercadoMelhorias(g);
         desenharPecasBonus(g);
+        // Os marcadores fisicos ficam acima das cartas. Isso inclui o yurt
+        // inicial de Tolui em Karakorum (parada 0), antes encoberto pelo bonus.
+        desenharYurts(g);
+        drawPeoes(graficos);
         desenharMarcadoresPontuacao(g);
         desenharDestinosDisponiveisKhan(g);
         DestinoKhan destinoKhan = partida.consultarDestinoKhan();

@@ -184,9 +184,11 @@ public final class JanelaConselheiros extends JFrame implements ObservadorPartid
     private java.util.List<TipoTesouro> escolherTresTesouros() {
         java.util.Map<TipoTesouro, Integer> estoque =
                 partida.consultarTesourosPorTipoJogadorAtual();
+        java.util.Map<TipoTesouro, Integer> virtuais =
+                partida.consultarTesourosVirtuaisJogadorAtual();
         int total = 0;
         for (TipoTesouro tipo : TipoTesouro.values()) {
-            total += estoque.getOrDefault(tipo, 0);
+            total += estoque.getOrDefault(tipo, 0) + virtuais.getOrDefault(tipo, 0);
         }
         if (total < 3) {
             JOptionPane.showMessageDialog(this,
@@ -202,8 +204,11 @@ public final class JanelaConselheiros extends JFrame implements ObservadorPartid
         java.util.Map<TipoTesouro, JSpinner> controles =
                 new java.util.EnumMap<TipoTesouro, JSpinner>(TipoTesouro.class);
         for (TipoTesouro tipo : TipoTesouro.values()) {
-            int disponiveis = estoque.getOrDefault(tipo, 0);
-            campos.add(new JLabel(tipo.getDescricao() + " (possui " + disponiveis + "):"));
+            int fisicos = estoque.getOrDefault(tipo, 0);
+            int virtuaisAtivos = virtuais.getOrDefault(tipo, 0);
+            int disponiveis = fisicos + virtuaisAtivos;
+            campos.add(new JLabel(tipo.getDescricao() + " (" + fisicos
+                    + " reais + " + virtuaisAtivos + " virtuais):"));
             JSpinner contador = new JSpinner(new SpinnerNumberModel(0, 0, disponiveis, 1));
             controles.put(tipo, contador);
             campos.add(contador);
@@ -212,13 +217,11 @@ public final class JanelaConselheiros extends JFrame implements ObservadorPartid
         JLabel validacao = new JLabel("Total selecionado: 0 de 3");
         formulario.add(validacao, BorderLayout.SOUTH);
         for (JSpinner contador : controles.values()) {
-            contador.addChangeListener(evento -> {
-                int selecionados = 0;
+            contador.addChangeListener(new javax.swing.event.ChangeListener() { @Override public void stateChanged(javax.swing.event.ChangeEvent evento) { int selecionados = 0;
                 for (JSpinner c : controles.values()) {
                     selecionados += (Integer) c.getValue();
                 }
-                validacao.setText("Total selecionado: " + selecionados + " de 3");
-            });
+                validacao.setText("Total selecionado: " + selecionados + " de 3"); } });
         }
 
         while (true) {
@@ -252,19 +255,16 @@ public final class JanelaConselheiros extends JFrame implements ObservadorPartid
         painelObjetivos.removeAll();
         for (CartaConselheiroAberto carta : partida.consultarCartasAbertasAtivas()) {
             JPanel coluna = EstiloImperial.criarPainelFundo(new BorderLayout(2, 4));
-            JLabel figura = new JLabel();
-            figura.setHorizontalAlignment(JLabel.CENTER);
+            PainelImagemJava2D figura = new PainelImagemJava2D();
+            figura.setPreferredSize(new Dimension(165, 215));
+            
             figura.setToolTipText(carta.getDescricao());
             java.io.File arquivo = new java.io.File("assets/conselheiros_abertos/"
                     + carta.getArquivoImagem());
             try {
                 java.awt.image.BufferedImage imagem = javax.imageio.ImageIO.read(arquivo);
                 if (imagem != null) {
-                    double escala = Math.min(160.0 / imagem.getWidth(), 210.0 / imagem.getHeight());
-                    int largura = Math.max(1, (int) Math.round(escala * imagem.getWidth()));
-                    int altura = Math.max(1, (int) Math.round(escala * imagem.getHeight()));
-                    figura.setIcon(new javax.swing.ImageIcon(imagem.getScaledInstance(
-                            largura, altura, java.awt.Image.SCALE_SMOOTH)));
+                    figura.setImagem(imagem);
                 }
             } catch (java.io.IOException erro) {
                 figura.setText("Imagem indisponivel");
@@ -291,7 +291,11 @@ public final class JanelaConselheiros extends JFrame implements ObservadorPartid
         modeloConselheiros.setRowCount(0);
         idsConselheiros.clear();
         java.util.List<ResumoConselheiro> ordenados = new java.util.ArrayList<>(lista);
-        ordenados.sort((a, b) -> Boolean.compare(b.isJogadorPresente(), a.isJogadorPresente()));
+        ordenados.sort(new java.util.Comparator<ResumoConselheiro>() {
+            @Override public int compare(ResumoConselheiro a, ResumoConselheiro b) {
+                return Boolean.compare(b.isJogadorPresente(), a.isJogadorPresente());
+            }
+        });
         for (ResumoConselheiro c : ordenados) {
             idsConselheiros.add(c.getIdParada());
             modeloConselheiros.addRow(new Object[] {

@@ -1282,6 +1282,9 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         boolean ativada = jogador.getTabuleiroIndividual().ativarColuna(
                 coluna, jogador.getPersonagem());
         if (ativada) {
+            // Objetivos que contam tesouros podem ser satisfeitos pela melhoria virtual
+            // assim que a coluna passa a oferecer o recurso neste turno.
+            verificarCartasConselheiroAberto(jogador);
             notificarObservadores();
         }
         return ativada;
@@ -1520,6 +1523,31 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return Collections.unmodifiableMap(quantidades);
     }
 
+    /** Tesouros virtuais por tipo, validos somente na ativacao atual. */
+    public Map<TipoTesouro, Integer> consultarTesourosVirtuaisJogadorAtual() {
+        return participantes.get(indiceAtual).getTabuleiroIndividual().consultarTesourosVirtuais();
+    }
+
+    private boolean podePagarTesouros(LocalConselheiro local, List<TipoTesouro> fisicos,
+                                      Map<TipoTesouro, Integer> virtuais) {
+        TipoTesouro[] exigidos = local.getTesourosExigidos();
+        if (exigidos == null) {
+            int total = fisicos.size();
+            for (int valor : virtuais.values()) total += valor;
+            return total >= 3;
+        }
+        List<TipoTesouro> restantes = new ArrayList<TipoTesouro>(fisicos);
+        Map<TipoTesouro, Integer> saldo = new EnumMap<TipoTesouro, Integer>(virtuais);
+        for (TipoTesouro tipo : exigidos) {
+            if (!restantes.remove(tipo)) {
+                int quantidade = saldo.getOrDefault(tipo, 0);
+                if (quantidade <= 0) return false;
+                saldo.put(tipo, quantidade - 1);
+            }
+        }
+        return true;
+    }
+
     public int consultarQuantidadeTesourosJogadorAtual() {
         return tesourosPorJogador.getOrDefault(participantes.get(indiceAtual),
                 Collections.emptyList()).size();
@@ -1565,6 +1593,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         } else {
             cartela.removerTributosPorTipo(tipo, -variacao);
         }
+        verificarCartasConselheiroAberto(participantes.get(indiceJogador));
         notificarObservadores();
         return true;
     }
@@ -1630,6 +1659,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         } else {
             return false;
         }
+        verificarCartasConselheiroAberto(jogador);
         notificarObservadores();
         return true;
     }
@@ -2100,12 +2130,29 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             return false;
         }
         boolean acesso = false;
-        for (Provincia provincia : provincias) {
-            ReservaProvincia reserva = reservas.get(provincia);
-            if (reserva != null && reserva.acessivelPelas(paradasVisitadasTurno)) {
-                acesso = true;
-                break;
+        // Paradas cadastradas no editor prevalecem sobre o acesso por provincia.
+        // Sem configuracao especifica, mantem-se integralmente a regra antiga.
+        try {
+            IconesTabuleiro.IconeTributo configurado = IconesTabuleiro.carregar(
+                    Paths.get("assets", "icones_tabuleiro.csv")).getTributos().get(indice);
+            if (!configurado.getParadasPermitidas().isEmpty()) {
+                for (Integer parada : configurado.getParadasPermitidas()) {
+                    if (paradasVisitadasTurno.contains(parada)) {
+                        acesso = true;
+                        break;
+                    }
+                }
+            } else {
+                for (Provincia provincia : provincias) {
+                    ReservaProvincia reserva = reservas.get(provincia);
+                    if (reserva != null && reserva.acessivelPelas(paradasVisitadasTurno)) {
+                        acesso = true;
+                        break;
+                    }
+                }
             }
+        } catch (IOException | IndexOutOfBoundsException erro) {
+            return false;
         }
         if (!acesso) {
             return false;
@@ -2633,7 +2680,9 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         }
 
         List<TipoTesouro> mao = tesourosPorJogador.get(atual);
-        if (mao == null || !alvo.podeEntregar(mao, null, false)) {
+        TabuleiroIndividual cartela = atual.getTabuleiroIndividual();
+        Map<TipoTesouro, Integer> virtuais = cartela.consultarTesourosVirtuais();
+        if (mao == null || !podePagarTesouros(alvo, mao, virtuais)) {
             return false;
         }
         if (alvo.getTesourosExigidos() == null) {
@@ -2643,17 +2692,31 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
                 return false;
             }
             List<TipoTesouro> restante = new ArrayList<TipoTesouro>(mao);
+            Map<TipoTesouro, Integer> utilizados = new EnumMap<TipoTesouro, Integer>(TipoTesouro.class);
             for (TipoTesouro tipo : escolha) {
                 if (!restante.remove(tipo)) {
-                    return false;
+                    int usado = utilizados.getOrDefault(tipo, 0);
+                    if (usado >= virtuais.getOrDefault(tipo, 0)) return false;
+                    utilizados.put(tipo, usado + 1);
                 }
             }
             for (TipoTesouro tipo : escolha) {
-                mao.remove(tipo);
-                descarteTesouros.add(tipo);
+                if (mao.remove(tipo)) descarteTesouros.add(tipo);
             }
+            cartela.consumirTesourosVirtuais(utilizados);
         } else {
-            alvo.consumirTesouros(mao, null, false, descarteTesouros);
+            List<TipoTesouro> restantes = new ArrayList<TipoTesouro>(mao);
+            Map<TipoTesouro, Integer> utilizados = new EnumMap<TipoTesouro, Integer>(TipoTesouro.class);
+            for (TipoTesouro tipo : alvo.getTesourosExigidos()) {
+                if (!restantes.remove(tipo)) {
+                    utilizados.put(tipo, utilizados.getOrDefault(tipo, 0) + 1);
+                }
+            }
+            // Todos os requisitos ja foram validados antes de alterar inventarios.
+            for (TipoTesouro tipo : alvo.getTesourosExigidos()) {
+                if (mao.remove(tipo)) descarteTesouros.add(tipo);
+            }
+            cartela.consumirTesourosVirtuais(utilizados);
         }
         acaoRealizadaNoTurno = true;
         concederVotosAoJogador(atual, alvo.getVotosConcedidos());
@@ -2761,7 +2824,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         List<ResumoConselheiro> resultado = new ArrayList<ResumoConselheiro>();
         for (LocalConselheiro local : locaisConselheiros) {
             boolean presente = (idParadaAtual == local.getIdParada());
-            boolean podeEntregar = presente && local.podeEntregar(mao, null, false);
+            boolean podeEntregar = presente && podePagarTesouros(local, mao,
+                    atual.getTabuleiroIndividual().consultarTesourosVirtuais());
             String descBonus = local.temPecaBonus()
                     ? local.getPecaBonus().getDescricao()
                     : "Ja recolhido";
@@ -2893,6 +2957,14 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
     }
 
     /** O reconhecimento ocorre logo apos cada acao que altera o requisito. */
+    private void verificarCartasConselheiroAbertoParaTodos() {
+        for (Jogador participante : participantes) {
+            if (!cartasAbertasAtivas.isEmpty()) {
+                verificarCartasConselheiroAberto(participante);
+            }
+        }
+    }
+
     private void verificarCartasConselheiroAberto(Jogador jogador) {
         if (partidaEncerrada || jogador == null) {
             return;
@@ -2924,9 +2996,7 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         }
         // Uma carta nova pode ter seu requisito ja satisfeito: premiar sem clique adicional.
         if (!concluidas.isEmpty()) {
-            for (Jogador participante : participantes) {
-                if (!cartasAbertasAtivas.isEmpty()) verificarCartasConselheiroAberto(participante);
-            }
+            verificarCartasConselheiroAbertoParaTodos();
         }
     }
 
@@ -2937,6 +3007,8 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         }
         List<ResumoMelhoria> melhorias = consultarCartela(indice).getMelhoriasDetalhadas();
         List<TipoTesouro> tesouros = tesourosPorJogador.get(jogador);
+        Map<TipoTesouro, Integer> virtuaisAtivos =
+                jogador.getTabuleiroIndividual().consultarTesourosVirtuais();
         int[] colunas = new int[4];
         for (ResumoMelhoria melhoria : melhorias) {
             if (melhoria.getColuna() >= 0 && melhoria.getColuna() < 4) {
@@ -2953,9 +3025,16 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
             case DEZ_YURTS:
                 return tabuleiro.contarTotalYurtsNoMapa(cor) >= 10;
             case QUATRO_TESOUROS:
-                return tesouros != null && tesouros.size() >= 4;
+                int total = tesouros == null ? 0 : tesouros.size();
+                for (int quantidade : virtuaisAtivos.values()) total += quantidade;
+                return total >= 4;
             case CINCO_TESOUROS_DIFERENTES:
-                return tesouros != null && new HashSet<TipoTesouro>(tesouros).size() == 5;
+                Set<TipoTesouro> tipos = new HashSet<TipoTesouro>();
+                if (tesouros != null) tipos.addAll(tesouros);
+                for (Map.Entry<TipoTesouro, Integer> entrada : virtuaisAtivos.entrySet()) {
+                    if (entrada.getValue() > 0) tipos.add(entrada.getKey());
+                }
+                return tipos.size() >= 5;
             case UM_YURT_CADA_REGIAO:
                 return yurtsNormaisNasTresRegioes(cor, 1);
             case DOIS_YURTS_CADA_REGIAO:

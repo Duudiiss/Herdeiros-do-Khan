@@ -267,13 +267,19 @@ class Tabuleiro implements Serializable {
         }
         int limite = Math.min(cavalos, paradas.size());
         java.util.PriorityQueue<EstadoCaminho> fila = new java.util.PriorityQueue<>(
-                java.util.Comparator.comparingInt(estado -> estado.gasto));
+                new java.util.Comparator<EstadoCaminho>() {
+                    @Override public int compare(EstadoCaminho a, EstadoCaminho b) {
+                        return Integer.compare(a.gasto, b.gasto);
+                    }
+                });
         Map<Integer, Set<Integer>> visitados = new HashMap<>();
         fila.add(new EstadoCaminho(origem, 0, null));
         while (!fila.isEmpty()) {
             EstadoCaminho atual = fila.remove();
             Set<Integer> gastosNaParada = visitados.computeIfAbsent(
-                    atual.parada.getId(), ignorada -> new HashSet<Integer>());
+                    atual.parada.getId(), new java.util.function.Function<Integer, Set<Integer>>() {
+                        @Override public Set<Integer> apply(Integer ignorada) { return new HashSet<Integer>(); }
+                    });
             if (!gastosNaParada.add(atual.gasto)) {
                 continue;
             }

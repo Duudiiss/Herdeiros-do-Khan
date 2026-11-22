@@ -9,13 +9,11 @@ public final class EditorTabuleiroUnificadoMain {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
+        SwingUtilities.invokeLater(new java.lang.Runnable() { @Override public void run() { try {
                 new JanelaEditorTabuleiroUnificado().setVisible(true);
             } catch (Exception erro) {
                 JOptionPane.showMessageDialog(null, erro.getMessage(), "Erro no editor",
                         JOptionPane.ERROR_MESSAGE);
-            }
-        });
+            } } });
     }
 }

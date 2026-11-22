@@ -98,7 +98,14 @@ public class Janela extends JFrame{
 
     public void iniciarPartida(int quantidadeJogadores, String[] nomes, Cor[] cores,
                               Personagem[] personagens, boolean desenvolvedor) throws IOException {
-        exibirPartida(new JanelaJogo(quantidadeJogadores, nomes, cores, personagens, desenvolvedor, this));
+        iniciarPartida(quantidadeJogadores, nomes, cores, personagens, desenvolvedor, true);
+    }
+
+    public void iniciarPartida(int quantidadeJogadores, String[] nomes, Cor[] cores,
+                              Personagem[] personagens, boolean desenvolvedor,
+                              boolean ordemAleatoria) throws IOException {
+        exibirPartida(new JanelaJogo(quantidadeJogadores, nomes, cores,
+                personagens, desenvolvedor, this, ordemAleatoria));
     }
 
     public void carregarPartida(InterfacePartida partida) throws IOException {

@@ -50,13 +50,16 @@ public final class GerenciadorSave {
 
         List<String> nomes = new ArrayList<>();
         try (Stream<Path> arquivos = Files.list(pasta)) {
-            arquivos
-                    .filter(Files::isRegularFile)
-                    .filter(arquivo -> arquivo.getFileName().toString().toLowerCase().endsWith(".txt"))
-                    .sorted((um, outro) -> um.getFileName().toString()
-                            .compareToIgnoreCase(outro.getFileName().toString()))
-                    .forEach(arquivo -> nomes.add(arquivo.getFileName().toString()));
+            java.util.Iterator<Path> iterador = arquivos.iterator();
+            while (iterador.hasNext()) {
+                Path arquivo = iterador.next();
+                if (Files.isRegularFile(arquivo)
+                        && arquivo.getFileName().toString().toLowerCase().endsWith(".txt")) {
+                    nomes.add(arquivo.getFileName().toString());
+                }
+            }
         }
+        java.util.Collections.sort(nomes, String.CASE_INSENSITIVE_ORDER);
         return nomes;
     }
 

@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Estrutura JSON versionada usada para persistir uma partida sem serializar objetos Java. */
-public final class SavePartidaData {
+final class SavePartidaData {
     public Meta meta = new Meta();
     public EstadoPartida partida = new EstadoPartida();
     public Mapa mapa = new Mapa();

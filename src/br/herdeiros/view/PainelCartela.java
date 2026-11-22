@@ -65,7 +65,7 @@ public final class PainelCartela extends JPanel {
             areasCartelas[i] = new LayoutAreas(LayoutAreas.caminhoCartela(i + 1));
         }
         
-        setPreferredSize(new Dimension(900, 520));
+        setPreferredSize(new Dimension(1180, 730));
         setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
         addMouseListener(new MouseAdapter() {
             @Override

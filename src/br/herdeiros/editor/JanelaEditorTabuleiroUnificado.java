@@ -87,19 +87,26 @@ public final class JanelaEditorTabuleiroUnificado extends JFrame {
         topo.add(conectar);
         topo.add(desconectar);
         JButton recursosDoKhan = new JButton("Associar recursos ao Khan");
-        recursosDoKhan.addActionListener(e -> associarRecursosKhan());
+        recursosDoKhan.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { associarRecursosKhan(); } });
         topo.add(recursosDoKhan);
-        conectar.addActionListener(e -> editarConexao(true));
-        desconectar.addActionListener(e -> editarConexao(false));
+        JButton acessoTributo = new JButton("Paradas que podem coletar tributo");
+        acessoTributo.addActionListener(new java.awt.event.ActionListener() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent evento) {
+                editarParadasTributo();
+            }
+        });
+        topo.add(acessoTributo);
+        conectar.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { editarConexao(true); } });
+        desconectar.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { editarConexao(false); } });
         add(topo, BorderLayout.NORTH);
         add(tela, BorderLayout.CENTER);
         add(mensagem, BorderLayout.SOUTH);
-        imagemSelecionada.addActionListener(e -> trocarImagem());
-        ferramenta.addActionListener(e -> atualizarLista());
-        elemento.addActionListener(e -> atualizarDimensoes());
-        largura.addChangeListener(e -> dimensoesAlteradas());
-        altura.addChangeListener(e -> dimensoesAlteradas());
-        salvar.addActionListener(e -> salvar());
+        imagemSelecionada.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { trocarImagem(); } });
+        ferramenta.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { atualizarLista(); } });
+        elemento.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { atualizarDimensoes(); } });
+        largura.addChangeListener(new javax.swing.event.ChangeListener() { @Override public void stateChanged(javax.swing.event.ChangeEvent e) { dimensoesAlteradas(); } });
+        altura.addChangeListener(new javax.swing.event.ChangeListener() { @Override public void stateChanged(javax.swing.event.ChangeEvent e) { dimensoesAlteradas(); } });
+        salvar.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { salvar(); } });
         trocarImagem();
     }
 
@@ -420,6 +427,40 @@ public final class JanelaEditorTabuleiroUnificado extends JFrame {
                     + ". Salve todas as edicoes.");
             tela.repaint();
         }
+    }
+
+    /** Configura individualmente quais paradas permitem coletar a ficha selecionada. */
+    private void editarParadasTributo() {
+        IconesTabuleiro.IconeTributo tributo = tributoSelecionado();
+        if (tributo == null || mapa == null || ferramenta.getSelectedIndex() != 3) {
+            JOptionPane.showMessageDialog(this,
+                    "Selecione Tabuleiro > Icones de recursos / cidades > tributo.N.");
+            return;
+        }
+        JPanel lista = new JPanel(new java.awt.GridLayout(0, 4, 5, 5));
+        java.util.List<Integer> ids = new ArrayList<Integer>(mapa.getPontos().keySet());
+        java.util.Collections.sort(ids);
+        java.util.List<javax.swing.JCheckBox> caixas = new ArrayList<javax.swing.JCheckBox>();
+        for (Integer id : ids) {
+            javax.swing.JCheckBox caixa = new javax.swing.JCheckBox("Parada " + id,
+                    tributo.getParadasPermitidas().contains(id));
+            lista.add(caixa);
+            caixas.add(caixa);
+        }
+        javax.swing.JScrollPane rolagem = new javax.swing.JScrollPane(lista);
+        rolagem.setPreferredSize(new Dimension(620, 330));
+        int resultado = JOptionPane.showConfirmDialog(this, rolagem,
+                "Paradas permitidas para " + chave()
+                + " (nenhuma marcada = acesso padrao da provincia)",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (resultado != JOptionPane.OK_OPTION) return;
+        java.util.Set<Integer> selecionadas = new java.util.LinkedHashSet<Integer>();
+        for (int i = 0; i < caixas.size(); i++) {
+            if (caixas.get(i).isSelected()) selecionadas.add(ids.get(i));
+        }
+        tributo.definirParadasPermitidas(selecionadas);
+        alterado = true;
+        mensagem.setText("Paradas de coleta de " + chave() + " atualizadas. Salve as edicoes.");
     }
 
     private boolean salvar() {

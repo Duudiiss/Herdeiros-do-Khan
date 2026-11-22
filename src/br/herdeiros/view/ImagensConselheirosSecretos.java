@@ -9,14 +9,14 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
+
 
 /** Imagens oficiais fornecidas pelo usuario e indicacao explicita das ausentes. */
 final class ImagensConselheirosSecretos {
     private ImagensConselheirosSecretos() {
     }
 
-    static ImageIcon imagem(CartaConselheiroSecreto carta, int largura, int altura) {
+    static BufferedImage imagem(CartaConselheiroSecreto carta, int largura, int altura) {
         if (carta == null) {
             return null;
         }
@@ -25,8 +25,7 @@ final class ImagensConselheirosSecretos {
             if (arquivo.isFile()) {
                 BufferedImage imagem = ImageIO.read(arquivo);
                 if (imagem != null) {
-                    return new ImageIcon(imagem.getScaledInstance(
-                            largura, altura, java.awt.Image.SCALE_SMOOTH));
+                    return imagem;
                 }
             }
         } catch (IOException erro) {
@@ -48,6 +47,6 @@ final class ImagensConselheirosSecretos {
         g.setFont(new Font("SansSerif", Font.PLAIN, 10));
         g.drawString("Imagem nao fornecida", 12, altura / 2 + 16);
         g.dispose();
-        return new ImageIcon(ausente);
+        return ausente;
     }
 }

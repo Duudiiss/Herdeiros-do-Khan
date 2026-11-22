@@ -1,6 +1,6 @@
 package br.herdeiros.model;
 
-public class Conselheiro {
+class Conselheiro {
     private String nome;
     private Integer votosConcedidos;
     private Integer tesourosEntregues;

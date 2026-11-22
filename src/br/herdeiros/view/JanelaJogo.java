@@ -58,7 +58,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private String ultimaEscolhaAltani; 
     private boolean escolhaInicialJochiAberta;
     private JanelaMelhorias janelaMelhorias;
-    private JLabel posicaoKhan;
+
     private JanelaCartela janelaCartela;
     private JanelaCidades janelaCidades;
     
@@ -92,6 +92,17 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         removeAll();
         configurarInterface();
         iniciarPartida(quantidadeJogadores, nomes, cores, personagens);
+    }
+
+    public JanelaJogo(int quantidadeJogadores, String[] nomes, Cor[] cores,
+                      Personagem[] personagens, boolean desenvolvedor,
+                      Janela janela, boolean ordemAleatoria) throws IOException {
+        this(quantidadeJogadores);
+        this.modoDesenvolvedor = desenvolvedor;
+        this.janelaPrincipal = janela;
+        removeAll();
+        configurarInterface();
+        iniciarPartida(quantidadeJogadores, nomes, cores, personagens, ordemAleatoria);
     }
 
     public JanelaJogo(InterfacePartida partidaSalva, boolean desenvolvedor, Janela janela)
@@ -141,7 +152,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         estado.setFont(EstiloImperial.FONTE_TEXTO);
         estado.setForeground(EstiloImperial.COR_TEXTO_CLARO);
         estado.setBackground(new Color(42, 26, 16));
-        estado.setRows(4);
+        estado.setRows(5);
+        estado.setBorder(BorderFactory.createTitledBorder("Ultimo aviso"));
 
         JPanel lateral = new JPanel(new BorderLayout(8, 8)) {
             private static final long serialVersionUID = 1L;
@@ -172,7 +184,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         if (modoDesenvolvedor) {
             JButton desenvolvedor = EstiloImperial.criarBotaoImperial("Ferramentas de desenvolvedor");
-            desenvolvedor.addActionListener(evento -> abrirFerramentasDesenvolvedor());
+            desenvolvedor.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { abrirFerramentasDesenvolvedor(); } });
             ferramentas.add(desenvolvedor);
         }
 
@@ -235,32 +247,13 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(abrirConselheiros);
 
-        JLabel orientacaoKhan = new JLabel(
-                "<html>Khan: clique em uma área destacada<br>no tabuleiro quando a ação estiver ativa.</html>");
-        orientacaoKhan.setFont(EstiloImperial.FONTE_TEXTO);
-        orientacaoKhan.setForeground(EstiloImperial.COR_TEXTO_CLARO);
-        ferramentas.add(orientacaoKhan);
-
-        posicaoKhan = EstiloImperial.criarLabelComBorda(
-                "Khan: fora do tabuleiro",
-                EstiloImperial.FONTE_TEXTO,
-                EstiloImperial.COR_TEXTO_CLARO,
-                EstiloImperial.COR_BORDA_TEXTO);
-        ferramentas.add(posicaoKhan);
-
-        JLabel instrucoes1 = new JLabel("<html>• Ative uma coluna na cartela para<br> mover.</html>");
-        instrucoes1.setFont(EstiloImperial.FONTE_TEXTO);
-        instrucoes1.setForeground(EstiloImperial.COR_TEXTO_CLARO);
-        JLabel instrucoes2 = new JLabel("<html>• Clique nos ícones com contadores<br> para coletar tributos (1 punho).</html>");
-        instrucoes2.setFont(EstiloImperial.FONTE_TEXTO);
-        instrucoes2.setForeground(EstiloImperial.COR_TEXTO_CLARO);
-        JLabel instrucoes3 = new JLabel("<html>• Clique numa cidade aberta para<br> saquear com espadas.</html>");
-        instrucoes3.setFont(EstiloImperial.FONTE_TEXTO);
-        instrucoes3.setForeground(EstiloImperial.COR_TEXTO_CLARO);
-        
-        ferramentas.add(instrucoes1);
-        ferramentas.add(instrucoes2);
-        ferramentas.add(instrucoes3);
+        JButton comoJogar = EstiloImperial.criarBotaoImperial("Como Jogar");
+        comoJogar.addActionListener(new ActionListener() {
+            @Override public void actionPerformed(ActionEvent evento) {
+                mostrarComoJogar();
+            }
+        });
+        ferramentas.add(comoJogar);
 
         salvar = EstiloImperial.criarBotaoImperial("Salvar partida");
         salvar.addActionListener(new ActionListener() {
@@ -278,6 +271,40 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         lateral.add(estado, BorderLayout.SOUTH);
 
         add(lateral, BorderLayout.EAST);
+    }
+
+    private void mostrarComoJogar() {
+        JTextArea guia = new JTextArea(
+            "HERDEIROS DE KHAN - COMO JOGAR\n\n"
+            + "OBJETIVO: acumule votos no conselho Kurultai.\n\n"
+            + "1. Abra a cartela individual e clique em uma coluna livre para ativa-la.\n"
+            + "2. Os cavalos permitem mover o peao pelas paradas conectadas.\n"
+            + "3. Os punhos permitem coletar tributos nas provincias elegiveis.\n"
+            + "4. Use espadas para conquistar tesouros nas cidades adjacentes.\n"
+            + "5. Gaste tributos de yurt para construir yurts nas paradas permitidas.\n"
+            + "6. Gaste moedas para adquirir melhorias (beneficios a partir do proximo turno).\n"
+            + "7. Entregue tesouros em paradas de conselheiros para ganhar votos; "
+            + "a primeira entrega tambem concede a peca bonus disponivel.\n"
+            + "8. As pecas bonus recebidas aparecem na cartela; clique para usa-las uma vez.\n"
+            + "9. Objetivos de conselheiro aberto sao conferidos automaticamente.\n"
+            + "10. Se a coluna ativada possuir Khan, posicione-o no tabuleiro.\n"
+            + "11. Use Passar turno quando concluir as acoes permitidas.\n\n"
+            + "CARTAS SECRETAS: escolha uma das opcoes no inicio. Seus votos adicionais "
+            + "sao apurados ao final da partida.\n\n"
+            + "PONTUACAO FINAL: votos na trilha + influencia nas regioes + conselheiro secreto.\n"
+            + "EMPATES: mais tesouros nao entregues; depois, menor distancia a Karakorum.\n\n"
+            + "AVISOS: a faixa 'Ultimo aviso' exibe somente a orientacao mais recente."
+        );
+        guia.setEditable(false);
+        guia.setWrapStyleWord(true);
+        guia.setLineWrap(true);
+        guia.setFont(EstiloImperial.FONTE_TEXTO);
+        guia.setBackground(new Color(42, 26, 16));
+        guia.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        javax.swing.JScrollPane rolagem = new javax.swing.JScrollPane(guia);
+        rolagem.setPreferredSize(new Dimension(610, 470));
+        JOptionPane.showMessageDialog(this, rolagem, "Como Jogar",
+                JOptionPane.PLAIN_MESSAGE);
     }
 
     /** Jochi escolhe no primeiro turno clicando diretamente em uma das cartas. */
@@ -305,7 +332,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 final int indice = i;
                 br.herdeiros.model.ResumoMelhoria melhoria = opcoes.get(i);
                 JPanel carta = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
-                javax.swing.JButton imagem = new javax.swing.JButton("Imagem indisponivel");
+                PainelImagemJava2D imagem = new PainelImagemJava2D();
+                imagem.setText("Imagem indisponivel");
                 imagem.setBackground(EstiloImperial.COR_FUNDO_CAMPO);
                 imagem.setForeground(EstiloImperial.COR_TEXTO_CLARO);
                 imagem.setBorder(BorderFactory.createLineBorder(
@@ -317,17 +345,14 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                             Paths.get("assets", "melhorias", melhoria.getCodigo() + ".jpg").toFile());
                     if (arte != null) {
                         imagem.setText("");
-                        imagem.setIcon(new javax.swing.ImageIcon(arte.getScaledInstance(
-                                230, 135, java.awt.Image.SCALE_SMOOTH)));
+                        imagem.setImagem(arte);
                     }
                 } catch (IOException erro) {
                     // O beneficio continua visivel se faltar a imagem.
                 }
-                imagem.addActionListener(evento -> {
-                    if (partida.escolherMelhoriaInicialJochi(indice)) {
+                imagem.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { if (partida.escolherMelhoriaInicialJochi(indice)) {
                         escolha.dispose();
-                    }
-                });
+                    } } });
                 JLabel beneficio = new JLabel("<html><center>" + melhoria.getDescricao()
                         + "</center></html>", JLabel.CENTER);
                 beneficio.setFont(EstiloImperial.FONTE_TEXTO_NEGRITO);
@@ -567,7 +592,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         }
         try {
             janelaCartela = new JanelaCartela(partida,
-                    () -> executarHabilidadeDoPersonagem());
+                    new Runnable() { @Override public void run() { executarHabilidadeDoPersonagem(); } });
             janelaCartela.setVisible(true);
         } catch (IOException erro) {
             JOptionPane.showMessageDialog(this,
@@ -690,12 +715,10 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         painel.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evento) {
-                SwingUtilities.invokeLater(() -> {
-                    if (construirYurt != null && controlador != null) {
+                SwingUtilities.invokeLater(new java.lang.Runnable() { @Override public void run() { if (construirYurt != null && controlador != null) {
                         construirYurt.setText(controlador.isModoConstrucaoYurt()
                                 ? "Cancelar yurt" : "Construir yurt");
-                    }
-                });
+                    } } });
             }
         });
         atualizar(partida);
@@ -705,10 +728,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         revalidate();
         repaint();
-        SwingUtilities.invokeLater(() -> {
-            solicitarEscolhaInicialJochi();
-            solicitarPeaoAltani();
-        });
+        SwingUtilities.invokeLater(new java.lang.Runnable() { @Override public void run() { solicitarEscolhaInicialJochi();
+            solicitarPeaoAltani(); } });
     }
 
     /** Cadastro dos acessos às cidades: o mapa e a imagem oficial não ficam no Model. */
@@ -826,10 +847,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             controlador.atualizarEstado();
         }
         if (partida != null) {
-            SwingUtilities.invokeLater(() -> {
-                solicitarEscolhaInicialJochi();
-                solicitarPeaoAltani();
-            });
+            SwingUtilities.invokeLater(new java.lang.Runnable() { @Override public void run() { solicitarEscolhaInicialJochi();
+                solicitarPeaoAltani(); } });
             if (salvar != null) {
                 salvar.setEnabled(partida.podeSalvarEntreTurnos());
             }
@@ -837,17 +856,12 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                 construirYurt.setText(controlador.isModoConstrucaoYurt()
                         ? "Cancelar yurt" : "Construir yurt");
             }
-            DestinoKhan destino = partida.consultarDestinoKhan();
-            if (destino == null) {
-                posicaoKhan.setText("Khan: fora do tabuleiro");
-            } else {
-                posicaoKhan.setText("Khan: " + destino.getDescricao());
-            }
+
         }
         
         if (partida.isPartidaEncerrada() && !resultadoExibido) {
             resultadoExibido = true;
-            SwingUtilities.invokeLater(() -> mostrarResultadoEReiniciar());
+            SwingUtilities.invokeLater(new java.lang.Runnable() { @Override public void run() { mostrarResultadoEReiniciar(); } });
         }
     }
 }

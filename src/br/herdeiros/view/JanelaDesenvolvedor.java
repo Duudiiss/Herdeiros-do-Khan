@@ -68,8 +68,7 @@ public final class JanelaDesenvolvedor extends JDialog implements ObservadorPart
         tributos.add(new JLabel("Variacao (+/-):"));
         tributos.add(variacao);
         JButton ajustarRecurso = new JButton("Aplicar recurso");
-        ajustarRecurso.addActionListener(evento -> {
-            String escolhido = (String) recursos.getSelectedItem();
+        ajustarRecurso.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { String escolhido = (String) recursos.getSelectedItem();
             int quantidade = (Integer) variacao.getValue();
             if ("MOEDA".equals(escolhido) || "ESPADA".equals(escolhido) || "YURT".equals(escolhido)) {
                 executar(partida.desenvolvimentoAjustarTributo(jogadores.getSelectedIndex(),
@@ -85,8 +84,7 @@ public final class JanelaDesenvolvedor extends JDialog implements ObservadorPart
             } else {
                 executar(partida.desenvolvimentoAjustarRecursoEspecial(jogadores.getSelectedIndex(),
                         escolhido, quantidade));
-            }
-        });
+            } } });
         tributos.add(ajustarRecurso);
         secoes.add(tributos);
 
@@ -95,9 +93,9 @@ public final class JanelaDesenvolvedor extends JDialog implements ObservadorPart
         votosJogador.add(new JLabel("Adicionar votos:"));
         votosJogador.add(votos);
         JButton adicionarVotos = new JButton("Conceder votos");
-        adicionarVotos.addActionListener(evento -> executar(
+        adicionarVotos.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { executar(
                 partida.desenvolvimentoAlterarVotos(jogadores.getSelectedIndex(),
-                        (Integer) votos.getValue())));
+                        (Integer) votos.getValue())); } });
         votosJogador.add(adicionarVotos);
         secoes.add(votosJogador);
 
@@ -105,28 +103,26 @@ public final class JanelaDesenvolvedor extends JDialog implements ObservadorPart
         khan.setBorder(BorderFactory.createTitledBorder("Khan: destino e trilha"));
         khan.add(destinos);
         JButton moverKhan = new JButton("Posicionar Khan");
-        moverKhan.addActionListener(evento -> executar(
-                partida.desenvolvimentoPosicionarKhan((DestinoKhan) destinos.getSelectedItem())));
+        moverKhan.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { executar(
+                partida.desenvolvimentoPosicionarKhan((DestinoKhan) destinos.getSelectedItem())); } });
         khan.add(moverKhan);
         khan.add(new JLabel("Votos Khan (+/-):"));
         khan.add(pontosKhan);
         JButton alterarKhan = new JButton("Ajustar trilha");
-        alterarKhan.addActionListener(evento -> executar(
-                partida.desenvolvimentoAjustarPontuacaoKhan((Integer) pontosKhan.getValue())));
+        alterarKhan.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { executar(
+                partida.desenvolvimentoAjustarPontuacaoKhan((Integer) pontosKhan.getValue())); } });
         khan.add(alterarKhan);
         secoes.add(khan);
 
         JPanel encerramento = new JPanel(new FlowLayout(FlowLayout.LEFT));
         encerramento.setBorder(BorderFactory.createTitledBorder("Testes de encerramento"));
         JButton terminar = new JButton("Encerrar partida e apurar vencedor");
-        terminar.addActionListener(evento -> {
-            int confirmacao = JOptionPane.showConfirmDialog(this,
+        terminar.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { int confirmacao = JOptionPane.showConfirmDialog(JanelaDesenvolvedor.this,
                     "Encerrar imediatamente e calcular os resultados?",
                     "Confirmar teste", JOptionPane.YES_NO_OPTION);
             if (confirmacao == JOptionPane.YES_OPTION) {
                 executar(partida.desenvolvimentoEncerrarPartida());
-            }
-        });
+            } } });
         encerramento.add(terminar);
         secoes.add(encerramento);
 

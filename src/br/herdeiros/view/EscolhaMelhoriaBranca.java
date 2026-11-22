@@ -72,7 +72,8 @@ public final class EscolhaMelhoriaBranca {
             JPanel carta = EstiloImperial.criarPainelFundo(new BorderLayout(4, 5));
             carta.setBorder(BorderFactory.createLineBorder(
                     EstiloImperial.COR_DOURADA_IMPERIAL, 1));
-            JButton botaoImagem = new JButton();
+            PainelImagemJava2D botaoImagem = new PainelImagemJava2D();
+            botaoImagem.setPreferredSize(new Dimension(155, 110));
             botaoImagem.setBackground(EstiloImperial.COR_FUNDO_CAMPO);
             botaoImagem.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
             botaoImagem.setToolTipText(melhoria.getDescricao());
@@ -80,16 +81,13 @@ public final class EscolhaMelhoriaBranca {
                 BufferedImage imagem = ImageIO.read(Paths.get("assets", "melhorias",
                         melhoria.getCodigo() + ".jpg").toFile());
                 if (imagem != null) {
-                    botaoImagem.setIcon(new ImageIcon(imagem.getScaledInstance(
-                            150, 90, Image.SCALE_SMOOTH)));
+                    botaoImagem.setImagem(imagem);
                 }
             } catch (IOException erro) {
                 botaoImagem.setText("Ver beneficio");
             }
-            botaoImagem.addActionListener(evento -> {
-                selecionada[0] = Integer.valueOf(posicao);
-                janela.dispose();
-            });
+            botaoImagem.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { selecionada[0] = Integer.valueOf(posicao);
+                janela.dispose(); } });
             JLabel beneficio = new JLabel(
                     "<html><div style='text-align:center;width:135px'>"
                     + escaparHtml(melhoria.getDescricao()) + "</div></html>",
@@ -103,10 +101,8 @@ public final class EscolhaMelhoriaBranca {
         conteudo.add(cartas, BorderLayout.CENTER);
         JPanel rodape = EstiloImperial.criarPainelFundo(new FlowLayout(FlowLayout.CENTER));
         JButton aleatoria = EstiloImperial.criarBotaoImperial("Escolher melhoria aleatoria");
-        aleatoria.addActionListener(evento -> {
-            selecionada[0] = Integer.valueOf(-1);
-            janela.dispose();
-        });
+        aleatoria.addActionListener(new java.awt.event.ActionListener() { @Override public void actionPerformed(java.awt.event.ActionEvent evento) { selecionada[0] = Integer.valueOf(-1);
+            janela.dispose(); } });
         rodape.add(aleatoria);
         conteudo.add(rodape, BorderLayout.SOUTH);
         janela.setContentPane(conteudo);
