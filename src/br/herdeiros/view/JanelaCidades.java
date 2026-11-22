@@ -8,14 +8,14 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.JButton;
-import javax.swing.JPanel;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JScrollPane;
+import javax.swing.JPanel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
 
@@ -49,15 +49,24 @@ public final class JanelaCidades extends JFrame implements ObservadorPartida {
         };
 
         tabela = new JTable(modelo);
-        tabela.setRowHeight(28);
-        tabela.setFillsViewportHeight(true);
+        EstiloImperial.estilizarTabela(tabela);
 
-        setLayout(new BorderLayout(8, 8));
-        add(new JLabel("Cidades abertas na partida (pode saquear se cumprir os requisitos):"), BorderLayout.NORTH);
-        add(new JScrollPane(tabela), BorderLayout.CENTER);
+        JPanel conteudo = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
+        conteudo.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JLabel titulo = new JLabel("Cidades abertas na partida (pode saquear se cumprir os requisitos):");
+        titulo.setFont(EstiloImperial.FONTE_TEXTO_NEGRITO);
+        titulo.setForeground(EstiloImperial.COR_DOURADA_IMPERIAL);
+        conteudo.add(titulo, BorderLayout.NORTH);
+        conteudo.add(EstiloImperial.criarScrollPaneEstilizado(tabela), BorderLayout.CENTER);
+
         JPanel rodape = new JPanel(new BorderLayout(6, 6));
+        rodape.setOpaque(false);
         resultado = new JLabel("Saque: visite uma parada adjacente à cidade e tenha espadas.");
-        JButton saquear = new JButton("Saquear cidade selecionada");
+        resultado.setFont(EstiloImperial.FONTE_TEXTO);
+        resultado.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+
+        JButton saquear = EstiloImperial.criarBotaoImperial("Saquear cidade selecionada");
         saquear.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -77,7 +86,9 @@ public final class JanelaCidades extends JFrame implements ObservadorPartida {
         });
         rodape.add(saquear, BorderLayout.NORTH);
         rodape.add(resultado, BorderLayout.SOUTH);
-        add(rodape, BorderLayout.SOUTH);
+        conteudo.add(rodape, BorderLayout.SOUTH);
+
+        setContentPane(conteudo);
         setSize(new Dimension(610, 320));
         setLocationByPlatform(true);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -99,13 +110,7 @@ public final class JanelaCidades extends JFrame implements ObservadorPartida {
         modelo.setRowCount(0);
 
         for (ResumoCidade cidade : cidades) {
-            String conquistada;
-            if (cidade.isConquistada()) {
-                conquistada = "Sim";
-            } else {
-                conquistada = "Nao";
-            }
-
+            String conquistada = cidade.isConquistada() ? "Sim" : "Nao";
             modelo.addRow(new Object[] {
                     cidade.getNome(),
                     cidade.getRegiao(),

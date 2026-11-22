@@ -44,6 +44,10 @@ import javax.imageio.stream.ImageInputStream;
 //import jdk.internal.vm.VMSupport.IOReader;
 
 public class Janela extends JFrame{
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	private CardLayout cardLayout;
     private JPanel painelContainer;
     

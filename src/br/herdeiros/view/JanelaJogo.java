@@ -1,4 +1,3 @@
-
 package br.herdeiros.view;
 
 import br.herdeiros.controller.ControladorTabuleiro;
@@ -17,20 +16,24 @@ import br.herdeiros.model.GerenciadorSave;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
-import javax.swing.JOptionPane;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.BorderFactory;
@@ -59,6 +62,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JLabel posicaoKhan;
     private JanelaCartela janelaCartela;
     private JanelaCidades janelaCidades;
+    
+    private boolean resultadoExibido = false;
 
     public JanelaJogo(int quantidadeJogadores) {
         if (quantidadeJogadores < 2 || quantidadeJogadores > 5) {
@@ -72,6 +77,12 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
                       Personagem[] personagens) throws IOException {
         this(quantidadeJogadores);
         iniciarPartida(quantidadeJogadores, nomes, cores, personagens);
+    }
+    
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        EstiloImperial.pintarFundoImperial(g, this, null);
     }
 
     public JanelaJogo(InterfacePartida partidaSalva) throws IOException {
@@ -92,7 +103,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         indicadorVez = new JLabel();
         indicadorVez.setHorizontalAlignment(JLabel.CENTER);
-        indicadorVez.setPreferredSize(new Dimension(0, 92));
+        indicadorVez.setFont(EstiloImperial.FONTE_SUBTITULO);
 
         estado = new JTextArea(
             "Configure uma partida para começar."
@@ -101,62 +112,48 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         estado.setEditable(false);
         estado.setLineWrap(true);
         estado.setWrapStyleWord(true);
-        estado.setOpaque(true);
-        estado.setRows(5);
-        estado.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 15));
-        estado.setForeground(new Color(65, 42, 24));
-        estado.setBackground(new Color(255, 247, 220));
-        estado.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        estado.setFont(EstiloImperial.FONTE_TEXTO);
+        estado.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        estado.setBackground(new Color(42, 26, 16));
+        estado.setRows(4);
 
-        JLabel tituloEstado = new JLabel("SUA PRÓXIMA AÇÃO");
-        tituloEstado.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
-        tituloEstado.setForeground(new Color(92, 48, 20));
-        tituloEstado.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+        JPanel lateral = new JPanel(new BorderLayout(8, 8)) {
+            private static final long serialVersionUID = 1L;
 
-        JPanel painelEstado = new JPanel(new BorderLayout());
-        painelEstado.setBackground(new Color(255, 247, 220));
-        painelEstado.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(151, 92, 39), 2),
-                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
-        painelEstado.add(tituloEstado, BorderLayout.NORTH);
-        painelEstado.add(estado, BorderLayout.CENTER);
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                EstiloImperial.pintarFundoImperial(g, this, null);
+            }
+        };
 
-        JPanel lateral = new JPanel(
-            new BorderLayout(8, 8)
-        );
-
-        lateral.setPreferredSize(new Dimension(280, 0));
+        lateral.setPreferredSize(new Dimension(240, 0));
+        lateral.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(EstiloImperial.COR_DOURADA_IMPERIAL, 2),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)));
 
         JPanel ferramentas = new JPanel(
-            new GridLayout(0, 1, 6, 6)
+            new GridLayout(0, 1, 0, 6)
         );
+        ferramentas.setOpaque(false);
+        
+        JLabel tituloPainel = EstiloImperial.criarLabelComBorda(
+                "Ações do Turno",
+                EstiloImperial.FONTE_SUBTITULO,
+                EstiloImperial.COR_DOURADA_IMPERIAL,
+                EstiloImperial.COR_BORDA_TEXTO);
+        ferramentas.add(tituloPainel);
 
-        salvar = new JButton("Salvar partida");
-        salvar.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-                abrirOpcoesSalvar();
-            }
-        });
-        ferramentas.add(salvar);
-
-        passar = new JButton("Passar turno");
-
-        passar.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evento) {
-
-                if (controlador != null) {
-                    if (controlador.passarVez()) {
-                        salvarAutomaticamente();
-                    }
-                }
-            }
-        });
+        passar = EstiloImperial.criarBotaoEstilizado(
+                "Passar turno",
+                EstiloImperial.FONTE_BOTAO_MEDIO,
+                EstiloImperial.COR_VERMELHO_ESCURO,
+                EstiloImperial.COR_VERMELHO_HOVER,
+                EstiloImperial.COR_TEXTO_CLARO);
 
         ferramentas.add(passar);
-
-        abrirCartela = new JButton("Abrir cartela do jogador");
+        
+        abrirCartela = EstiloImperial.criarBotaoImperial("Abrir cartela do jogador");
         abrirCartela.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -165,15 +162,16 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(abrirCartela);
 
-        abrirCidades = new JButton("Consultar cidades abertas");
+        abrirCidades = EstiloImperial.criarBotaoImperial("Consultar cidades abertas");
         abrirCidades.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
                 abrirJanelaCidades();
             }
         });
-        // O saque de cidades e feito clicando diretamente nas cidades do tabuleiro.
-        abrirMelhorias = new JButton("Comprar melhorias");
+        ferramentas.add(abrirCidades);
+
+        abrirMelhorias = EstiloImperial.criarBotaoImperial("Comprar melhorias");
         abrirMelhorias.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -182,7 +180,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         });
         ferramentas.add(abrirMelhorias);
 
-        construirYurt = new JButton("Construir yurt");
+        construirYurt = EstiloImperial.criarBotaoImperial("Construir yurt");
         construirYurt.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -194,11 +192,22 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             }
         });
         ferramentas.add(construirYurt);
+        
+        JButton abrirConselheiros = EstiloImperial.criarBotaoImperial("Conselheiros e Objetivos");
+        abrirConselheiros.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (partida != null) {
+                    new JanelaConselheiros(partida).setVisible(true);
+                }
+            }
+        });
+        ferramentas.add(abrirConselheiros);
 
-        ferramentas.add(new JLabel("Ação obrigatória do Khan:"));
-        destinosKhan = new JComboBox<DestinoKhan>(DestinoKhan.values());
+        destinosKhan = EstiloImperial.criarComboBoxEstilizado(DestinoKhan.values());
         ferramentas.add(destinosKhan);
-        moverKhan = new JButton("Mover Khan");
+
+        moverKhan = EstiloImperial.criarBotaoImperial("Mover Khan");
         moverKhan.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent evento) {
@@ -211,20 +220,41 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             }
         });
         ferramentas.add(moverKhan);
-        posicaoKhan = new JLabel("Khan: fora do tabuleiro");
+        
+        posicaoKhan = EstiloImperial.criarLabelComBorda(
+                "Khan: fora do tabuleiro",
+                EstiloImperial.FONTE_TEXTO,
+                EstiloImperial.COR_TEXTO_CLARO,
+                EstiloImperial.COR_BORDA_TEXTO);
         ferramentas.add(posicaoKhan);
 
-        JLabel dicasAcoes = new JLabel(
-                "<html><div style='width:250px'>Tributo: ícone com contador (1 punho)."
-                        + "<br>Cidade aberta: saque com espadas.</div></html>");
-        dicasAcoes.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 12));
-        dicasAcoes.setToolTipText("Clique em um ícone com contador para coletar tributo "
-                + "(custa 1 punho). Clique em uma cidade aberta para saquear com espadas.");
-        ferramentas.add(dicasAcoes);
+        JLabel instrucoes1 = new JLabel("<html>• Ative uma coluna na cartela para<br> mover.</html>");
+        instrucoes1.setFont(EstiloImperial.FONTE_TEXTO);
+        instrucoes1.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        JLabel instrucoes2 = new JLabel("<html>• Clique nos ícones com contadores<br> para coletar tributos (1 punho).</html>");
+        instrucoes2.setFont(EstiloImperial.FONTE_TEXTO);
+        instrucoes2.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        JLabel instrucoes3 = new JLabel("<html>• Clique numa cidade aberta para<br> saquear com espadas.</html>");
+        instrucoes3.setFont(EstiloImperial.FONTE_TEXTO);
+        instrucoes3.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        
+        ferramentas.add(instrucoes1);
+        ferramentas.add(instrucoes2);
+        ferramentas.add(instrucoes3);
 
-        lateral.add(indicadorVez, BorderLayout.NORTH);
-        lateral.add(ferramentas, BorderLayout.CENTER);
-        lateral.add(painelEstado, BorderLayout.SOUTH);
+        salvar = EstiloImperial.criarBotaoImperial("Salvar partida");
+        salvar.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                abrirOpcoesSalvar();
+            }
+        });
+        ferramentas.add(salvar);
+
+
+        lateral.add(indicadorVez, BorderLayout.CENTER);
+        lateral.add(ferramentas, BorderLayout.NORTH);
+        lateral.add(estado, BorderLayout.SOUTH);
 
         add(lateral, BorderLayout.EAST);
     }
@@ -400,7 +430,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         }
         partida = GerenciadorPartida.getInstancia()
                 .iniciarPartida(nomes, cores, personagens, ordemAleatoria);
-
+        
+        this.resultadoExibido = false;
+        
         configurarPartida();
     }
 
@@ -588,6 +620,13 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             } else {
                 posicaoKhan.setText("Khan: " + destino.getDescricao());
             }
+        }
+        
+        if (partida.isPartidaEncerrada() && !resultadoExibido) {
+            resultadoExibido = true;
+            java.awt.Window ancestral = javax.swing.SwingUtilities.getWindowAncestor(this);
+            JFrame frame = (ancestral instanceof JFrame) ? (JFrame) ancestral : null;
+            new JanelaResultadoFinal(frame, partida.consultarResultadoFinal()).setVisible(true);
         }
     }
 }

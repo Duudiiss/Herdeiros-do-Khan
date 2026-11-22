@@ -309,7 +309,7 @@ public class JanelaInicial extends JPanel {
                 JTextField campoNome = new JTextField("Jogador " + i, 10);
                 campoNome.setFont(new Font("Serif", Font.PLAIN, 16));
 
-                JComboBox<String> seletorCor = new JComboBox<>(coresDisponiveis);
+                JComboBox<String> seletorCor = EstiloImperial.criarComboBoxEstilizado(coresDisponiveis);
                 // Define cores padrão diferentes para cada jogador para evitar repetição inicial
                 seletorCor.setSelectedIndex((i - 1) % coresDisponiveis.length);
                 seletorCor.setFont(new Font("Serif", Font.PLAIN, 14));
@@ -317,7 +317,7 @@ public class JanelaInicial extends JPanel {
                 camposNomes.add(campoNome);
                 seletoresCores.add(seletorCor);
 
-                JComboBox<String> seletorPersonagem = new JComboBox<String>(
+                JComboBox<String> seletorPersonagem = EstiloImperial.criarComboBoxEstilizado(
                         new String[] {"Aleatorio", "Altani", "Jochi", "Chagatai", "Tolui", "Ogedei"});
                 seletorPersonagem.setSelectedIndex(0);
                 seletorPersonagem.setFont(new Font("Serif", Font.PLAIN, 14));

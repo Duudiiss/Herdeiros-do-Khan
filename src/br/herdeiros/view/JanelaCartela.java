@@ -7,13 +7,13 @@ import br.herdeiros.model.ObservadorPartida;
 import br.herdeiros.model.ResumoCartela;
 import br.herdeiros.model.ResumoAtivacao;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -43,12 +43,23 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         }
         this.partida = partida;
         this.painelImagem = new PainelCartela();
-        this.nome = new JLabel();
+        this.nome = EstiloImperial.criarLabelComBorda(
+                "",
+                EstiloImperial.FONTE_SUBTITULO,
+                EstiloImperial.COR_DOURADA_IMPERIAL,
+                EstiloImperial.COR_BORDA_TEXTO);
         this.tributos = new JLabel();
-        this.melhorias = new JTextArea(4, 26);
+        this.tributos.setFont(EstiloImperial.FONTE_TEXTO);
+        this.tributos.setForeground(EstiloImperial.COR_TEXTO_CLARO);
+        this.melhorias = EstiloImperial.criarTextAreaEstilizada("", 4, 26);
         this.resumoAtivacao = new JLabel();
         this.botoesAtivacao = new JButton[4];
-        this.escolherBranca = new JButton("Escolher melhoria branca");
+        this.escolherBranca = EstiloImperial.criarBotaoEstilizado(
+                "Escolher melhoria branca",
+                EstiloImperial.FONTE_BOTAO_MEDIO,
+                EstiloImperial.COR_MARROM_COURO,
+                EstiloImperial.COR_MARROM_HOVER,
+                EstiloImperial.COR_DOURADA_IMPERIAL);
         escolherBranca.addActionListener(new java.awt.event.ActionListener() {
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evento) {
@@ -58,28 +69,35 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         melhorias.setEditable(false);
         melhorias.setLineWrap(true);
         melhorias.setWrapStyleWord(true);
+        melhorias.setFont(EstiloImperial.FONTE_TEXTO);
+        melhorias.setForeground(EstiloImperial.COR_TEXTO_CLARO);
 
-        JPanel cabecalho = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel cabecalho = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
         cabecalho.add(nome);
         cabecalho.add(tributos);
 
-        JPanel rodape = new JPanel(new BorderLayout(8, 8));
-        JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel rodape = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
+        JPanel controles =EstiloImperial.criarPainelFundo(new FlowLayout(FlowLayout.LEFT));
         String[] nomesColunas = {"Vermelha", "Verde", "Amarela", "Branca"};
 
         for (int i = 0; i < botoesAtivacao.length; i++) {
-            botoesAtivacao[i] = new JButton("Ativar " + nomesColunas[i]);
+            botoesAtivacao[i] = EstiloImperial.criarBotaoEstilizado(
+                    "Ativar " + nomesColunas[i],
+                    EstiloImperial.FONTE_BOTAO_MEDIO,
+                    EstiloImperial.COR_MARROM_COURO,
+                    EstiloImperial.COR_MARROM_HOVER,
+                    EstiloImperial.COR_DOURADA_IMPERIAL);
             botoesAtivacao[i].addActionListener(
                     new ControladorAtivacao(partida, i));
             controles.add(botoesAtivacao[i]);
         }
 
         controles.add(escolherBranca);
-        JPanel areaAtivacao = new JPanel(new BorderLayout(4, 4));
+        JPanel areaAtivacao = EstiloImperial.criarPainelFundo(new BorderLayout(8, 8));
         areaAtivacao.add(controles, BorderLayout.NORTH);
         areaAtivacao.add(resumoAtivacao, BorderLayout.SOUTH);
         rodape.add(areaAtivacao, BorderLayout.NORTH);
-        rodape.add(new JScrollPane(melhorias), BorderLayout.CENTER);
+        rodape.add(EstiloImperial.criarScrollPaneEstilizado(melhorias), BorderLayout.CENTER);
 
         setLayout(new BorderLayout(8, 8));
         add(cabecalho, BorderLayout.NORTH);
@@ -88,6 +106,7 @@ public final class JanelaCartela extends JFrame implements ObservadorPartida {
         setSize(new Dimension(1050, 760));
         setLocationByPlatform(true);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setBackground(new Color(48, 32, 22));
 
         addWindowListener(new WindowAdapter() {
             @Override

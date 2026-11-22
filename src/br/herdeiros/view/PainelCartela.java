@@ -54,6 +54,7 @@ public final class PainelCartela extends JPanel {
         for (int i = 0; i < layoutsCartelas.length; i++) {
             layoutsCartelas[i] = new LayoutMarcadores(LayoutMarcadores.caminhoCartela(i + 1));
         }
+        
         setPreferredSize(new Dimension(900, 520));
     }
 
@@ -77,6 +78,7 @@ public final class PainelCartela extends JPanel {
     @Override
     protected void paintComponent(Graphics graficos) {
         super.paintComponent(graficos);
+        EstiloImperial.pintarFundoImperial(graficos, this, null);
         BufferedImage imagem = imagens[indiceCartela];
         Graphics2D g = (Graphics2D) graficos.create();
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
