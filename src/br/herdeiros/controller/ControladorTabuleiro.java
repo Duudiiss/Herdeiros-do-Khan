@@ -96,12 +96,21 @@ public class ControladorTabuleiro extends MouseAdapter {
             if (partida.getPersonagemJogador(indice) != null) {
                 personagem = "<br>" + partida.getPersonagemJogador(indice).getNomeExibicao();
             }
-            indicadorVez.setText("<html><div style='text-align:center'>VEZ DE<br><b>"
-                    + partida.getNomeJogador(indice).toUpperCase()
-                    + "</b>" + personagem + "</div></html>");
+            String conteudoVez;
+            if (partida.isPartidaEncerrada()) {
+                java.util.List<String> vencedores = partida.consultarNomesVencedores();
+                String tituloResultado = vencedores.size() == 1 ? "VENCEDOR" : "EMPATE";
+                conteudoVez = "<b>PARTIDA ENCERRADA</b><br>" + tituloResultado
+                        + "<br><b>" + String.join(", ", vencedores).toUpperCase() + "</b>";
+            } else {
+                conteudoVez = "<b>Vez de " + partida.getNomeJogador(indice).toUpperCase() + "</b>"
+                        + personagem;
+            }
+            indicadorVez.setText("<html><div style='text-align:center'>"
+                    + conteudoVez + "</div></html>");
             indicadorVez.setBackground(CoresJogadores.obter(partida.getCorJogador(indice)));
             indicadorVez.setForeground(Color.WHITE);
-            indicadorVez.setFont(indicadorVez.getFont().deriveFont(Font.BOLD, 20f));
+            indicadorVez.setFont(indicadorVez.getFont().deriveFont(Font.BOLD, 21f));
             indicadorVez.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(indicadorVez.getBackground().darker(), 3),
                     BorderFactory.createEmptyBorder(8, 6, 8, 6)));
@@ -125,20 +134,21 @@ public class ControladorTabuleiro extends MouseAdapter {
         if (ativacaoReal) {
             ResumoAtivacao ativacao = partida.consultarAtivacaoJogadorAtual();
             if (ativacao.getColunaAtiva() < 0) {
-                escrever("Abra a cartela e ative uma coluna antes de mover. "
-                        + "Uma coluna e ativada por turno. Finalize em Passar turno.");
+                escrever("1. Abra a cartela e ative uma coluna.\n"
+                        + "2. Mova o peão e conclua as ações indicadas.\n"
+                        + "3. Clique em Passar turno.");
             } else {
                 String acaoKhan;
-            if (ativacao.temAcaoKhan()) {
-                acaoKhan = "ação obrigatória pendente";
-            } else {
-                acaoKhan = "sem ação pendente";
-            }
-            escrever("Movimentos restantes da coluna: "
-                        + ativacao.getMovimentosRestantes()
-                        + ". Punhos: " + ativacao.getPunhosDaColuna()
-                        + ". Khan: " + acaoKhan
-                        + ". Finalize em Passar turno.");
+                if (ativacao.temAcaoKhan()) {
+                    acaoKhan = "OBRIGATÓRIA";
+                } else {
+                    acaoKhan = "não necessária";
+                }
+                escrever("Continue sua jogada.\n"
+                        + "Movimentos restantes: " + ativacao.getMovimentosRestantes()
+                        + "  |  Punhos: " + ativacao.getPunhosDaColuna() + "\n"
+                        + "Ação do Khan: " + acaoKhan + ".\n"
+                        + "Quando terminar, clique em Passar turno.");
             }
         } else {
             escrever("Movimentos restantes neste turno: " + movimentosRestantes

@@ -33,6 +33,7 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.BorderFactory;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class JanelaJogo extends JPanel implements ObservadorPartida {
@@ -91,6 +92,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
 
         indicadorVez = new JLabel();
         indicadorVez.setHorizontalAlignment(JLabel.CENTER);
+        indicadorVez.setPreferredSize(new Dimension(0, 92));
 
         estado = new JTextArea(
             "Configure uma partida para começar."
@@ -99,23 +101,35 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         estado.setEditable(false);
         estado.setLineWrap(true);
         estado.setWrapStyleWord(true);
-        estado.setOpaque(false);
-        estado.setRows(3);
+        estado.setOpaque(true);
+        estado.setRows(5);
+        estado.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 15));
+        estado.setForeground(new Color(65, 42, 24));
+        estado.setBackground(new Color(255, 247, 220));
+        estado.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        JLabel tituloEstado = new JLabel("SUA PRÓXIMA AÇÃO");
+        tituloEstado.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
+        tituloEstado.setForeground(new Color(92, 48, 20));
+        tituloEstado.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+
+        JPanel painelEstado = new JPanel(new BorderLayout());
+        painelEstado.setBackground(new Color(255, 247, 220));
+        painelEstado.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(151, 92, 39), 2),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        painelEstado.add(tituloEstado, BorderLayout.NORTH);
+        painelEstado.add(estado, BorderLayout.CENTER);
 
         JPanel lateral = new JPanel(
             new BorderLayout(8, 8)
         );
 
-        lateral.setPreferredSize(new Dimension(240, 0));
+        lateral.setPreferredSize(new Dimension(280, 0));
 
         JPanel ferramentas = new JPanel(
             new GridLayout(0, 1, 6, 6)
         );
-
-        ferramentas.add(new JLabel(
-
-            "<html>Movimentacao: ative uma<br>coluna na cartela individual.</html>"
-        ));
 
         salvar = new JButton("Salvar partida");
         salvar.addActionListener(new ActionListener() {
@@ -200,17 +214,17 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         posicaoKhan = new JLabel("Khan: fora do tabuleiro");
         ferramentas.add(posicaoKhan);
 
-        ferramentas.add(new JLabel(
-            "<html>Clique nos icones com contadores para coletar tributos (1 punho).<br>Clique numa cidade aberta para saquear com espadas.</html>"
-        ));
+        JLabel dicasAcoes = new JLabel(
+                "<html><div style='width:250px'>Tributo: ícone com contador (1 punho)."
+                        + "<br>Cidade aberta: saque com espadas.</div></html>");
+        dicasAcoes.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 12));
+        dicasAcoes.setToolTipText("Clique em um ícone com contador para coletar tributo "
+                + "(custa 1 punho). Clique em uma cidade aberta para saquear com espadas.");
+        ferramentas.add(dicasAcoes);
 
-        ferramentas.add(new JLabel(
-            "<html>Mapa carregado do<br>arquivo CSV.</html>"
-        ));
-
-        lateral.add(indicadorVez, BorderLayout.CENTER);
-        lateral.add(ferramentas, BorderLayout.NORTH);
-        lateral.add(estado, BorderLayout.SOUTH);
+        lateral.add(indicadorVez, BorderLayout.NORTH);
+        lateral.add(ferramentas, BorderLayout.CENTER);
+        lateral.add(painelEstado, BorderLayout.SOUTH);
 
         add(lateral, BorderLayout.EAST);
     }
