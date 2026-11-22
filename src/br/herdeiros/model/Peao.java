@@ -1,7 +1,11 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
+
 /** Representa um peão e mantém a referência à sua única posição atual. */
-class Peao {
+class Peao implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final Cor cor;
     private Parada paradaAtual;
 

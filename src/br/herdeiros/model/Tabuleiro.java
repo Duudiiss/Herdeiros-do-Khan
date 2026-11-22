@@ -1,5 +1,6 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,9 +13,12 @@ import java.util.Set;
 import java.util.LinkedHashSet;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import br.herdeiros.mapa.MapaDados;
 
 /** Armazena as posições, conexões e peças e verifica movimentação e ocupação. */
-class Tabuleiro {
+class Tabuleiro implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final Peao peaoDoKhan;
     private final List<Cidade> cidadesDisponiveis;
     private final HashMap<Integer, Parada> paradas = new HashMap<Integer, Parada>();
@@ -32,6 +36,74 @@ class Tabuleiro {
         this.peaoDoKhan = new Peao(Cor.BRANCO);
         this.cidadesDisponiveis = new ArrayList<Cidade>(cidadesIniciaisSorteadas);
         this.paradas.put(0, new Parada(0, TipoParada.KARAKORUM));
+    }
+
+    static Tabuleiro restaurar(List<Cidade> cidades, MapaDados mapa,
+                               List<Jogador> jogadores, Map<Cor, Integer> posicoes,
+                               SavePartidaData.Tabuleiro estado) {
+        if (cidades == null || mapa == null || jogadores == null || posicoes == null || estado == null
+                || mapa.getPonto(0) == null) {
+            throw new IllegalArgumentException("Dados do tabuleiro incompletos");
+        }
+        Tabuleiro tabuleiro = new Tabuleiro(cidades);
+        for (MapaDados.Ponto ponto : mapa.getPontos().values()) {
+            if (ponto.getId() != 0 && !tabuleiro.adicionarParada(ponto.getId(), ponto.isDupla())) {
+                throw new IllegalArgumentException("Parada duplicada no mapa");
+            }
+        }
+        for (MapaDados.Ligacao ligacao : mapa.getLigacoes()) {
+            if (!tabuleiro.conectarParadas(ligacao.getOrigem(), ligacao.getDestino())) {
+                throw new IllegalArgumentException("Conexão inválida no mapa");
+            }
+        }
+        for (Jogador jogador : jogadores) {
+            Integer idParada = posicoes.get(jogador.getCor());
+            Parada parada = idParada == null ? null : tabuleiro.paradas.get(idParada);
+            if (parada == null) {
+                throw new IllegalArgumentException("Posição de jogador inválida");
+            }
+            if (!tabuleiro.posicionarPeaoInicial(jogador.getMeuPeao())) {
+                throw new IllegalArgumentException("Peão de jogador inválido");
+            }
+            jogador.getMeuPeao().posicionarEm(parada);
+        }
+        if (estado.paradaKhan >= 0) {
+            Parada paradaKhan = tabuleiro.paradas.get(estado.paradaKhan);
+            if (paradaKhan == null) {
+                throw new IllegalArgumentException("Posição do Khan inválida");
+            }
+            tabuleiro.peaoDoKhan.posicionarEm(paradaKhan);
+        }
+        for (Parada parada : tabuleiro.paradas.values()) {
+            if (tabuleiro.ocupacao(parada, null) > parada.capacidade()) {
+                throw new IllegalArgumentException("Capacidade de parada excedida");
+            }
+        }
+        if (estado.destinoKhan != null) {
+            try {
+                tabuleiro.destinoKhan = DestinoKhan.valueOf(estado.destinoKhan);
+            } catch (IllegalArgumentException erro) {
+                throw new IllegalArgumentException("Destino do Khan inválido", erro);
+            }
+        }
+        if (estado.yurts == null) {
+            throw new IllegalArgumentException("Lista de yurts ausente");
+        }
+        for (SavePartidaData.Yurt yurt : estado.yurts) {
+            if (yurt == null || yurt.cor == null) {
+                throw new IllegalArgumentException("Yurt inválido");
+            }
+            Cor cor;
+            try {
+                cor = Cor.valueOf(yurt.cor);
+            } catch (IllegalArgumentException erro) {
+                throw new IllegalArgumentException("Cor de yurt inválida", erro);
+            }
+            if (!tabuleiro.construirYurt(yurt.parada, cor)) {
+                throw new IllegalArgumentException("Posição de yurt inválida");
+            }
+        }
+        return tabuleiro;
     }
 
     public boolean adicionarParada(int id, boolean dupla) {
@@ -86,6 +158,10 @@ class Tabuleiro {
 
     public int getQuantidadeParadas() {
         return paradas.size();
+    }
+
+    List<Parada> getParadas() {
+        return new ArrayList<Parada>(paradas.values());
     }
 
     /** Registra o peão de um jogador em Karakorum somente uma vez. */

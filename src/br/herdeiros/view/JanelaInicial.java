@@ -1,6 +1,8 @@
 package br.herdeiros.view;
 
 import br.herdeiros.model.Cor;
+import br.herdeiros.model.GerenciadorSave;
+import br.herdeiros.model.InterfacePartida;
 import br.herdeiros.model.Personagem;
 import java.util.Collections;
 import java.util.HashSet;
@@ -86,6 +88,9 @@ public class JanelaInicial extends JPanel {
         JPanel painelV = new JPanel();
         painelV.setLayout(new BoxLayout(painelV, BoxLayout.X_AXIS));
         painelV.setOpaque(false);
+
+        JPanel painelCarregar = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        painelCarregar.setOpaque(false);
 
         // --- ESTILO ÉPICO / MONGOL ---
         Font fonteEpicaTitulo = new Font("Serif", Font.BOLD, 36);
@@ -198,6 +203,16 @@ public class JanelaInicial extends JPanel {
             }
         });
 
+        JButton carregar_btn = criarBotaoEstilizado("Carregar partida", fonteEpicaBotoes,
+                corMarromCouro, corMarromHover, corDouradaImperial);
+        carregar_btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        carregar_btn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                carregarPartida();
+            }
+        });
+
         // Botão para sair
         Sair_btn = criarBotaoEstilizado("Sair", fonteEpicaBotoes, new Color(80, 20, 20), new Color(110, 30, 30), Color.WHITE);
 
@@ -217,10 +232,12 @@ public class JanelaInicial extends JPanel {
         painelV.add(Iniciar_btn);
         painelV.add(Box.createRigidArea(new Dimension(15, 0)));
         painelV.add(Sair_btn);
+        painelCarregar.add(carregar_btn);
         
         painelBackground.add(Box.createVerticalStrut(10));
         painelBackground.add(painelH);
         painelBackground.add(painelV);
+        painelBackground.add(painelCarregar);
         painelBackground.add(Box.createVerticalStrut(10));
         
         painelBackgroundH.add(painelBackground);
@@ -234,6 +251,39 @@ public class JanelaInicial extends JPanel {
         gbc.insets = new Insets(0, 75, 0, 0); 
 
         add(painelBackgroundH, gbc);
+    }
+
+    private void carregarPartida() {
+        Object[] opcoes = {"Save local", "Importar arquivo", "Cancelar"};
+        int escolha = JOptionPane.showOptionDialog(this,
+                "Escolha de onde carregar a partida.",
+                "Carregar partida", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, opcoes, opcoes[0]);
+        if (escolha < 0 || escolha == 2) {
+            return;
+        }
+
+        try {
+            InterfacePartida partida;
+            if (escolha == 0) {
+                if (!GerenciadorSave.existeSaveLocal()) {
+                    JOptionPane.showMessageDialog(this, "Não há um save local disponível.",
+                            "Save não encontrado", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                partida = GerenciadorSave.carregarLocal();
+            } else {
+                JFileChooser seletor = new JFileChooser();
+                if (seletor.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+                    return;
+                }
+                partida = GerenciadorSave.carregar(seletor.getSelectedFile().toPath());
+            }
+            janelaPrincipal.carregarPartida(partida);
+        } catch (IOException | IllegalArgumentException erro) {
+            JOptionPane.showMessageDialog(this, erro.getMessage(),
+                    "Erro ao carregar partida", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // Método que reconstrói os campos de texto e seleção de cor dinamicamente

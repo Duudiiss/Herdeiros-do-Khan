@@ -1,11 +1,14 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Collection;
 import java.util.Collections;
 
 /** Representa uma posição do mapa e as paradas diretamente conectadas a ela. */
-class Parada {
+class Parada implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final int id;
     private final TipoParada tipo;
     private final HashMap<Integer, Parada> adjacentes = new HashMap<>();

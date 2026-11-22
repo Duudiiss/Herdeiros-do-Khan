@@ -1,22 +1,32 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
+
 /** Representa um jogador, seus recursos e os votos acumulados. */
-class Jogador {
+class Jogador implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final String nome;
     private final Cor cor;
     private final Personagem personagem;
     private final Peao meuPeao;
     private final int quantidadeDescendentes;
     private int votosKurultai;
-    private final TabuleiroIndividual tabuleiroIndividual = new TabuleiroIndividual();
+    private final TabuleiroIndividual tabuleiroIndividual;
 
     public Jogador(String nome, Cor cor, int quantidadeDescendentes) {
         this(nome, cor, quantidadeDescendentes, null);
     }
 
     public Jogador(String nome, Cor cor, int quantidadeDescendentes, Personagem personagem) {
+        this(nome, cor, quantidadeDescendentes, personagem, new TabuleiroIndividual(), 0);
+    }
+
+    Jogador(String nome, Cor cor, int quantidadeDescendentes, Personagem personagem,
+            TabuleiroIndividual tabuleiroIndividual, int votosKurultai) {
         if (nome == null || nome.trim().isEmpty() || cor == null || cor == Cor.BRANCO
-                || quantidadeDescendentes < 0) {
+                || quantidadeDescendentes < 0 || tabuleiroIndividual == null
+                || votosKurultai < 0) {
             throw new IllegalArgumentException("Dados inválidos do jogador");
         }
 
@@ -25,7 +35,8 @@ class Jogador {
         this.personagem = personagem;
         this.quantidadeDescendentes = quantidadeDescendentes;
         this.meuPeao = new Peao(cor);
-
+        this.tabuleiroIndividual = tabuleiroIndividual;
+        this.votosKurultai = votosKurultai;
     }
 
     public void ganharVotos(int quantidade) {

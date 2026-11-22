@@ -1,11 +1,14 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
 import java.util.Stack;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-class BaralhoDeCidades {
+class BaralhoDeCidades implements Serializable {
+    private static final long serialVersionUID = 1L;
+
 	private Stack<Cidade> pilha;
 
 	public BaralhoDeCidades() {
@@ -13,6 +16,18 @@ class BaralhoDeCidades {
 		criarTodasCidades();
 		
 		Collections.shuffle(this.pilha);
+	}
+
+	BaralhoDeCidades(List<Cidade> ordemRestante) {
+		if (ordemRestante == null) {
+			throw new IllegalArgumentException("Ordem do baralho obrigatória");
+		}
+		this.pilha = new Stack<>();
+		this.pilha.addAll(ordemRestante);
+	}
+
+	List<Cidade> getOrdemRestante() {
+		return new ArrayList<Cidade>(pilha);
 	}
 
 	private void criarTodasCidades() {

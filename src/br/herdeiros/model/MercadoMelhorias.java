@@ -1,13 +1,16 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /** Mercado com cinco espacos; somente a acao do Khan preenche vagas. */
-final class MercadoMelhorias {
-    private final ArrayList<Melhoria> pilha = new ArrayList<Melhoria>();
-    private final Melhoria[] disponiveis = new Melhoria[5];
+final class MercadoMelhorias implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private final ArrayList<Melhoria> pilha;
+    private final Melhoria[] disponiveis;
 
     MercadoMelhorias() {
         this(new java.util.Random());
@@ -18,6 +21,8 @@ final class MercadoMelhorias {
         if (sorteador == null) {
             throw new IllegalArgumentException("Sorteador obrigatorio");
         }
+        pilha = new ArrayList<Melhoria>();
+        disponiveis = new Melhoria[5];
         String[] codigos = {
             "PER-V", "BOI-A", "CAS-A", "CAS-R", "CAS-V", "CAV-A", "CAV-R", "CAV-V",
             "CUI-A", "ESP-A", "ESP-R", "ESP-V", "MAO-A", "MAO-R", "MAO-V",
@@ -31,6 +36,15 @@ final class MercadoMelhorias {
         }
         Collections.shuffle(pilha, sorteador);
         reporVazios();
+    }
+
+    MercadoMelhorias(List<Melhoria> melhoriasRestantes, List<Melhoria> melhoriasDisponiveis) {
+        if (melhoriasRestantes == null || melhoriasDisponiveis == null
+                || melhoriasDisponiveis.size() != 5) {
+            throw new IllegalArgumentException("Estado do mercado inválido");
+        }
+        pilha = new ArrayList<Melhoria>(melhoriasRestantes);
+        disponiveis = melhoriasDisponiveis.toArray(new Melhoria[5]);
     }
 
     private String descricaoDaMelhoria(String sigla) {
@@ -64,6 +78,45 @@ final class MercadoMelhorias {
             return 1;
         }
         return 2;
+    }
+
+    static Melhoria criarPorCodigo(String codigo, int coluna) {
+        String[] codigosValidos = {
+            "PER-V", "BOI-A", "CAS-A", "CAS-R", "CAS-V", "CAV-A", "CAV-R", "CAV-V",
+            "CUI-A", "ESP-A", "ESP-R", "ESP-V", "MAO-A", "MAO-R", "MAO-V",
+            "MOB-R", "MOE-A", "MOE-R", "MOE-V", "MOP-V"
+        };
+        if (codigo == null || !java.util.Arrays.asList(codigosValidos).contains(codigo)
+                || coluna < 0 || coluna > 3) {
+            throw new IllegalArgumentException("Código de melhoria inválido");
+        }
+        String sigla = codigo.substring(0, 3);
+        String descricao;
+        if (sigla.equals("CAV")) {
+            descricao = "Dois cavalos extras";
+        } else if (sigla.equals("MAO")) {
+            descricao = "Um punho extra";
+        } else if (sigla.equals("MOE")) {
+            descricao = "Uma moeda virtual";
+        } else if (sigla.equals("ESP")) {
+            descricao = "Uma espada virtual";
+        } else if (sigla.equals("CAS")) {
+            descricao = "Um yurt virtual";
+        } else if (sigla.equals("BOI") || sigla.equals("PER") || sigla.equals("CUI")
+                || sigla.equals("MOB") || sigla.equals("MOP")) {
+            descricao = "Um tesouro virtual";
+        } else {
+            throw new IllegalArgumentException("Código de melhoria desconhecido: " + codigo);
+        }
+        return new Melhoria(descricao, 2, 0, codigo, coluna);
+    }
+
+    List<Melhoria> getMelhoriasRestantes() {
+        return new ArrayList<Melhoria>(pilha);
+    }
+
+    List<Melhoria> getMelhoriasDisponiveis() {
+        return new ArrayList<Melhoria>(java.util.Arrays.asList(disponiveis));
     }
 
     Melhoria consultar(int indice) {
