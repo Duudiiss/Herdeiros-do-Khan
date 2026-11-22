@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -54,6 +55,8 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JLabel posicaoKhan;
     private JanelaCartela janelaCartela;
     private JanelaCidades janelaCidades;
+    
+    private boolean resultadoExibido = false;
 
     public JanelaJogo(int quantidadeJogadores) {
         if (quantidadeJogadores < 2 || quantidadeJogadores > 5) {
@@ -177,6 +180,17 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             }
         });
         ferramentas.add(construirYurt);
+        
+        JButton abrirConselheiros = EstiloImperial.criarBotaoImperial("Conselheiros e Objetivos");
+        abrirConselheiros.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                if (partida != null) {
+                    new JanelaConselheiros(partida).setVisible(true);
+                }
+            }
+        });
+        ferramentas.add(abrirConselheiros);
 
         destinosKhan = EstiloImperial.criarComboBoxEstilizado(DestinoKhan.values());
         ferramentas.add(destinosKhan);
@@ -194,6 +208,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             }
         });
         ferramentas.add(moverKhan);
+        
         posicaoKhan = EstiloImperial.criarLabelComBorda(
                 "Khan: fora do tabuleiro",
                 EstiloImperial.FONTE_TEXTO,
@@ -318,7 +333,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         }
         partida = GerenciadorPartida.getInstancia()
                 .iniciarPartida(nomes, cores, personagens, ordemAleatoria);
-
+        
+        this.resultadoExibido = false;
+        
         configurarPartida();
     }
 
@@ -497,6 +514,13 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             } else {
                 posicaoKhan.setText("Khan: " + destino.getDescricao());
             }
+        }
+        
+        if (partida.isPartidaEncerrada() && !resultadoExibido) {
+            resultadoExibido = true;
+            java.awt.Window ancestral = javax.swing.SwingUtilities.getWindowAncestor(this);
+            JFrame frame = (ancestral instanceof JFrame) ? (JFrame) ancestral : null;
+            new JanelaResultadoFinal(frame, partida.consultarResultadoFinal()).setVisible(true);
         }
     }
 }

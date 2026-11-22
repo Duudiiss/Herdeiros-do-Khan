@@ -1,10 +1,13 @@
 package br.herdeiros.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.LinkedHashSet;
 import java.util.ArrayDeque;
@@ -17,6 +20,8 @@ class Tabuleiro {
     private final HashMap<Integer, Parada> paradas = new HashMap<Integer, Parada>();
     private final Set<Peao> peoes = Collections.newSetFromMap(new IdentityHashMap<Peao, Boolean>());
     private final HashMap<Integer, ArrayList<Cor>> yurts = new HashMap<Integer, ArrayList<Cor>>();
+    private final HashMap<NomeCidade, Cor> yurtsConquistaCidade = new HashMap<NomeCidade, Cor>();
+    private Cor yurtToluiKarakorum;
     private DestinoKhan destinoKhan;
 
     public Tabuleiro(List<Cidade> cidadesIniciaisSorteadas) {
@@ -323,6 +328,36 @@ class Tabuleiro {
         return true;
     }
 
+    /** Habilidade especial de Tolui: posiciona 1 yurt inicial em Karakorum. */
+    public boolean posicionarYurtInicialTolui(Cor cor) {
+        if (cor == null || cor == Cor.BRANCO || yurtToluiKarakorum != null) {
+            return false;
+        }
+        yurtToluiKarakorum = cor;
+        return true;
+    }
+
+    public Cor getYurtToluiKarakorum() {
+        return yurtToluiKarakorum;
+    }
+
+    /** Posiciona 1 yurt no centro de uma cidade conquistada (conta para influencia regional). */
+    public boolean registrarYurtConquista(NomeCidade cidade, Cor cor) {
+        if (cidade == null || cor == null || cor == Cor.BRANCO || yurtsConquistaCidade.containsKey(cidade)) {
+            return false;
+        }
+        yurtsConquistaCidade.put(cidade, cor);
+        return true;
+    }
+
+    public Cor getDonoYurtConquista(NomeCidade cidade) {
+        return yurtsConquistaCidade.get(cidade);
+    }
+
+    public Map<NomeCidade, Cor> getYurtsConquistaCidade() {
+        return Collections.unmodifiableMap(yurtsConquistaCidade);
+    }
+
     public DestinoKhan getDestinoKhan() {
         return destinoKhan;
     }
@@ -336,6 +371,9 @@ class Tabuleiro {
     }
 
     public Cor getDonoYurt(int idParada) {
+        if (idParada == 0 && yurtToluiKarakorum != null) {
+            return yurtToluiKarakorum;
+        }
         ArrayList<Cor> donos = yurts.get(idParada);
         if (donos == null || donos.isEmpty()) {
             return null;
@@ -344,6 +382,9 @@ class Tabuleiro {
     }
 
     public int getQuantidadeYurts(int idParada) {
+        if (idParada == 0) {
+            return yurtToluiKarakorum != null ? 1 : 0;
+        }
         ArrayList<Cor> donos = yurts.get(idParada);
         if (donos == null) {
             return 0;
@@ -352,6 +393,9 @@ class Tabuleiro {
     }
 
     public List<Cor> getDonosYurt(int idParada) {
+        if (idParada == 0 && yurtToluiKarakorum != null) {
+            return Collections.singletonList(yurtToluiKarakorum);
+        }
         ArrayList<Cor> donos = yurts.get(idParada);
         if (donos == null) {
             return Collections.emptyList();
@@ -360,7 +404,213 @@ class Tabuleiro {
     }
 
     public boolean temYurtDoJogador(int idParada, Cor cor) {
+        if (cor == null) {
+            return false;
+        }
+        if (idParada == 0 && yurtToluiKarakorum == cor) {
+            return true;
+        }
         ArrayList<Cor> donos = yurts.get(idParada);
         return donos != null && donos.contains(cor);
+    }
+
+    // =========================================================================
+    // CONSULTAS ESPACIAIS E DE GRAFO (CONSELHEIROS, INFLUENCIA E DESEMPATE)
+    // =========================================================================
+
+    /** Total de yurts do jogador no mapa (paradas + conquista em cidades + Tolui em Karakorum). */
+    public int contarTotalYurtsNoMapa(Cor cor) {
+        if (cor == null) {
+            return 0;
+        }
+        int total = 0;
+        for (ArrayList<Cor> donos : yurts.values()) {
+            for (Cor dono : donos) {
+                if (dono == cor) {
+                    total++;
+                }
+            }
+        }
+        for (Cor dono : yurtsConquistaCidade.values()) {
+            if (dono == cor) {
+                total++;
+            }
+        }
+        if (yurtToluiKarakorum == cor) {
+            total++;
+        }
+        return total;
+    }
+
+    /** Conta yurts para maioria regional (inclui cidades conquistadas; exclui Karakorum). */
+    public int contarYurtsJogadorNaRegiao(Cor cor, Regiao regiao,
+                                         Map<Integer, Regiao> regiaoPorParada,
+                                         Map<NomeCidade, Regiao> regiaoPorCidade) {
+        if (cor == null || regiao == null) {
+            return 0;
+        }
+        int total = 0;
+        if (regiaoPorParada != null) {
+            for (Map.Entry<Integer, ArrayList<Cor>> entrada : yurts.entrySet()) {
+                int idParada = entrada.getKey();
+                if (idParada == 0) {
+                    continue; // Yurt de Karakorum nao pertence a nenhuma regiao
+                }
+                if (regiaoPorParada.get(idParada) == regiao) {
+                    for (Cor dono : entrada.getValue()) {
+                        if (dono == cor) {
+                            total++;
+                        }
+                    }
+                }
+            }
+        }
+        if (regiaoPorCidade != null) {
+            for (Map.Entry<NomeCidade, Cor> entrada : yurtsConquistaCidade.entrySet()) {
+                if (entrada.getValue() == cor && regiaoPorCidade.get(entrada.getKey()) == regiao) {
+                    total++;
+                }
+            }
+        }
+        return total;
+    }
+
+    /** Menor numero de conexoes ate Karakorum (id 0) para criterio de desempate final. */
+    public int distanciaMinimaParaKarakorum(int idParadaOrigem) {
+        if (idParadaOrigem == 0) {
+            return 0;
+        }
+        Parada origem = paradas.get(idParadaOrigem);
+        Parada karakorum = paradas.get(0);
+        if (origem == null || karakorum == null) {
+            return Integer.MAX_VALUE;
+        }
+
+        Queue<Parada> fila = new ArrayDeque<Parada>();
+        HashMap<Integer, Integer> distancias = new HashMap<Integer, Integer>();
+        fila.add(origem);
+        distancias.put(origem.getId(), 0);
+
+        while (!fila.isEmpty()) {
+            Parada atual = fila.remove();
+            int dist = distancias.get(atual.getId());
+            for (Parada vizinha : atual.getAdjacentes()) {
+                if (!distancias.containsKey(vizinha.getId())) {
+                    int proximaDist = dist + 1;
+                    if (vizinha == karakorum) {
+                        return proximaDist;
+                    }
+                    distancias.put(vizinha.getId(), proximaDist);
+                    fila.add(vizinha);
+                }
+            }
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    /** Carta Secreta Viajante: maior grupo conectado de yurts do jogador (inclui ramificacoes). */
+    public int maiorRedeConectadaYurts(Cor cor) {
+        if (cor == null) {
+            return 0;
+        }
+        Set<Integer> visitados = new HashSet<Integer>();
+        int maiorGrupo = 0;
+
+        for (Parada inicial : paradas.values()) {
+            int idInicial = inicial.getId();
+            if (!visitados.contains(idInicial) && temYurtDoJogador(idInicial, cor)) {
+                int tamanhoGrupo = 0;
+                Queue<Parada> fila = new ArrayDeque<Parada>();
+                fila.add(inicial);
+                visitados.add(idInicial);
+
+                while (!fila.isEmpty()) {
+                    Parada atual = fila.remove();
+                    tamanhoGrupo += contarYurtsDoJogadorNaParada(atual.getId(), cor);
+
+                    for (Parada vizinha : atual.getAdjacentes()) {
+                        int idViz = vizinha.getId();
+                        if (!visitados.contains(idViz) && temYurtDoJogador(idViz, cor)) {
+                            visitados.add(idViz);
+                            fila.add(vizinha);
+                        }
+                    }
+                }
+                if (tamanhoGrupo > maiorGrupo) {
+                    maiorGrupo = tamanhoGrupo;
+                }
+            }
+        }
+        return maiorGrupo;
+    }
+
+    /** Carta Secreta Mensageiro: paradas duplas (exceto Karakorum) com pelo menos 1 yurt do jogador. */
+    public int contarParadasDuplasComYurt(Cor cor) {
+        if (cor == null) {
+            return 0;
+        }
+        int total = 0;
+        for (Parada parada : paradas.values()) {
+            if (parada.isDupla()
+                    && parada.getTipo() != TipoParada.KARAKORUM
+                    && temYurtDoJogador(parada.getId(), cor)) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    /** Carta Secreta Bajulador: provincias com icone de Khan que possuem >= 2 yurts adjacentes. */
+    public int contarProvinciasKhanComDoisYurts(Cor cor, Map<DestinoKhan, Set<Integer>> paradasPorProvinciaKhan) {
+        if (cor == null || paradasPorProvinciaKhan == null) {
+            return 0;
+        }
+        int provinciasAtendidas = 0;
+        for (Set<Integer> paradasAdjacentes : paradasPorProvinciaKhan.values()) {
+            int somaYurts = 0;
+            for (Integer idParada : paradasAdjacentes) {
+                somaYurts += contarYurtsDoJogadorNaParada(idParada, cor);
+            }
+            if (somaYurts >= 2) {
+                provinciasAtendidas++;
+            }
+        }
+        return provinciasAtendidas;
+    }
+
+    /** Cartas Secretas Prefeito/Cidadao: cidades com >= minimoYurts nas paradas adjacentes. */
+    public int contarCidadesComYurtsAdjacentes(Cor cor, Collection<Set<Integer>> paradasPorCidade,
+                                               int minimoYurtsPorCidade) {
+        if (cor == null || paradasPorCidade == null) {
+            return 0;
+        }
+        int cidadesAtendidas = 0;
+        for (Set<Integer> paradasAdjacentes : paradasPorCidade) {
+            int somaYurts = 0;
+            for (Integer idParada : paradasAdjacentes) {
+                somaYurts += contarYurtsDoJogadorNaParada(idParada, cor);
+            }
+            if (somaYurts >= minimoYurtsPorCidade) {
+                cidadesAtendidas++;
+            }
+        }
+        return cidadesAtendidas;
+    }
+
+    private int contarYurtsDoJogadorNaParada(int idParada, Cor cor) {
+        if (idParada == 0) {
+            return yurtToluiKarakorum == cor ? 1 : 0;
+        }
+        ArrayList<Cor> donos = yurts.get(idParada);
+        if (donos == null) {
+            return 0;
+        }
+        int qtd = 0;
+        for (Cor dono : donos) {
+            if (dono == cor) {
+                qtd++;
+            }
+        }
+        return qtd;
     }
 }

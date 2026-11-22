@@ -1,16 +1,18 @@
 package br.herdeiros.model;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.Locale;
 import br.herdeiros.mapa.MapaDados;
 
-/** API mínima para a interface da segunda iteração; não expõe as classes internas. */
+/** API mínima para a interface; centraliza as regras na Façade sem expor entidades internas. */
 public class InterfacePartida implements ObservadoPartida {
     private final Jogo jogo;
     private final MercadoMelhorias mercadoMelhorias;
@@ -22,10 +24,38 @@ public class InterfacePartida implements ObservadoPartida {
     private final Map<String, Cor> cidadesConquistadas = new HashMap<String, Cor>();
     private final Map<Provincia, ReservaProvincia> reservas = new HashMap<Provincia, ReservaProvincia>();
     private final Map<Provincia, Provincia[]> vizinhasDoKhan = new HashMap<Provincia, Provincia[]>();
+
+    /** Estruturas de Conselheiros, Tesouros, Bonus, Herdeiros e Pontuacao Final */
+    private final List<LocalConselheiro> locaisConselheiros = new ArrayList<LocalConselheiro>();
+    private final List<CartaConselheiroAberto> cartasAbertasAtivas = new ArrayList<CartaConselheiroAberto>();
+    private final List<TipoTesouro> pilhaTesouros = new ArrayList<TipoTesouro>();
+    private final List<TipoTesouro> descarteTesouros = new ArrayList<TipoTesouro>();
+    private final List<PecaBonus> poolPecasBonus = new ArrayList<PecaBonus>();
+    private final Map<Jogador, List<TipoTesouro>> tesourosPorJogador = new HashMap<Jogador, List<TipoTesouro>>();
+    private final Map<Jogador, List<PecaBonus>> bonusPorJogador = new HashMap<Jogador, List<PecaBonus>>();
+    private final Map<Jogador, List<CartaConselheiroSecreto>> opcoesSecretasPorJogador =
+            new HashMap<Jogador, List<CartaConselheiroSecreto>>();
+    private final Map<Jogador, CartaConselheiroSecreto> secretaPorJogador =
+            new HashMap<Jogador, CartaConselheiroSecreto>();
+    private final Map<Jogador, Integer> cidadesConquistadasPorJogador = new HashMap<Jogador, Integer>();
+    private final Map<Jogador, Peao> peaoExtraAltaniPorJogador = new HashMap<Jogador, Peao>();
+
+    /**  Mapeamentos espaciais para influencia regional e cartas secretas*/
+    private final Map<Integer, Regiao> regiaoPorParada = new HashMap<Integer, Regiao>();
+    private final Map<NomeCidade, Regiao> regiaoPorCidade = new HashMap<NomeCidade, Regiao>();
+    private final Map<DestinoKhan, Set<Integer>> paradasPorProvinciaKhan =
+            new HashMap<DestinoKhan, Set<Integer>>();
+    private final Map<NomeCidade, Set<Integer>> paradasPorCidade = new HashMap<NomeCidade, Set<Integer>>();
+
+    private int indiceAtual = 0;
     private int rodadasConcluidas;
     private int pontuacaoKhan;
     private int rodadasNoDisparoFim = -1;
     private boolean partidaEncerrada;
+    private boolean usandoPeaoExtraAltani;
+    private boolean acaoRealizadaNoTurno;
+    private int bonusMovimentosTurno;
+    private int bonusPunhosTurno;
 
     /** Construtor padrao usado pelos testes de integracao do Model. */
     public InterfacePartida() {
@@ -84,6 +114,94 @@ public class InterfacePartida implements ObservadoPartida {
             Collections.shuffle(participantes);
         }
         jogo = new Jogo(participantes);
+        inicializarMecanicasCompletas();
+    }
+
+    private void inicializarMecanicasCompletas() {
+        // 1. Registra regioes das cidades disponiveis e habilidades iniciais dos herdeiros
+        for (Cidade c : jogo.getTabuleiro().getCidadesDisponiveis()) {
+            if (c != null && c.getNomeCidade() != null && c.getRegiao() != null) {
+                regiaoPorCidade.put(c.getNomeCidade(), c.getRegiao());
+            }
+        }
+        for (Jogador j : participantes) {
+            tesourosPorJogador.put(j, new ArrayList<TipoTesouro>());
+            bonusPorJogador.put(j, new ArrayList<PecaBonus>());
+            cidadesConquistadasPorJogador.put(j, 0);
+
+            if (j.getPersonagem() == Personagem.ALTANI) {
+                Peao segundoPeao = new Peao(j.getCor());
+                jogo.getTabuleiro().posicionarPeaoInicial(segundoPeao);
+                peaoExtraAltaniPorJogador.put(j, segundoPeao);
+            } else if (j.getPersonagem() == Personagem.TOLUI) {
+                jogo.getTabuleiro().posicionarYurtInicialTolui(j.getCor());
+            }
+        }
+
+        // 2. Baralho de 40 tesouros (8 de cada um dos 5 tipos)
+        for (TipoTesouro tipo : TipoTesouro.values()) {
+            for (int i = 0; i < 8; i++) {
+                pilhaTesouros.add(tipo);
+            }
+        }
+        Collections.shuffle(pilhaTesouros);
+
+        // 3. Embaralha as 7 pecas de bonus e cria o local de Karakorum (id 0)
+        poolPecasBonus.addAll(Arrays.asList(PecaBonus.values()));
+        Collections.shuffle(poolPecasBonus);
+
+        List<TipoTesouro> tiposKarakorum = new ArrayList<TipoTesouro>(Arrays.asList(TipoTesouro.values()));
+        Collections.shuffle(tiposKarakorum);
+        TipoTesouro[] demandaKarakorum = {
+            tiposKarakorum.get(0), tiposKarakorum.get(1), tiposKarakorum.get(2)
+        };
+        PecaBonus bonusKarakorum = poolPecasBonus.isEmpty() ? null : poolPecasBonus.remove(0);
+        locaisConselheiros.add(new LocalConselheiro(0, "Karakorum", demandaKarakorum, 2, bonusKarakorum));
+
+        // 4. Sorteia 4 cartas de Conselheiro Aberto
+        List<CartaConselheiroAberto> todasAbertas =
+                new ArrayList<CartaConselheiroAberto>(Arrays.asList(CartaConselheiroAberto.values()));
+        Collections.shuffle(todasAbertas);
+        for (int i = 0; i < 4 && i < todasAbertas.size(); i++) {
+            cartasAbertasAtivas.add(todasAbertas.get(i));
+        }
+
+        // 5. Distribui 2 opcoes de Conselheiro Secreto para cada jogador
+        List<CartaConselheiroSecreto> todasSecretas =
+                new ArrayList<CartaConselheiroSecreto>(Arrays.asList(CartaConselheiroSecreto.values()));
+        Collections.shuffle(todasSecretas);
+        int cursor = 0;
+        for (Jogador j : participantes) {
+            List<CartaConselheiroSecreto> opcoes = new ArrayList<CartaConselheiroSecreto>();
+            if (cursor + 1 < todasSecretas.size()) {
+                opcoes.add(todasSecretas.get(cursor++));
+                opcoes.add(todasSecretas.get(cursor++));
+            }
+            opcoesSecretasPorJogador.put(j, opcoes);
+        }
+    }
+
+    private void registrarParadaDuplaConselheiro(int idParada) {
+        for (LocalConselheiro existente : locaisConselheiros) {
+            if (existente.getIdParada() == idParada) {
+                return;
+            }
+        }
+        int indiceDupla = locaisConselheiros.size() - 1; // descontando Karakorum
+        if (indiceDupla >= 6) {
+            return;
+        }
+        TipoTesouro[][] demandas = {
+            {TipoTesouro.PELES, TipoTesouro.PELES},
+            {TipoTesouro.SEDA, TipoTesouro.SEDA},
+            {TipoTesouro.PORCELANA, TipoTesouro.PORCELANA},
+            {TipoTesouro.FERRO, TipoTesouro.FERRO},
+            {TipoTesouro.GADO, TipoTesouro.GADO},
+            null // 6a parada dupla: 3 tesouros quaisquer
+        };
+        PecaBonus bonus = poolPecasBonus.isEmpty() ? null : poolPecasBonus.remove(0);
+        locaisConselheiros.add(new LocalConselheiro(
+                idParada, "Conselheiro (Parada " + idParada + ")", demandas[indiceDupla], 1, bonus));
     }
 
     private static String[] criarNomesJogadores(int quantidadeJogadores) {
@@ -112,9 +230,13 @@ public class InterfacePartida implements ObservadoPartida {
             return false;
         }
         for (MapaDados.Ponto ponto : mapa.getPontos().values()) {
-            if (ponto.getId() != 0 && !jogo.getTabuleiro().adicionarParada(
-                    ponto.getId(), ponto.isDupla())) {
-                return false;
+            if (ponto.getId() != 0) {
+                if (!jogo.getTabuleiro().adicionarParada(ponto.getId(), ponto.isDupla())) {
+                    return false;
+                }
+                if (ponto.isDupla()) {
+                    registrarParadaDuplaConselheiro(ponto.getId());
+                }
             }
         }
         for (MapaDados.Ligacao ligacao : mapa.getLigacoes()) {
@@ -130,6 +252,9 @@ public class InterfacePartida implements ObservadoPartida {
     public boolean cadastrarParada(int id, boolean dupla) {
         boolean adicionado = jogo.getTabuleiro().adicionarParada(id, dupla);
         if (adicionado) {
+            if (dupla && id != 0) {
+                registrarParadaDuplaConselheiro(id);
+            }
             notificarObservadores();
         }
         return adicionado;
@@ -143,11 +268,47 @@ public class InterfacePartida implements ObservadoPartida {
         return conectado;
     }
 
+    /** Configura explicitamente a regiao de uma parada para contagem de influencia final. */
+    public boolean configurarRegiaoParada(int idParada, Regiao regiao) {
+        if (regiao == null || jogo.getTabuleiro().getOcupacao(idParada) < 0) {
+            return false;
+        }
+        regiaoPorParada.put(idParada, regiao);
+        return true;
+    }
+
+    private Peao obterPeaoAtivo(Jogador jogador) {
+        if (jogador.getPersonagem() == Personagem.ALTANI
+                && jogador == participantes.get(indiceAtual)
+                && usandoPeaoExtraAltani
+                && peaoExtraAltaniPorJogador.containsKey(jogador)) {
+            return peaoExtraAltaniPorJogador.get(jogador);
+        }
+        return jogador.getMeuPeao();
+    }
+
+    /** Habilidade de Altani: alterna entre os 2 peoes enquanto nao executou acoes no turno. */
+    public boolean alternarPeaoAtivoAltani() {
+        if (partidaEncerrada) {
+            return false;
+        }
+        Jogador atual = participantes.get(indiceAtual);
+        if (atual.getPersonagem() != Personagem.ALTANI || acaoRealizadaNoTurno) {
+            return false;
+        }
+        usandoPeaoExtraAltani = !usandoPeaoExtraAltani;
+        paradasVisitadasTurno.clear();
+        registrarParadaAtualNoTurno();
+        notificarObservadores();
+        return true;
+    }
+
     public boolean movimentarJogador(int indice, int destino) {
         if (indice < 0 || indice >= participantes.size()) {
             return false;
         }
-        boolean realizado = jogo.getTabuleiro().moverPeao(participantes.get(indice).getMeuPeao(), destino);
+        Jogador alvo = participantes.get(indice);
+        boolean realizado = jogo.getTabuleiro().moverPeao(obterPeaoAtivo(alvo), destino);
         if (realizado) {
             notificarObservadores();
         }
@@ -158,24 +319,17 @@ public class InterfacePartida implements ObservadoPartida {
     public int consultarCustoMovimentoAtual(int destino) {
         Jogador jogador = participantes.get(indiceAtual);
         return jogo.getTabuleiro().distanciaMinima(
-                jogador.getMeuPeao(), destino, jogador.getCor());
+                obterPeaoAtivo(jogador), destino, jogador.getCor());
     }
-
-    private int indiceAtual = 0;
 
     /** Jogador ativo da rodada visual. */
     public int getIndiceJogadorAtual() {
         return indiceAtual;
     }
 
-    /**
-     * Executa uma ação de movimento com o número de movimentos informado.
-     * O seletor da interface é provisório, até implementar a ativação de cavalos.
-     * A passagem da vez e responsabilidade do Controller, nao deste metodo.
-     */
     public boolean movimentarJogadorAtual(int destino, int movimentosDisponiveis) {
         Jogador jogador = participantes.get(indiceAtual);
-        Peao peao = jogador.getMeuPeao();
+        Peao peao = obterPeaoAtivo(jogador);
         List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(peao, destino, jogador.getCor());
         boolean realizado = jogo.getTabuleiro().moverPeaoAte(
                 peao, destino, movimentosDisponiveis, jogador.getCor());
@@ -205,7 +359,7 @@ public class InterfacePartida implements ObservadoPartida {
         return jogador.getTabuleiroIndividual().consultarAtivacao(jogador.getPersonagem());
     }
 
-    /** Movimentacao cujo saldo e calculado e debitado no proprio Model. */
+    /** Movimentacao cujo saldo e calculado e debitado no proprio Model (inclui bonus). */
     public boolean movimentarJogadorComAtivacao(int destino) {
         if (partidaEncerrada) {
             return false;
@@ -213,21 +367,28 @@ public class InterfacePartida implements ObservadoPartida {
         Jogador jogador = participantes.get(indiceAtual);
         TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
         ResumoAtivacao ativacao = cartela.consultarAtivacao(jogador.getPersonagem());
+        int movimentosTotais = ativacao.getMovimentosRestantes() + bonusMovimentosTurno;
         int custo = consultarCustoMovimentoAtual(destino);
 
-        if (custo <= 0 || custo > ativacao.getMovimentosRestantes()) {
+        if (custo <= 0 || custo > movimentosTotais) {
             return false;
         }
+        Peao peao = obterPeaoAtivo(jogador);
         List<Integer> percurso = jogo.getTabuleiro().consultarCaminho(
-                jogador.getMeuPeao(), destino, jogador.getCor());
+                peao, destino, jogador.getCor());
         boolean realizado = jogo.getTabuleiro().moverPeaoAte(
-                jogador.getMeuPeao(), destino, ativacao.getMovimentosRestantes(), jogador.getCor());
+                peao, destino, movimentosTotais, jogador.getCor());
         if (!realizado) {
             return false;
         }
 
         paradasVisitadasTurno.addAll(percurso);
-        cartela.consumirMovimentos(custo);
+        int usadoDoBonus = Math.min(custo, bonusMovimentosTurno);
+        bonusMovimentosTurno -= usadoDoBonus;
+        int restanteCartela = custo - usadoDoBonus;
+        if (restanteCartela > 0) {
+            cartela.consumirMovimentos(restanteCartela);
+        }
         notificarObservadores();
         return true;
     }
@@ -247,6 +408,11 @@ public class InterfacePartida implements ObservadoPartida {
         cartela.encerrarTurno();
         paradasVisitadasTurno.clear();
         saquesNaCidadeNoTurno.clear();
+        usandoPeaoExtraAltani = false;
+        acaoRealizadaNoTurno = false;
+        bonusMovimentosTurno = 0;
+        bonusPunhosTurno = 0;
+
         indiceAtual++;
         if (indiceAtual >= participantes.size()) {
             indiceAtual = 0;
@@ -272,7 +438,7 @@ public class InterfacePartida implements ObservadoPartida {
         if (indice < 0 || indice >= participantes.size()) {
             return -1;
         }
-        Parada parada = participantes.get(indice).getMeuPeao().getParadaAtual();
+        Parada parada = obterPeaoAtivo(participantes.get(indice)).getParadaAtual();
         if (parada == null) {
             return -1;
         }
@@ -332,9 +498,7 @@ public class InterfacePartida implements ObservadoPartida {
         }
     }
 
-
     /**
-     *
      * Devolve um retrato dos recursos da cartela do participante solicitado.
      * A View nunca recebe as listas internas de TabuleiroIndividual.
      */
@@ -398,14 +562,21 @@ public class InterfacePartida implements ObservadoPartida {
         if (quantidade <= 0 || partidaEncerrada) {
             return false;
         }
-        participantes.get(indiceAtual).ganharVotos(quantidade);
+        concederVotosAoJogador(participantes.get(indiceAtual), quantidade);
+        notificarObservadores();
+        return true;
+    }
+
+    private void concederVotosAoJogador(Jogador jogador, int quantidade) {
+        if (jogador == null || quantidade <= 0) {
+            return;
+        }
+        jogador.ganharVotos(quantidade);
         pontuacaoKhan += quantidade;
         if (rodadasNoDisparoFim < 0
                 && pontuacaoKhan >= consultarCasaFinal()) {
             rodadasNoDisparoFim = rodadasConcluidas;
         }
-        notificarObservadores();
-        return true;
     }
 
     public int consultarCasaFinal() {
@@ -442,7 +613,16 @@ public class InterfacePartida implements ObservadoPartida {
             return false;
         }
         Jogador jogador = participantes.get(indiceAtual);
-        if (!paradasVisitadasTurno.contains(idParada)) {
+        boolean alcanceValido = paradasVisitadasTurno.contains(idParada);
+        if (!alcanceValido && jogador.getPersonagem() == Personagem.TOLUI) {
+            for (Integer visitada : paradasVisitadasTurno) {
+                if (jogo.getTabuleiro().saoAdjacentes(visitada, idParada)) {
+                    alcanceValido = true;
+                    break;
+                }
+            }
+        }
+        if (!alcanceValido) {
             return false;
         }
         TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
@@ -462,10 +642,11 @@ public class InterfacePartida implements ObservadoPartida {
             jogador.getTabuleiroIndividual().removerTributosPorTipo(TipoTributo.YURT,
                     yurtsReaisNecessarios);
         }
+        acaoRealizadaNoTurno = true;
+        verificarCartasConselheiroAberto(jogador);
         notificarObservadores();
         return true;
     }
-
 
     /**
      * Recurso restrito a demonstracao e testes da interface.
@@ -487,6 +668,7 @@ public class InterfacePartida implements ObservadoPartida {
         boolean recebido = participantes.get(indiceJogador)
                 .receberTributos(tipoTributo, quantidade);
         if (recebido) {
+            verificarCartasConselheiroAberto(participantes.get(indiceJogador));
             notificarObservadores();
         }
         return recebido;
@@ -501,6 +683,9 @@ public class InterfacePartida implements ObservadoPartida {
         List<Cidade> cidades = jogo.getTabuleiro().getCidadesDisponiveis();
 
         for (Cidade cidade : cidades) {
+            if (cidade.getNomeCidade() != null && cidade.getRegiao() != null) {
+                regiaoPorCidade.put(cidade.getNomeCidade(), cidade.getRegiao());
+            }
             ResumoCidade resumo = new ResumoCidade(
                     cidade.getNome(),
                     cidade.getRegiao().name(),
@@ -522,6 +707,10 @@ public class InterfacePartida implements ObservadoPartida {
         if (!acessosCidades.containsKey(chave)) {
             acessosCidades.put(chave, new HashSet<Integer>());
         }
+        if (!paradasPorCidade.containsKey(nome)) {
+            paradasPorCidade.put(nome, new HashSet<Integer>());
+        }
+        paradasPorCidade.get(nome).add(idParada);
         return acessosCidades.get(chave).add(idParada);
     }
 
@@ -566,13 +755,20 @@ public class InterfacePartida implements ObservadoPartida {
         if (saquesNaCidadeNoTurno.containsKey(nome.name())) {
             anteriores = saquesNaCidadeNoTurno.get(nome.name());
         }
-        int custo = 1;
-        if (anteriores > 0) {
-            custo = 2;
-        }
+        int custo = (anteriores > 0) ? 2 : 1;
         Jogador jogadorAtual = participantes.get(indiceAtual);
-        return jogadorAtual.quantidadeTributo(TipoTributo.ESPADA)
-                + jogadorAtual.getTabuleiroIndividual().getQuantidadeEspadasVirtuais() >= custo;
+        int espadas = jogadorAtual.quantidadeTributo(TipoTributo.ESPADA)
+                + jogadorAtual.getTabuleiroIndividual().getQuantidadeEspadasVirtuais();
+        if (espadas >= custo) {
+            return true;
+        }
+        // Habilidade de Ogedei: pode gastar 1 moeda no lugar de espada no primeiro saque
+        if (anteriores == 0 && jogadorAtual.getPersonagem() == Personagem.OGEDEI) {
+            int moedas = jogadorAtual.quantidadeTributo(TipoTributo.MOEDA)
+                    + jogadorAtual.getTabuleiroIndividual().getQuantidadeMoedasVirtuais();
+            return moedas >= 1;
+        }
+        return false;
     }
 
     private Cidade encontrarCidadeDisponivel(NomeCidade nome) {
@@ -584,29 +780,73 @@ public class InterfacePartida implements ObservadoPartida {
         return null;
     }
 
-    /** Saque completo: valida visita, gasta espadas e revela nova cidade ao conquistar. */
+    /** Saque completo: valida visita, gasta espadas/moedas (Ogedei), entrega tesouro e revela nova cidade. */
     public boolean saquearCidadeAtual(String nomeCidade) {
         if (partidaEncerrada || !podeSaquearCidadeAtual(nomeCidade)) {
             return false;
         }
         NomeCidade nome = interpretarCidade(nomeCidade);
         Cidade cidade = encontrarCidadeDisponivel(nome);
+        if (cidade.getRegiao() != null) {
+            regiaoPorCidade.put(nome, cidade.getRegiao());
+        }
         String chave = nome.name();
         int anteriores = 0;
         if (saquesNaCidadeNoTurno.containsKey(chave)) {
             anteriores = saquesNaCidadeNoTurno.get(chave);
         }
-        if (!participantes.get(indiceAtual).saquearCidade(cidade, anteriores)) {
+        Jogador jogadorAtual = participantes.get(indiceAtual);
+        boolean saqueOk = jogadorAtual.saquearCidade(cidade, anteriores);
+        if (!saqueOk && anteriores == 0 && jogadorAtual.getPersonagem() == Personagem.OGEDEI) {
+            int moedasVirtuais = jogadorAtual.getTabuleiroIndividual().getQuantidadeMoedasVirtuais();
+            int moedasReais = Math.max(0, 1 - moedasVirtuais);
+            if (moedasReais == 0
+                    || jogadorAtual.getTabuleiroIndividual().removerTributosPorTipo(TipoTributo.MOEDA, moedasReais)) {
+                saqueOk = cidade.saquearTesouro();
+            }
+        }
+        if (!saqueOk) {
             return false;
         }
+
+        acaoRealizadaNoTurno = true;
         saquesNaCidadeNoTurno.put(chave, anteriores + 1);
-        if (cidade.isConquistada()) {
-            cidadesConquistadas.put(chave, participantes.get(indiceAtual).getCor());
-            Cidade proxima = jogo.revelarProximaCidade();
-            jogo.getTabuleiro().substituirCidadeConquistada(cidade, proxima);
+        TipoTesouro tesouroSaqueado = comprarTesouroDaPilha();
+        if (tesouroSaqueado != null) {
+            tesourosPorJogador.get(jogadorAtual).add(tesouroSaqueado);
         }
+
+        if (cidade.isConquistada()) {
+            cidadesConquistadas.put(chave, jogadorAtual.getCor());
+            jogo.getTabuleiro().registrarYurtConquista(nome, jogadorAtual.getCor());
+            cidadesConquistadasPorJogador.put(
+                    jogadorAtual, cidadesConquistadasPorJogador.get(jogadorAtual) + 1);
+
+            Cidade proxima = jogo.revelarProximaCidade();
+            if (proxima != null && proxima.getNomeCidade() != null && proxima.getRegiao() != null) {
+                regiaoPorCidade.put(proxima.getNomeCidade(), proxima.getRegiao());
+            }
+            jogo.getTabuleiro().substituirCidadeConquistada(cidade, proxima);
+
+            if (rodadasNoDisparoFim < 0 && cidadesConquistadas.size() >= 9) {
+                rodadasNoDisparoFim = rodadasConcluidas;
+            }
+        }
+        verificarCartasConselheiroAberto(jogadorAtual);
         notificarObservadores();
         return true;
+    }
+
+    private TipoTesouro comprarTesouroDaPilha() {
+        if (pilhaTesouros.isEmpty() && !descarteTesouros.isEmpty()) {
+            pilhaTesouros.addAll(descarteTesouros);
+            descarteTesouros.clear();
+            Collections.shuffle(pilhaTesouros);
+        }
+        if (pilhaTesouros.isEmpty()) {
+            return null;
+        }
+        return pilhaTesouros.remove(0);
     }
 
     public Cor consultarConquistadorCidade(String nomeCidade) {
@@ -625,15 +865,6 @@ public class InterfacePartida implements ObservadoPartida {
         return jogo.getTabuleiro().getDestinoKhan();
     }
 
-    /**
-     * Recolhe um tributo de uma província acessada neste turno, gastando um punho.
-     * Não permite coletar por paradas não visitadas ou quando a reserva está vazia.
-     */
-    /**
-     * Permite escolher explicitamente qual peça de tributo recolher com um punho.
-     * A reserva atual de cada província possui um único tipo, conforme o CSV.
-     * Uma escolha diferente nunca consome estoque ou punhos.
-     */
     public boolean coletarTributo(Provincia provincia, String tipoEscolhido) {
         if (provincia == null || tipoEscolhido == null) {
             return false;
@@ -663,15 +894,6 @@ public class InterfacePartida implements ObservadoPartida {
         }
     }
 
-    /**
-     * Coleta de uma pilha desenhada na divisa de provincias.
-     * O jogador precisa ter acesso a pelo menos uma provincia do icone.
-     * A pilha mostra a soma dos estoques das provincias indicadas;
-     * por isso pode retirar uma peca de qualquer uma delas, inclusive
-     * apos retirar outra da mesma pilha com um punho anterior.
-     * A verificacao ocorre antes da alteracao, para preservar o estado
-     * em tentativas recusadas.
-     */
     public boolean coletarTributoDaPilha(Provincia[] provincias, String tipoEscolhido) {
         if (partidaEncerrada || provincias == null || provincias.length == 0 || tipoEscolhido == null) {
             return false;
@@ -713,7 +935,7 @@ public class InterfacePartida implements ObservadoPartida {
 
         Jogador jogador = participantes.get(indiceAtual);
         TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
-        if (!cartela.podeGastarPunho()) {
+        if (!cartela.podeGastarPunho() && bonusPunhosTurno <= 0) {
             return false;
         }
 
@@ -722,7 +944,12 @@ public class InterfacePartida implements ObservadoPartida {
         }
 
         jogador.receberTributos(tipo, 1);
-        cartela.gastarPunho();
+        if (bonusPunhosTurno > 0) {
+            bonusPunhosTurno--;
+        } else {
+            cartela.gastarPunho();
+        }
+        verificarCartasConselheiroAberto(jogador);
         notificarObservadores();
         return true;
     }
@@ -749,14 +976,19 @@ public class InterfacePartida implements ObservadoPartida {
         }
         Jogador jogador = participantes.get(indiceAtual);
         TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
-        if (!cartela.podeGastarPunho() || reserva.quantidade(tipo) <= 0) {
+        if ((!cartela.podeGastarPunho() && bonusPunhosTurno <= 0) || reserva.quantidade(tipo) <= 0) {
             return false;
         }
         if (!reserva.retirar(tipo)) {
             return false;
         }
         jogador.receberTributos(tipo, 1);
-        cartela.gastarPunho();
+        if (bonusPunhosTurno > 0) {
+            bonusPunhosTurno--;
+        } else {
+            cartela.gastarPunho();
+        }
+        verificarCartasConselheiroAberto(jogador);
         notificarObservadores();
         return true;
     }
@@ -797,6 +1029,14 @@ public class InterfacePartida implements ObservadoPartida {
         ReservaProvincia reserva = reservas.get(provincia);
         if (reserva == null || jogo.getTabuleiro().getOcupacao(idParada) < 0) {
             return false;
+        }
+        try {
+            DestinoKhan destino = DestinoKhan.valueOf(provincia.name());
+            if (!paradasPorProvinciaKhan.containsKey(destino)) {
+                paradasPorProvinciaKhan.put(destino, new HashSet<Integer>());
+            }
+            paradasPorProvinciaKhan.get(destino).add(idParada);
+        } catch (IllegalArgumentException ignored) {
         }
         return reserva.adicionarAcesso(idParada);
     }
@@ -875,6 +1115,7 @@ public class InterfacePartida implements ObservadoPartida {
         }
         Melhoria retirada = mercadoMelhorias.retirar(posicao);
         cartela.adicionarMelhoria(retirada);
+        verificarCartasConselheiroAberto(jogador);
         notificarObservadores();
         return true;
     }
@@ -894,6 +1135,7 @@ public class InterfacePartida implements ObservadoPartida {
         Melhoria retirada = mercadoMelhorias.retirar(posicao);
         boolean recebida = cartela.receberMelhoriaBranca(retirada);
         if (recebida) {
+            verificarCartasConselheiroAberto(participantes.get(indiceAtual));
             notificarObservadores();
         }
         return recebida;
@@ -909,6 +1151,7 @@ public class InterfacePartida implements ObservadoPartida {
         Melhoria retirada = mercadoMelhorias.retirarAleatoria();
         boolean recebida = cartela.receberMelhoriaBranca(retirada);
         if (recebida) {
+            verificarCartasConselheiroAberto(participantes.get(indiceAtual));
             notificarObservadores();
         }
         return recebida;
@@ -939,12 +1182,11 @@ public class InterfacePartida implements ObservadoPartida {
         }
         if (destino == DestinoKhan.MELHORIAS) {
             mercadoMelhorias.reporVazios();
-            // A area impressa possui espacos de bonus (moeda/espada).
-            // A ocupacao individual desses espacos ainda sera modelada.
             participantes.get(indiceAtual).receberTributos(TipoTributo.MOEDA, 1);
             participantes.get(indiceAtual).receberTributos(TipoTributo.ESPADA, 1);
         }
         cartela.concluirAcaoKhan();
+        verificarCartasConselheiroAberto(participantes.get(indiceAtual));
         notificarObservadores();
         return true;
     }
@@ -958,5 +1200,285 @@ public class InterfacePartida implements ObservadoPartida {
 
     public int getOcupacao(int id) {
         return jogo.getTabuleiro().getOcupacao(id);
+    }
+
+    // =========================================================================
+    // METODOS DE CONSELHEIROS, BONUS, OBJETIVOS E APURACAO FINAL (FACADE)
+    // =========================================================================
+
+    public boolean escolherConselheiroSecretoJogadorAtual(int indiceOpcao) {
+        if (partidaEncerrada) {
+            return false;
+        }
+        Jogador atual = participantes.get(indiceAtual);
+        if (secretaPorJogador.containsKey(atual)) {
+            return false;
+        }
+        List<CartaConselheiroSecreto> opcoes = opcoesSecretasPorJogador.get(atual);
+        if (opcoes == null || indiceOpcao < 0 || indiceOpcao >= opcoes.size()) {
+            return false;
+        }
+        secretaPorJogador.put(atual, opcoes.get(indiceOpcao));
+        opcoes.clear();
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean entregarTesourosConselheiro(int idParadaConselheiro) {
+        if (partidaEncerrada) {
+            return false;
+        }
+        Jogador atual = participantes.get(indiceAtual);
+        Parada paradaAtual = obterPeaoAtivo(atual).getParadaAtual();
+        if (paradaAtual == null || paradaAtual.getId() != idParadaConselheiro) {
+            return false;
+        }
+
+        LocalConselheiro alvo = null;
+        for (LocalConselheiro local : locaisConselheiros) {
+            if (local.getIdParada() == idParadaConselheiro) {
+                alvo = local;
+                break;
+            }
+        }
+        if (alvo == null) {
+            return false;
+        }
+
+        List<TipoTesouro> mao = tesourosPorJogador.get(atual);
+        if (mao == null || !alvo.podeEntregar(mao, null, false)) {
+            return false;
+        }
+
+        alvo.consumirTesouros(mao, null, false, descarteTesouros);
+        acaoRealizadaNoTurno = true;
+        concederVotosAoJogador(atual, alvo.getVotosConcedidos());
+
+        if (alvo.temPecaBonus()) {
+            bonusPorJogador.get(atual).add(alvo.recolherPecaBonus());
+        }
+
+        verificarCartasConselheiroAberto(atual);
+        notificarObservadores();
+        return true;
+    }
+
+    public boolean usarPecaBonusJogadorAtual(int indiceBonus) {
+        if (partidaEncerrada) {
+            return false;
+        }
+        Jogador atual = participantes.get(indiceAtual);
+        List<PecaBonus> lista = bonusPorJogador.get(atual);
+        if (lista == null || indiceBonus < 0 || indiceBonus >= lista.size()) {
+            return false;
+        }
+
+        PecaBonus escolhida = lista.remove(indiceBonus);
+        switch (escolhida) {
+            case VOTO_IMEDIATO:
+                concederVotosAoJogador(atual, 1);
+                break;
+            case DUAS_ESPADAS:
+                atual.receberTributos(TipoTributo.ESPADA, 2);
+                break;
+            case DUAS_MOEDAS:
+                atual.receberTributos(TipoTributo.MOEDA, 2);
+                break;
+            case DOIS_YURTS:
+                atual.receberTributos(TipoTributo.YURT, 2);
+                break;
+            case TRES_MOVIMENTOS_UM_PUNHO:
+                bonusMovimentosTurno += 3;
+                bonusPunhosTurno += 1;
+                break;
+            case DOIS_PUNHOS:
+                bonusPunhosTurno += 2;
+                break;
+            case ESCOLHER_TESOURO: {
+                TipoTesouro comprado = comprarTesouroDaPilha();
+                if (comprado != null) {
+                    tesourosPorJogador.get(atual).add(comprado);
+                }
+                break;
+            }
+            default:
+                break;
+        }
+
+        verificarCartasConselheiroAberto(atual);
+        notificarObservadores();
+        return true;
+    }
+
+    public List<ResumoConselheiro> consultarConselheiros() {
+        Jogador atual = participantes.get(indiceAtual);
+        Parada paradaAtual = obterPeaoAtivo(atual).getParadaAtual();
+        int idParadaAtual = (paradaAtual != null) ? paradaAtual.getId() : -1;
+        List<TipoTesouro> mao = tesourosPorJogador.get(atual);
+
+        List<ResumoConselheiro> resultado = new ArrayList<ResumoConselheiro>();
+        for (LocalConselheiro local : locaisConselheiros) {
+            boolean presente = (idParadaAtual == local.getIdParada());
+            boolean podeEntregar = presente && local.podeEntregar(mao, null, false);
+            String descBonus = local.temPecaBonus()
+                    ? local.getPecaBonus().getDescricao()
+                    : "Ja recolhido";
+
+            resultado.add(new ResumoConselheiro(
+                    local.getIdParada(),
+                    local.getNome(),
+                    local.getDescricaoDemanda(),
+                    local.getVotosConcedidos(),
+                    descBonus,
+                    presente,
+                    podeEntregar));
+        }
+        return Collections.unmodifiableList(resultado);
+    }
+
+    public ResumoCartaObjetivo consultarObjetivosJogadorAtual() {
+        Jogador atual = participantes.get(indiceAtual);
+        List<String> abertas = new ArrayList<String>();
+        for (CartaConselheiroAberto c : cartasAbertasAtivas) {
+            abertas.add(c.getDescricao());
+        }
+
+        CartaConselheiroSecreto escolhida = secretaPorJogador.get(atual);
+        String descSecreta = escolhida != null ? escolhida.getDescricao() : "Ainda nao escolhida";
+
+        List<String> opcoesDesc = new ArrayList<String>();
+        List<CartaConselheiroSecreto> opcoes = opcoesSecretasPorJogador.get(atual);
+        if (escolhida == null && opcoes != null) {
+            for (CartaConselheiroSecreto op : opcoes) {
+                opcoesDesc.add(op.getDescricao());
+            }
+        }
+
+        List<String> bonusDesc = new ArrayList<String>();
+        for (PecaBonus b : bonusPorJogador.get(atual)) {
+            bonusDesc.add(b.getDescricao());
+        }
+
+        List<String> tesourosDesc = new ArrayList<String>();
+        for (TipoTesouro t : tesourosPorJogador.get(atual)) {
+            tesourosDesc.add(t.getDescricao());
+        }
+
+        return new ResumoCartaObjetivo(
+                abertas,
+                descSecreta,
+                opcoesDesc,
+                bonusDesc,
+                tesourosDesc,
+                cidadesConquistadasPorJogador.get(atual));
+    }
+
+    public List<ResumoResultadoFinal> consultarResultadoFinal() {
+        Map<Jogador, List<ResumoMelhoria>> melhoriasPorJogador =
+                new HashMap<Jogador, List<ResumoMelhoria>>();
+        for (int i = 0; i < participantes.size(); i++) {
+            melhoriasPorJogador.put(participantes.get(i), consultarCartela(i).getMelhoriasDetalhadas());
+        }
+        return AvaliadorPontuacaoFinal.apurar(
+                participantes,
+                jogo.getTabuleiro(),
+                tesourosPorJogador,
+                secretaPorJogador,
+                melhoriasPorJogador,
+                peaoExtraAltaniPorJogador,
+                regiaoPorParada,
+                regiaoPorCidade,
+                paradasPorProvinciaKhan,
+                paradasPorCidade);
+    }
+
+    private void verificarCartasConselheiroAberto(Jogador j) {
+        Tabuleiro tab = jogo.getTabuleiro();
+        int idx = participantes.indexOf(j);
+        List<ResumoMelhoria> melhorias = (idx >= 0)
+                ? consultarCartela(idx).getMelhoriasDetalhadas()
+                : Collections.<ResumoMelhoria>emptyList();
+        List<TipoTesouro> tesouros = tesourosPorJogador.get(j);
+        List<PecaBonus> bonus = bonusPorJogador.get(j);
+        int conquistas = cidadesConquistadasPorJogador.get(j);
+
+        Iterator<CartaConselheiroAberto> it = cartasAbertasAtivas.iterator();
+        while (it.hasNext()) {
+            CartaConselheiroAberto carta = it.next();
+            boolean cumpriu = false;
+            switch (carta) {
+                case QUATRO_ESPADAS:
+                    cumpriu = j.quantidadeTributo(TipoTributo.ESPADA) >= 4;
+                    break;
+                case SEIS_YURTS:
+                    cumpriu = tab.contarTotalYurtsNoMapa(j.getCor()) >= 6;
+                    break;
+                case DEZ_YURTS:
+                    cumpriu = tab.contarTotalYurtsNoMapa(j.getCor()) >= 10;
+                    break;
+                case QUATRO_TESOUROS:
+                    cumpriu = tesouros != null && tesouros.size() >= 4;
+                    break;
+                case CINCO_TESOUROS_DIFERENTES:
+                    cumpriu = tesouros != null && new HashSet<TipoTesouro>(tesouros).size() >= 5;
+                    break;
+                case UM_YURT_CADA_REGIAO:
+                    cumpriu = tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.CHINA, regiaoPorParada, regiaoPorCidade) >= 1
+                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.PERSIA, regiaoPorParada, regiaoPorCidade) >= 1
+                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.RUSSIA, regiaoPorParada, regiaoPorCidade) >= 1;
+                    break;
+                case DOIS_YURTS_CADA_REGIAO:
+                    cumpriu = tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.CHINA, regiaoPorParada, regiaoPorCidade) >= 2
+                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.PERSIA, regiaoPorParada, regiaoPorCidade) >= 2
+                            && tab.contarYurtsJogadorNaRegiao(j.getCor(), Regiao.RUSSIA, regiaoPorParada, regiaoPorCidade) >= 2;
+                    break;
+                case DOIS_BONUS:
+                    cumpriu = bonus != null && bonus.size() >= 2;
+                    break;
+                case TRES_BONUS:
+                    cumpriu = bonus != null && bonus.size() >= 3;
+                    break;
+                case DUAS_CIDADES:
+                    cumpriu = conquistas >= 2;
+                    break;
+                case TRES_CIDADES:
+                    cumpriu = conquistas >= 3;
+                    break;
+                case DUAS_COLUNAS_DUAS_MELHORIAS: {
+                    int[] porCol = new int[4];
+                    int colunasComDuas = 0;
+                    for (ResumoMelhoria m : melhorias) {
+                        if (m.getColuna() >= 0 && m.getColuna() < 4) {
+                            porCol[m.getColuna()]++;
+                        }
+                    }
+                    for (int qtd : porCol) {
+                        if (qtd >= 2) {
+                            colunasComDuas++;
+                        }
+                    }
+                    cumpriu = colunasComDuas >= 2;
+                    break;
+                }
+                case QUATRO_MELHORIAS_COLUNA: {
+                    int[] porCol = new int[4];
+                    for (ResumoMelhoria m : melhorias) {
+                        if (m.getColuna() >= 0 && m.getColuna() < 4) {
+                            porCol[m.getColuna()]++;
+                            if (porCol[m.getColuna()] >= 4) {
+                                cumpriu = true;
+                            }
+                        }
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+            if (cumpriu) {
+                it.remove();
+                concederVotosAoJogador(j, 1);
+            }
+        }
     }
 }
