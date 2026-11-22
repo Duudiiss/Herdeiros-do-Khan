@@ -1,11 +1,15 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.EnumMap;
+import java.util.Map;
 import java.util.Set;
 
 /** Guarda o estoque finito e as paradas que dão acesso a uma província. */
-final class ReservaProvincia {
+final class ReservaProvincia implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final TipoTributo tipo;
     private final Set<Integer> acessos = new HashSet<Integer>();
     private final EnumMap<TipoTributo, Integer> quantidades =
@@ -40,6 +44,41 @@ final class ReservaProvincia {
 
     Set<Integer> getAcessos() {
         return new HashSet<Integer>(acessos);
+    }
+
+    EnumMap<TipoTributo, Integer> getQuantidades() {
+        return new EnumMap<TipoTributo, Integer>(quantidades);
+    }
+
+    static ReservaProvincia restaurar(TipoTributo tipo, Map<TipoTributo, Integer> quantidades,
+                                      Set<Integer> acessos) {
+        if (tipo == null || quantidades == null || acessos == null) {
+            throw new IllegalArgumentException("Estado de província inválido");
+        }
+        int total = 0;
+        for (TipoTributo opcao : TipoTributo.values()) {
+            Integer quantidade = quantidades.get(opcao);
+            if (quantidade == null || quantidade < 0) {
+                throw new IllegalArgumentException("Quantidade de tributo inválida");
+            }
+            total += quantidade;
+        }
+        if (total > 3) {
+            throw new IllegalArgumentException("Estoque de província inválido");
+        }
+        ReservaProvincia reserva = new ReservaProvincia(tipo, quantidades.get(tipo));
+        for (TipoTributo opcao : TipoTributo.values()) {
+            if (opcao != tipo && quantidades.get(opcao) > 0
+                    && !reserva.adicionarTipo(opcao, quantidades.get(opcao))) {
+                throw new IllegalArgumentException("Estoque adicional de província inválido");
+            }
+        }
+        for (Integer acesso : acessos) {
+            if (acesso == null || !reserva.adicionarAcesso(acesso)) {
+                throw new IllegalArgumentException("Acesso de província inválido");
+            }
+        }
+        return reserva;
     }
 
     TipoTributo getTipo() {

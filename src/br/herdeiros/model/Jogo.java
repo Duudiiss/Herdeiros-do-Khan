@@ -1,18 +1,28 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 /** Organiza uma partida de dois a cinco jogadores humanos. */
-class Jogo {
+class Jogo implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final HashMap<Cor, Jogador> jogadores = new HashMap<>();
     private final BaralhoDeCidades baralho;
     private final Tabuleiro tabuleiro;
 
     public Jogo(List<Jogador> participantes) {
+        this(participantes, new BaralhoDeCidades(), null);
+    }
+
+    Jogo(List<Jogador> participantes, BaralhoDeCidades baralho, Tabuleiro tabuleiro) {
         if (participantes == null || participantes.size() < 2 || participantes.size() > 5) {
             throw new IllegalArgumentException("A partida requer de 2 a 5 jogadores");
+        }
+        if (baralho == null) {
+            throw new IllegalArgumentException("Baralho obrigatório");
         }
 
         for (Jogador jogador : participantes) {
@@ -26,11 +36,15 @@ class Jogo {
             jogadores.put(jogador.getCor(), jogador);
         }
 
-        baralho = new BaralhoDeCidades();
-        tabuleiro = new Tabuleiro(baralho.sacarCidadesIniciais());
+        this.baralho = baralho;
+        this.tabuleiro = tabuleiro == null
+                ? new Tabuleiro(baralho.sacarCidadesIniciais()) : tabuleiro;
 
         for (Jogador jogador : participantes) {
-            tabuleiro.posicionarPeaoInicial(jogador.getMeuPeao());
+            if (jogador.getMeuPeao().getParadaAtual() == null
+                    && !this.tabuleiro.posicionarPeaoInicial(jogador.getMeuPeao())) {
+                throw new IllegalArgumentException("Não foi possível posicionar o jogador");
+            }
         }
     }
 
@@ -40,6 +54,10 @@ class Jogo {
 
     public Tabuleiro getTabuleiro() {
         return tabuleiro;
+    }
+
+    BaralhoDeCidades getBaralho() {
+        return baralho;
     }
 
     public int getQuantidadeJogadores() {

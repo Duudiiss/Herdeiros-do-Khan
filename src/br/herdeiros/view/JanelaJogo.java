@@ -12,6 +12,7 @@ import br.herdeiros.model.Cor;
 import br.herdeiros.model.Personagem;
 import br.herdeiros.model.DestinoKhan;
 import br.herdeiros.model.Provincia;
+import br.herdeiros.model.GerenciadorSave;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -19,6 +20,7 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.IOException;
 import javax.swing.JOptionPane;
 import java.nio.file.Files;
@@ -26,10 +28,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.BorderFactory;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class JanelaJogo extends JPanel implements ObservadorPartida {
 
@@ -43,6 +48,7 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     private JLabel indicadorVez;
     private JTextArea estado;
     private JButton passar;
+    private JButton salvar;
     private JButton abrirCartela;
     private JButton abrirCidades;
     private JButton abrirMelhorias;
@@ -68,11 +74,25 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         iniciarPartida(quantidadeJogadores, nomes, cores, personagens);
     }
 
+    public JanelaJogo(InterfacePartida partidaSalva) throws IOException {
+        this(quantidadeDaPartida(partidaSalva));
+        partida = GerenciadorPartida.getInstancia().carregarPartida(partidaSalva);
+        configurarPartida(false);
+    }
+
+    private static int quantidadeDaPartida(InterfacePartida partida) {
+        if (partida == null) {
+            throw new IllegalArgumentException("Partida salva inválida.");
+        }
+        return partida.getQuantidadeJogadores();
+    }
+
     private void configurarInterface() {
         setLayout(new BorderLayout(8, 8));
 
         indicadorVez = new JLabel();
         indicadorVez.setHorizontalAlignment(JLabel.CENTER);
+        indicadorVez.setPreferredSize(new Dimension(0, 92));
 
         estado = new JTextArea(
             "Configure uma partida para começar."
@@ -81,23 +101,44 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         estado.setEditable(false);
         estado.setLineWrap(true);
         estado.setWrapStyleWord(true);
-        estado.setOpaque(false);
-        estado.setRows(3);
+        estado.setOpaque(true);
+        estado.setRows(5);
+        estado.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 15));
+        estado.setForeground(new Color(65, 42, 24));
+        estado.setBackground(new Color(255, 247, 220));
+        estado.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
+        JLabel tituloEstado = new JLabel("SUA PRÓXIMA AÇÃO");
+        tituloEstado.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 14));
+        tituloEstado.setForeground(new Color(92, 48, 20));
+        tituloEstado.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+
+        JPanel painelEstado = new JPanel(new BorderLayout());
+        painelEstado.setBackground(new Color(255, 247, 220));
+        painelEstado.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(151, 92, 39), 2),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)));
+        painelEstado.add(tituloEstado, BorderLayout.NORTH);
+        painelEstado.add(estado, BorderLayout.CENTER);
 
         JPanel lateral = new JPanel(
             new BorderLayout(8, 8)
         );
 
-        lateral.setPreferredSize(new Dimension(240, 0));
+        lateral.setPreferredSize(new Dimension(280, 0));
 
         JPanel ferramentas = new JPanel(
             new GridLayout(0, 1, 6, 6)
         );
 
-        ferramentas.add(new JLabel(
-
-            "<html>Movimentacao: ative uma<br>coluna na cartela individual.</html>"
-        ));
+        salvar = new JButton("Salvar partida");
+        salvar.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evento) {
+                abrirOpcoesSalvar();
+            }
+        });
+        ferramentas.add(salvar);
 
         passar = new JButton("Passar turno");
 
@@ -106,7 +147,9 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
             public void actionPerformed(ActionEvent evento) {
 
                 if (controlador != null) {
-                    controlador.passarVez();
+                    if (controlador.passarVez()) {
+                        salvarAutomaticamente();
+                    }
                 }
             }
         });
@@ -171,17 +214,17 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         posicaoKhan = new JLabel("Khan: fora do tabuleiro");
         ferramentas.add(posicaoKhan);
 
-        ferramentas.add(new JLabel(
-            "<html>Clique nos icones com contadores para coletar tributos (1 punho).<br>Clique numa cidade aberta para saquear com espadas.</html>"
-        ));
+        JLabel dicasAcoes = new JLabel(
+                "<html><div style='width:250px'>Tributo: ícone com contador (1 punho)."
+                        + "<br>Cidade aberta: saque com espadas.</div></html>");
+        dicasAcoes.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 12));
+        dicasAcoes.setToolTipText("Clique em um ícone com contador para coletar tributo "
+                + "(custa 1 punho). Clique em uma cidade aberta para saquear com espadas.");
+        ferramentas.add(dicasAcoes);
 
-        ferramentas.add(new JLabel(
-            "<html>Mapa carregado do<br>arquivo CSV.</html>"
-        ));
-
-        lateral.add(indicadorVez, BorderLayout.CENTER);
-        lateral.add(ferramentas, BorderLayout.NORTH);
-        lateral.add(estado, BorderLayout.SOUTH);
+        lateral.add(indicadorVez, BorderLayout.NORTH);
+        lateral.add(ferramentas, BorderLayout.CENTER);
+        lateral.add(painelEstado, BorderLayout.SOUTH);
 
         add(lateral, BorderLayout.EAST);
     }
@@ -196,6 +239,81 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
         }
         janelaMelhorias = new JanelaMelhorias(partida);
         janelaMelhorias.setVisible(true);
+    }
+
+    private void abrirOpcoesSalvar() {
+        if (partida == null) {
+            return;
+        }
+        Object[] opcoes = {"Salvar no slot local", "Exportar para arquivo", "Cancelar"};
+        int escolha = JOptionPane.showOptionDialog(this,
+                "Escolha onde gravar a partida.",
+                "Salvar partida", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, opcoes, opcoes[0]);
+        if (escolha == 0) {
+            salvarLocalManualmente();
+        } else if (escolha == 1) {
+            exportarSave();
+        }
+    }
+
+    private void salvarLocalManualmente() {
+        if (GerenciadorSave.existeSaveLocal()) {
+            int confirmacao = JOptionPane.showConfirmDialog(this,
+                    "O save local existente será substituído. Deseja continuar?",
+                    "Confirmar substituição", JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (confirmacao != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+        try {
+            GerenciadorSave.salvarLocal(partida);
+            JOptionPane.showMessageDialog(this,
+                    "Partida salva em " + GerenciadorSave.getCaminhoSaveLocal(),
+                    "Save concluído", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException | IllegalArgumentException erro) {
+            JOptionPane.showMessageDialog(this, erro.getMessage(),
+                    "Erro ao salvar partida", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void salvarAutomaticamente() {
+        try {
+            GerenciadorSave.salvarLocal(partida);
+        } catch (IOException | IllegalArgumentException erro) {
+            JOptionPane.showMessageDialog(this,
+                    "Não foi possível atualizar o autosave local: " + erro.getMessage(),
+                    "Erro no salvamento automático", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void exportarSave() {
+        JFileChooser seletor = new JFileChooser();
+        seletor.setDialogTitle("Exportar save da partida");
+        seletor.setFileFilter(new FileNameExtensionFilter("Save JSON (*.json)", "json"));
+        seletor.setSelectedFile(new File("partida.json"));
+        if (seletor.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        Path destino = seletor.getSelectedFile().toPath();
+        if (Files.exists(destino)) {
+            int confirmacao = JOptionPane.showConfirmDialog(this,
+                    "O arquivo selecionado será substituído. Deseja continuar?",
+                    "Confirmar substituição", JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (confirmacao != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+        try {
+            GerenciadorSave.salvar(destino, partida);
+            JOptionPane.showMessageDialog(this, "Save exportado com sucesso.",
+                    "Exportação concluída", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException | IllegalArgumentException erro) {
+            JOptionPane.showMessageDialog(this, erro.getMessage(),
+                    "Erro ao exportar save", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /** Janela informativa das cidades disponiveis, atualizada via Observer. */
@@ -287,26 +405,35 @@ public class JanelaJogo extends JPanel implements ObservadorPartida {
     }
 
     private void configurarPartida() throws IOException {
-        // Carregamento do mapa
+        configurarPartida(true);
+    }
+
+    private void configurarPartida(boolean configurarModelo) throws IOException {
+        // Carregamento do mapa usado pela interface e, em partidas novas, pelo Model.
         Path caminho = Paths.get(
             "assets",
             "mapa_paradas.csv"
         );
 
-        if (Files.exists(caminho)) {
+        MapaDados mapaSalvo = partida.getMapaDadosSave();
+        if (mapaSalvo != null) {
+            mapa = mapaSalvo;
+        } else if (Files.exists(caminho)) {
             mapa = ArquivoMapa.carregar(caminho);
         } else {
             mapa = new MapaDados();
         }
 
-        if (!partida.carregarMapa(mapa)) {
-            throw new IOException(
-                "O mapa não pôde ser carregado no Model."
-            );
+        if (configurarModelo) {
+            if (!partida.carregarMapa(mapa)) {
+                throw new IOException("O mapa não pôde ser carregado no Model.");
+            }
+            carregarAcessosCidades();
+            carregarProvincias();
+            carregarEstoquesAdicionais();
+        } else if (mapaSalvo == null) {
+            partida.definirMapaDadosSave(mapa);
         }
-        carregarAcessosCidades();
-        carregarProvincias();
-        carregarEstoquesAdicionais();
 
         // Criação do Controller
         controlador = new ControladorTabuleiro(

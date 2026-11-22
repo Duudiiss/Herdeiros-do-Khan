@@ -31,4 +31,12 @@ public final class GerenciadorPartida {
     public InterfacePartida getPartidaAtual() {
         return partidaAtual;
     }
+
+    public InterfacePartida carregarPartida(InterfacePartida partida) {
+        if (partida == null || !partida.estadoValidoParaSave()) {
+            throw new IllegalArgumentException("Partida salva inválida");
+        }
+        partidaAtual = partida;
+        return partidaAtual;
+    }
 }

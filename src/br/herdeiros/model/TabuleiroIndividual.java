@@ -1,9 +1,12 @@
 package br.herdeiros.model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TabuleiroIndividual {
+public class TabuleiroIndividual implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final List<Tributo> tributosArmazenados;
     private final List<Melhoria> melhoriasAdquiridas;
     private final int quantidadeColunas;
@@ -228,6 +231,39 @@ public class TabuleiroIndividual {
 
     public int getQuantidadeColunas() {
         return quantidadeColunas;
+    }
+
+    boolean[] getColunasOcupadas() {
+        return colunasOcupadas.clone();
+    }
+
+    boolean podeSalvarEntreTurnos() {
+        return colunaAtivaNoTurno < 0 && linhasBrancasPendentes == 0 && !acaoKhan;
+    }
+
+    void restaurarEstado(List<Tributo> tributos, List<Melhoria> melhorias,
+                         boolean[] colunasOcupadasSalvas) {
+        if (tributos == null || melhorias == null || colunasOcupadasSalvas == null
+                || colunasOcupadasSalvas.length != quantidadeColunas) {
+            throw new IllegalArgumentException("Estado da cartela inválido");
+        }
+        for (Tributo tributo : tributos) {
+            if (tributo == null || tributo.getTipo() == null) {
+                throw new IllegalArgumentException("Tributo inválido na cartela");
+            }
+        }
+        for (Melhoria melhoria : melhorias) {
+            if (melhoria == null || melhoria.getCodigo() == null
+                    || melhoria.getColuna() < 0 || melhoria.getColuna() >= quantidadeColunas) {
+                throw new IllegalArgumentException("Melhoria inválida na cartela");
+            }
+        }
+        tributosArmazenados.clear();
+        tributosArmazenados.addAll(tributos);
+        melhoriasAdquiridas.clear();
+        melhoriasAdquiridas.addAll(melhorias);
+        System.arraycopy(colunasOcupadasSalvas, 0, colunasOcupadas, 0, quantidadeColunas);
+        encerrarTurno();
     }
 
     public List<Tributo> getTributosArmazenados() {

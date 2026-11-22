@@ -1,0 +1,836 @@
+{
+  "meta": {
+    "formato": "herdeiros-save",
+    "versao": 1,
+    "tipo": "partida",
+    "descricao": "Demonstracao: quatro jogadores, inicio da rodada final"
+  },
+  "partida": {
+    "rodadasConcluidas": 4,
+    "jogadorAtual": 0,
+    "pontuacaoKhan": 15,
+    "rodadasNoDisparoFim": 3,
+    "encerrada": false
+  },
+  "mapa": {
+    "paradas": [
+      {
+        "id": 0,
+        "x": 0.4989648033126294,
+        "y": 0.4325437693099897,
+        "dupla": false,
+        "raio": 0.055
+      },
+      {
+        "id": 1,
+        "x": 0.37267080745341613,
+        "y": 0.2893923789907312,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 2,
+        "x": 0.43788819875776397,
+        "y": 0.16889804325437693,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 3,
+        "x": 0.5372670807453416,
+        "y": 0.23069001029866118,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 4,
+        "x": 0.6511387163561076,
+        "y": 0.20288362512873326,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 5,
+        "x": 0.6035196687370601,
+        "y": 0.07826982492276004,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 6,
+        "x": 0.2939958592132505,
+        "y": 0.19052523171987643,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 7,
+        "x": 0.16873706004140787,
+        "y": 0.08753861997940268,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 8,
+        "x": 0.16252587991718426,
+        "y": 0.1822863027806385,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 9,
+        "x": 0.044513457556935816,
+        "y": 0.184346035015448,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 10,
+        "x": 0.2888198757763975,
+        "y": 0.4098867147270855,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 11,
+        "x": 0.1956521739130435,
+        "y": 0.48300720906282185,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 12,
+        "x": 0.32919254658385094,
+        "y": 0.5324407826982492,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 13,
+        "x": 0.15527950310559005,
+        "y": 0.5633367662203913,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 14,
+        "x": 0.07349896480331262,
+        "y": 0.5108135942327497,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 15,
+        "x": 0.060041407867494824,
+        "y": 0.6560247167868177,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 16,
+        "x": 0.4389233954451346,
+        "y": 0.6240988671472708,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 17,
+        "x": 0.4161490683229814,
+        "y": 0.7672502574665293,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 18,
+        "x": 0.5082815734989649,
+        "y": 0.7044284243048403,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 19,
+        "x": 0.7681159420289855,
+        "y": 0.7651905252317199,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 20,
+        "x": 0.8695652173913043,
+        "y": 0.6961894953656025,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 21,
+        "x": 0.8902691511387164,
+        "y": 0.8259526261585994,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 22,
+        "x": 0.7474120082815735,
+        "y": 0.5746652935118435,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 23,
+        "x": 0.6511387163561076,
+        "y": 0.5499485066941298,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 24,
+        "x": 0.7370600414078675,
+        "y": 0.4294541709577755,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 25,
+        "x": 0.8674948240165632,
+        "y": 0.36766220391349125,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 26,
+        "x": 0.9523809523809523,
+        "y": 0.3027806385169928,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 27,
+        "x": 0.8592132505175983,
+        "y": 0.22657054582904224,
+        "dupla": false,
+        "raio": 0.027
+      },
+      {
+        "id": 28,
+        "x": 0.7712215320910973,
+        "y": 0.16889804325437693,
+        "dupla": true,
+        "raio": 0.042
+      },
+      {
+        "id": 29,
+        "x": 0.8799171842650103,
+        "y": 0.533470648815654,
+        "dupla": true,
+        "raio": 0.042
+      },
+      {
+        "id": 30,
+        "x": 0.15734989648033126,
+        "y": 0.3079299691040165,
+        "dupla": true,
+        "raio": 0.042
+      },
+      {
+        "id": 31,
+        "x": 0.30745341614906835,
+        "y": 0.07106076210092688,
+        "dupla": true,
+        "raio": 0.042
+      },
+      {
+        "id": 32,
+        "x": 0.2515527950310559,
+        "y": 0.6488156539649845,
+        "dupla": true,
+        "raio": 0.042
+      },
+      {
+        "id": 33,
+        "x": 0.6325051759834368,
+        "y": 0.7621009268795057,
+        "dupla": true,
+        "raio": 0.042
+      }
+    ],
+    "conexoes": [
+      {
+        "origem": 27,
+        "destino": 28
+      },
+      {
+        "origem": 26,
+        "destino": 27
+      },
+      {
+        "origem": 25,
+        "destino": 26
+      },
+      {
+        "origem": 25,
+        "destino": 27
+      },
+      {
+        "origem": 4,
+        "destino": 28
+      },
+      {
+        "origem": 4,
+        "destino": 5
+      },
+      {
+        "origem": 3,
+        "destino": 5
+      },
+      {
+        "origem": 3,
+        "destino": 4
+      },
+      {
+        "origem": 2,
+        "destino": 3
+      },
+      {
+        "origem": 2,
+        "destino": 31
+      },
+      {
+        "origem": 7,
+        "destino": 31
+      },
+      {
+        "origem": 6,
+        "destino": 7
+      },
+      {
+        "origem": 2,
+        "destino": 6
+      },
+      {
+        "origem": 1,
+        "destino": 2
+      },
+      {
+        "origem": 1,
+        "destino": 6
+      },
+      {
+        "origem": 7,
+        "destino": 8
+      },
+      {
+        "origem": 8,
+        "destino": 9
+      },
+      {
+        "origem": 7,
+        "destino": 9
+      },
+      {
+        "origem": 8,
+        "destino": 30
+      },
+      {
+        "origem": 6,
+        "destino": 30
+      },
+      {
+        "origem": 10,
+        "destino": 30
+      },
+      {
+        "origem": 1,
+        "destino": 10
+      },
+      {
+        "origem": 10,
+        "destino": 11
+      },
+      {
+        "origem": 11,
+        "destino": 12
+      },
+      {
+        "origem": 10,
+        "destino": 12
+      },
+      {
+        "origem": 0,
+        "destino": 12
+      },
+      {
+        "origem": 0,
+        "destino": 3
+      },
+      {
+        "origem": 0,
+        "destino": 28
+      },
+      {
+        "origem": 0,
+        "destino": 24
+      },
+      {
+        "origem": 24,
+        "destino": 25
+      },
+      {
+        "origem": 25,
+        "destino": 29
+      },
+      {
+        "origem": 20,
+        "destino": 29
+      },
+      {
+        "origem": 20,
+        "destino": 22
+      },
+      {
+        "origem": 22,
+        "destino": 23
+      },
+      {
+        "origem": 23,
+        "destino": 24
+      },
+      {
+        "origem": 22,
+        "destino": 24
+      },
+      {
+        "origem": 23,
+        "destino": 33
+      },
+      {
+        "origem": 19,
+        "destino": 33
+      },
+      {
+        "origem": 19,
+        "destino": 20
+      },
+      {
+        "origem": 20,
+        "destino": 21
+      },
+      {
+        "origem": 19,
+        "destino": 21
+      },
+      {
+        "origem": 18,
+        "destino": 33
+      },
+      {
+        "origem": 17,
+        "destino": 18
+      },
+      {
+        "origem": 16,
+        "destino": 17
+      },
+      {
+        "origem": 16,
+        "destino": 18
+      },
+      {
+        "origem": 16,
+        "destino": 32
+      },
+      {
+        "origem": 16,
+        "destino": 23
+      },
+      {
+        "origem": 12,
+        "destino": 16
+      },
+      {
+        "origem": 13,
+        "destino": 32
+      },
+      {
+        "origem": 13,
+        "destino": 15
+      },
+      {
+        "origem": 14,
+        "destino": 15
+      },
+      {
+        "origem": 13,
+        "destino": 14
+      },
+      {
+        "origem": 11,
+        "destino": 14
+      },
+      {
+        "origem": 14,
+        "destino": 30
+      }
+    ],
+    "acessosCidades": {
+      "BAGDA": [
+        13,
+        14,
+        15
+      ],
+      "CABUL": [
+        16,
+        17,
+        18
+      ],
+      "KAESONG": [
+        25,
+        26,
+        27
+      ],
+      "SAMARCANDA": [
+        10,
+        11,
+        12
+      ],
+      "PEQUIM": [
+        22,
+        23,
+        24
+      ],
+      "KIEV": [
+        7,
+        8,
+        9
+      ],
+      "SARAI": [
+        3,
+        4,
+        5
+      ],
+      "MOSCOU": [
+        1,
+        2,
+        6
+      ],
+      "CANTAO": [
+        19,
+        20,
+        21
+      ]
+    },
+    "vizinhasKhan": {
+      "RUSSIA_OESTE": [
+        "RUSSIA_LESTE",
+        "PERSIA_SUL"
+      ],
+      "RUSSIA_LESTE": [
+        "RUSSIA_OESTE",
+        "CHINA_LESTE"
+      ],
+      "PERSIA_SUL": [
+        "RUSSIA_OESTE",
+        "CHINA_LESTE"
+      ],
+      "CHINA_LESTE": [
+        "RUSSIA_LESTE",
+        "PERSIA_SUL"
+      ]
+    }
+  },
+  "jogadores": [
+    {
+      "nome": "Duda",
+      "cor": "AZUL",
+      "personagem": "JOCHI",
+      "votos": 9,
+      "descendentes": 0,
+      "parada": 28,
+      "tributos": {},
+      "melhorias": [],
+      "colunasOcupadas": [
+        true,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "nome": "Saulo",
+      "cor": "VERMELHO",
+      "personagem": "TOLUI",
+      "votos": 3,
+      "descendentes": 0,
+      "parada": 3,
+      "tributos": {},
+      "melhorias": [],
+      "colunasOcupadas": [
+        false,
+        true,
+        false,
+        false
+      ]
+    },
+    {
+      "nome": "Matheus",
+      "cor": "VERDE",
+      "personagem": "ALTANI",
+      "votos": 2,
+      "descendentes": 0,
+      "parada": 1,
+      "tributos": {},
+      "melhorias": [],
+      "colunasOcupadas": [
+        true,
+        false,
+        false,
+        false
+      ]
+    },
+    {
+      "nome": "Ivan",
+      "cor": "AMARELO",
+      "personagem": "CHAGATAI",
+      "votos": 1,
+      "descendentes": 0,
+      "parada": 2,
+      "tributos": {},
+      "melhorias": [],
+      "colunasOcupadas": [
+        true,
+        false,
+        false,
+        false
+      ]
+    }
+  ],
+  "tabuleiro": {
+    "paradaKhan": -1,
+    "destinoKhan": null,
+    "yurts": [],
+    "cidadesDisponiveis": [
+      {
+        "nome": "CANTAO",
+        "regiao": "CHINA",
+        "tesouros": 4,
+        "conquistada": false
+      },
+      {
+        "nome": "SAMARCANDA",
+        "regiao": "PERSIA",
+        "tesouros": 4,
+        "conquistada": false
+      },
+      {
+        "nome": "KIEV",
+        "regiao": "RUSSIA",
+        "tesouros": 4,
+        "conquistada": false
+      }
+    ],
+    "cidadesConquistadas": {}
+  },
+  "baralhos": {
+    "cidadesRestantes": [
+      {
+        "nome": "KAESONG",
+        "regiao": "CHINA",
+        "tesouros": 4,
+        "conquistada": false
+      },
+      {
+        "nome": "CABUL",
+        "regiao": "PERSIA",
+        "tesouros": 4,
+        "conquistada": false
+      },
+      {
+        "nome": "MOSCOU",
+        "regiao": "RUSSIA",
+        "tesouros": 4,
+        "conquistada": false
+      },
+      {
+        "nome": "PEQUIM",
+        "regiao": "CHINA",
+        "tesouros": 4,
+        "conquistada": false
+      },
+      {
+        "nome": "SARAI",
+        "regiao": "RUSSIA",
+        "tesouros": 4,
+        "conquistada": false
+      },
+      {
+        "nome": "BAGDA",
+        "regiao": "PERSIA",
+        "tesouros": 4,
+        "conquistada": false
+      }
+    ],
+    "melhoriasDisponiveis": [
+      {
+        "codigo": "MOE-A",
+        "coluna": 2
+      },
+      {
+        "codigo": "CAV-V",
+        "coluna": 1
+      },
+      {
+        "codigo": "ESP-A",
+        "coluna": 2
+      },
+      {
+        "codigo": "CAV-R",
+        "coluna": 0
+      },
+      {
+        "codigo": "BOI-A",
+        "coluna": 2
+      }
+    ],
+    "melhoriasRestantes": [
+      {
+        "codigo": "MOE-R",
+        "coluna": 0
+      },
+      {
+        "codigo": "MAO-R",
+        "coluna": 0
+      },
+      {
+        "codigo": "MAO-V",
+        "coluna": 1
+      },
+      {
+        "codigo": "MOP-V",
+        "coluna": 1
+      },
+      {
+        "codigo": "MOB-R",
+        "coluna": 0
+      },
+      {
+        "codigo": "CUI-A",
+        "coluna": 2
+      },
+      {
+        "codigo": "MAO-A",
+        "coluna": 2
+      },
+      {
+        "codigo": "MOE-V",
+        "coluna": 1
+      },
+      {
+        "codigo": "CAS-V",
+        "coluna": 1
+      },
+      {
+        "codigo": "ESP-R",
+        "coluna": 0
+      },
+      {
+        "codigo": "CAS-R",
+        "coluna": 0
+      },
+      {
+        "codigo": "ESP-V",
+        "coluna": 1
+      },
+      {
+        "codigo": "CAS-A",
+        "coluna": 2
+      },
+      {
+        "codigo": "PER-V",
+        "coluna": 1
+      },
+      {
+        "codigo": "CAV-A",
+        "coluna": 2
+      }
+    ]
+  },
+  "provincias": [
+    {
+      "nome": "RUSSIA_OESTE",
+      "tipoPrincipal": "MOEDA",
+      "quantidades": {
+        "ESPADA": 1,
+        "YURT": 1,
+        "MOEDA": 1
+      },
+      "acessos": [
+        1,
+        2,
+        6,
+        7,
+        8,
+        9,
+        30,
+        31
+      ]
+    },
+    {
+      "nome": "RUSSIA_LESTE",
+      "tipoPrincipal": "YURT",
+      "quantidades": {
+        "ESPADA": 1,
+        "YURT": 1,
+        "MOEDA": 1
+      },
+      "acessos": [
+        2,
+        3,
+        4,
+        5,
+        24,
+        25,
+        26,
+        27,
+        28
+      ]
+    },
+    {
+      "nome": "PERSIA_SUL",
+      "tipoPrincipal": "ESPADA",
+      "quantidades": {
+        "ESPADA": 1,
+        "YURT": 1,
+        "MOEDA": 1
+      },
+      "acessos": [
+        16,
+        32,
+        17,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    {
+      "nome": "CHINA_LESTE",
+      "tipoPrincipal": "ESPADA",
+      "quantidades": {
+        "ESPADA": 1,
+        "YURT": 1,
+        "MOEDA": 1
+      },
+      "acessos": [
+        33,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        29
+      ]
+    }
+  ]
+}

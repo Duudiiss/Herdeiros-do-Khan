@@ -1,6 +1,10 @@
 package br.herdeiros.model;
 
-public class Tributo {
+import java.io.Serializable;
+
+public class Tributo implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private TipoTributo tipo;
 
     public Tributo(TipoTributo tipo) {

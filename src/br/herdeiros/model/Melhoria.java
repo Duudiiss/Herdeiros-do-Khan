@@ -1,6 +1,10 @@
 package br.herdeiros.model;
 
-public class Melhoria {
+import java.io.Serializable;
+
+public class Melhoria implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String descricao;
     private Integer custoEmMoedas;
     private Integer votosBonus;

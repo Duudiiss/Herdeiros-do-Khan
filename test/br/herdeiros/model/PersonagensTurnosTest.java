@@ -74,7 +74,7 @@ public class PersonagensTurnosTest {
         ControladorTabuleiro controller = new ControladorTabuleiro(partida, new MapaDados());
         controller.configurarMovimentos(3);
         assertTrue("Primeiro deslocamento deve funcionar", controller.tentarMoverPara(1));
-        controller.passarVez();
+        assertTrue("O turno deve ser confirmado como concluido", controller.passarVez());
         assertEquals("A vez deve ser do proximo jogador", 1, partida.getIndiceJogadorAtual());
         assertEquals("Novo turno recebe o limite completo", 3, controller.getMovimentosRestantes());
         assertTrue("O proximo jogador pode atravessar a parada ocupada", controller.tentarMoverPara(2));

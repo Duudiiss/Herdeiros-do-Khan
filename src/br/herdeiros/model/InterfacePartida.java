@@ -1,31 +1,472 @@
 package br.herdeiros.model;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.Locale;
 import br.herdeiros.mapa.MapaDados;
 
 /** API mínima para a interface da segunda iteração; não expõe as classes internas. */
-public class InterfacePartida implements ObservadoPartida {
+public class InterfacePartida implements ObservadoPartida, Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final Jogo jogo;
     private final MercadoMelhorias mercadoMelhorias;
     private final List<Jogador> participantes;
-    private final List<ObservadorPartida> observadores = new ArrayList<>();
+    private transient List<ObservadorPartida> observadores = new ArrayList<>();
     private final Map<String, Set<Integer>> acessosCidades = new HashMap<String, Set<Integer>>();
     private final Set<Integer> paradasVisitadasTurno = new HashSet<Integer>();
     private final Map<String, Integer> saquesNaCidadeNoTurno = new HashMap<String, Integer>();
     private final Map<String, Cor> cidadesConquistadas = new HashMap<String, Cor>();
     private final Map<Provincia, ReservaProvincia> reservas = new HashMap<Provincia, ReservaProvincia>();
     private final Map<Provincia, Provincia[]> vizinhasDoKhan = new HashMap<Provincia, Provincia[]>();
+    private transient MapaDados mapaDados = new MapaDados();
+    private transient SavePartidaData.Meta metaSave = new SavePartidaData.Meta();
     private int rodadasConcluidas;
     private int pontuacaoKhan;
     private int rodadasNoDisparoFim = -1;
     private boolean partidaEncerrada;
+
+    private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
+        input.defaultReadObject();
+        observadores = new ArrayList<>();
+    }
+
+    boolean estadoValidoParaSave() {
+        if (jogo == null || mercadoMelhorias == null || participantes == null
+                || participantes.size() < 2 || participantes.size() > 5
+                || indiceAtual < 0 || indiceAtual >= participantes.size()
+                || jogo.getTabuleiro() == null) {
+            return false;
+        }
+        for (Jogador participante : participantes) {
+            if (participante == null || participante.getNome() == null
+                    || participante.getCor() == null || participante.getPersonagem() == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    boolean podeSalvarEntreTurnos() {
+        return estadoValidoParaSave()
+                && participantes.get(indiceAtual).getTabuleiroIndividual().podeSalvarEntreTurnos();
+    }
+
+    SavePartidaData criarDadosSave() {
+        if (!podeSalvarEntreTurnos() || mapaDados == null) {
+            throw new IllegalArgumentException(
+                    "O save exige uma partida válida, mapa carregado e turno não iniciado.");
+        }
+
+        SavePartidaData dados = new SavePartidaData();
+        dados.meta = copiarMeta(metaSave);
+        dados.partida.rodadasConcluidas = rodadasConcluidas;
+        dados.partida.jogadorAtual = indiceAtual;
+        dados.partida.pontuacaoKhan = pontuacaoKhan;
+        dados.partida.rodadasNoDisparoFim = rodadasNoDisparoFim;
+        dados.partida.encerrada = partidaEncerrada;
+
+        for (MapaDados.Ponto ponto : mapaDados.getPontos().values()) {
+            SavePartidaData.Ponto salvo = new SavePartidaData.Ponto();
+            salvo.id = ponto.getId();
+            salvo.x = ponto.getX();
+            salvo.y = ponto.getY();
+            salvo.dupla = ponto.isDupla();
+            salvo.raio = ponto.getRaio();
+            dados.mapa.paradas.add(salvo);
+        }
+        for (MapaDados.Ligacao ligacao : mapaDados.getLigacoes()) {
+            SavePartidaData.Ligacao salva = new SavePartidaData.Ligacao();
+            salva.origem = ligacao.getOrigem();
+            salva.destino = ligacao.getDestino();
+            dados.mapa.conexoes.add(salva);
+        }
+        for (Map.Entry<String, Set<Integer>> acesso : acessosCidades.entrySet()) {
+            dados.mapa.acessosCidades.put(acesso.getKey(), new ArrayList<Integer>(acesso.getValue()));
+        }
+        for (Map.Entry<Provincia, Provincia[]> vizinhas : vizinhasDoKhan.entrySet()) {
+            List<String> nomes = new ArrayList<String>();
+            for (Provincia provincia : vizinhas.getValue()) {
+                nomes.add(provincia.name());
+            }
+            dados.mapa.vizinhasKhan.put(vizinhas.getKey().name(), nomes);
+        }
+
+        for (Jogador jogador : participantes) {
+            SavePartidaData.Jogador salvo = new SavePartidaData.Jogador();
+            salvo.nome = jogador.getNome();
+            salvo.cor = jogador.getCor().name();
+            salvo.personagem = jogador.getPersonagem().name();
+            salvo.votos = jogador.getVotosKurultai();
+            salvo.descendentes = jogador.getQuantidadeDescendentes();
+            Parada parada = jogador.getMeuPeao().getParadaAtual();
+            if (parada == null) {
+                throw new IllegalArgumentException("Jogador sem posição no tabuleiro.");
+            }
+            salvo.parada = parada.getId();
+            TabuleiroIndividual cartela = jogador.getTabuleiroIndividual();
+            salvo.colunasOcupadas = cartela.getColunasOcupadas();
+            for (TipoTributo tipo : TipoTributo.values()) {
+                int quantidade = cartela.getQuantidadeTributoDoTipo(tipo);
+                if (quantidade > 0) {
+                    salvo.tributos.put(tipo.name(), quantidade);
+                }
+            }
+            for (Melhoria melhoria : cartela.getMelhoriasAdquiridas()) {
+                salvo.melhorias.add(criarDadosMelhoria(melhoria));
+            }
+            dados.jogadores.add(salvo);
+        }
+
+        Tabuleiro tabuleiro = jogo.getTabuleiro();
+        Parada paradaKhan = tabuleiro.getPeaoDoKhan().getParadaAtual();
+        dados.tabuleiro.paradaKhan = paradaKhan == null ? -1 : paradaKhan.getId();
+        dados.tabuleiro.destinoKhan = tabuleiro.getDestinoKhan() == null
+                ? null : tabuleiro.getDestinoKhan().name();
+        for (Parada parada : tabuleiro.getParadas()) {
+            for (Cor cor : tabuleiro.getDonosYurt(parada.getId())) {
+                SavePartidaData.Yurt yurt = new SavePartidaData.Yurt();
+                yurt.parada = parada.getId();
+                yurt.cor = cor.name();
+                dados.tabuleiro.yurts.add(yurt);
+            }
+        }
+        for (Cidade cidade : tabuleiro.getCidadesDisponiveis()) {
+            dados.tabuleiro.cidadesDisponiveis.add(criarDadosCidade(cidade));
+        }
+        for (Map.Entry<String, Cor> conquistada : cidadesConquistadas.entrySet()) {
+            dados.tabuleiro.cidadesConquistadas.put(conquistada.getKey(), conquistada.getValue().name());
+        }
+
+        for (Cidade cidade : jogo.getBaralho().getOrdemRestante()) {
+            dados.baralhos.cidadesRestantes.add(criarDadosCidade(cidade));
+        }
+        for (Melhoria melhoria : mercadoMelhorias.getMelhoriasDisponiveis()) {
+            dados.baralhos.melhoriasDisponiveis.add(
+                    melhoria == null ? null : criarDadosMelhoria(melhoria));
+        }
+        for (Melhoria melhoria : mercadoMelhorias.getMelhoriasRestantes()) {
+            dados.baralhos.melhoriasRestantes.add(criarDadosMelhoria(melhoria));
+        }
+
+        for (Map.Entry<Provincia, ReservaProvincia> entrada : reservas.entrySet()) {
+            SavePartidaData.Provincia provincia = new SavePartidaData.Provincia();
+            provincia.nome = entrada.getKey().name();
+            provincia.tipoPrincipal = entrada.getValue().getTipo().name();
+            for (Map.Entry<TipoTributo, Integer> quantidade
+                    : entrada.getValue().getQuantidades().entrySet()) {
+                if (quantidade.getValue() > 0) {
+                    provincia.quantidades.put(quantidade.getKey().name(), quantidade.getValue());
+                }
+            }
+            provincia.acessos.addAll(entrada.getValue().getAcessos());
+            dados.provincias.add(provincia);
+        }
+        return dados;
+    }
+
+    static InterfacePartida restaurarDadosSave(SavePartidaData dados) {
+        if (dados == null || dados.meta == null || !"herdeiros-save".equals(dados.meta.formato)
+                || dados.meta.versao != 1
+                || !("partida".equals(dados.meta.tipo) || "cenario".equals(dados.meta.tipo))
+                || dados.meta.descricao == null || dados.partida == null || dados.mapa == null
+                || dados.jogadores == null || dados.jogadores.size() < 2
+                || dados.jogadores.size() > 5 || dados.tabuleiro == null
+                || dados.baralhos == null || dados.provincias == null) {
+            throw new IllegalArgumentException("Estrutura do save JSON inválida ou incompatível.");
+        }
+        if (dados.partida.jogadorAtual < 0
+                || dados.partida.jogadorAtual >= dados.jogadores.size()
+                || dados.partida.rodadasConcluidas < 0 || dados.partida.pontuacaoKhan < 0
+                || dados.partida.rodadasNoDisparoFim < -1) {
+            throw new IllegalArgumentException("Estado da partida inválido.");
+        }
+
+        MapaDados mapa = restaurarMapa(dados.mapa);
+        List<Jogador> jogadores = new ArrayList<Jogador>();
+        Map<Cor, Integer> posicoes = new HashMap<Cor, Integer>();
+        Set<Cor> cores = new HashSet<Cor>();
+        Set<Personagem> personagens = new HashSet<Personagem>();
+        for (SavePartidaData.Jogador salvo : dados.jogadores) {
+            if (salvo == null || salvo.nome == null || salvo.cor == null
+                    || salvo.personagem == null || salvo.tributos == null
+                    || salvo.melhorias == null || salvo.colunasOcupadas == null) {
+                throw new IllegalArgumentException("Dados de jogador incompletos.");
+            }
+            Cor cor = Cor.valueOf(salvo.cor);
+            Personagem personagem = Personagem.valueOf(salvo.personagem);
+            if (cor == Cor.BRANCO || !cores.add(cor) || !personagens.add(personagem)) {
+                throw new IllegalArgumentException("Cores ou personagens de jogador repetidos.");
+            }
+            TabuleiroIndividual cartela = new TabuleiroIndividual();
+            List<Tributo> tributos = new ArrayList<Tributo>();
+            for (Map.Entry<String, Integer> quantidade : salvo.tributos.entrySet()) {
+                TipoTributo tipo = TipoTributo.valueOf(quantidade.getKey());
+                if (quantidade.getValue() == null || quantidade.getValue() < 0
+                        || quantidade.getValue() > 100) {
+                    throw new IllegalArgumentException("Quantidade de tributo inválida.");
+                }
+                for (int i = 0; i < quantidade.getValue(); i++) {
+                    tributos.add(new Tributo(tipo));
+                }
+            }
+            List<Melhoria> melhorias = new ArrayList<Melhoria>();
+            for (SavePartidaData.Melhoria melhoria : salvo.melhorias) {
+                melhorias.add(restaurarMelhoria(melhoria));
+            }
+            cartela.restaurarEstado(tributos, melhorias, salvo.colunasOcupadas);
+            jogadores.add(new Jogador(salvo.nome, cor, salvo.descendentes, personagem,
+                    cartela, salvo.votos));
+            posicoes.put(cor, salvo.parada);
+        }
+
+        List<Cidade> cidadesDisponiveis = restaurarCidades(dados.tabuleiro.cidadesDisponiveis);
+        List<Cidade> cidadesRestantes = restaurarCidades(dados.baralhos.cidadesRestantes);
+        BaralhoDeCidades baralho = new BaralhoDeCidades(cidadesRestantes);
+        Tabuleiro tabuleiro = Tabuleiro.restaurar(cidadesDisponiveis, mapa,
+                jogadores, posicoes, dados.tabuleiro);
+
+        if (dados.baralhos.melhoriasDisponiveis == null
+                || dados.baralhos.melhoriasDisponiveis.size() != 5
+                || dados.baralhos.melhoriasRestantes == null) {
+            throw new IllegalArgumentException("Estado do mercado de melhorias inválido.");
+        }
+        List<Melhoria> disponiveis = restaurarMelhoriasComNulos(
+                dados.baralhos.melhoriasDisponiveis);
+        List<Melhoria> pilhaMelhorias = restaurarMelhorias(dados.baralhos.melhoriasRestantes);
+        MercadoMelhorias mercado = new MercadoMelhorias(pilhaMelhorias, disponiveis);
+        Jogo jogo = new Jogo(jogadores, baralho, tabuleiro);
+        return new InterfacePartida(dados, mapa, jogo, mercado, jogadores);
+    }
+
+    private InterfacePartida(SavePartidaData dados, MapaDados mapa, Jogo jogo,
+                             MercadoMelhorias mercado, List<Jogador> jogadores) {
+        this.mapaDados = mapa;
+        this.metaSave = copiarMeta(dados.meta);
+        this.jogo = jogo;
+        this.mercadoMelhorias = mercado;
+        this.participantes = new ArrayList<Jogador>(jogadores);
+        this.indiceAtual = dados.partida.jogadorAtual;
+        this.rodadasConcluidas = dados.partida.rodadasConcluidas;
+        this.pontuacaoKhan = dados.partida.pontuacaoKhan;
+        this.rodadasNoDisparoFim = dados.partida.rodadasNoDisparoFim;
+        this.partidaEncerrada = dados.partida.encerrada;
+        for (Map.Entry<String, List<Integer>> acesso : dados.mapa.acessosCidades.entrySet()) {
+            NomeCidade.valueOf(acesso.getKey());
+            if (acesso.getValue() == null || acesso.getValue().isEmpty()) {
+                throw new IllegalArgumentException("Acesso de cidade inválido.");
+            }
+            for (Integer parada : acesso.getValue()) {
+                if (parada == null || mapa.getPonto(parada) == null) {
+                    throw new IllegalArgumentException("Parada de acesso de cidade inexistente.");
+                }
+            }
+            this.acessosCidades.put(acesso.getKey(), new HashSet<Integer>(acesso.getValue()));
+        }
+        for (SavePartidaData.Provincia salvo : dados.provincias) {
+            if (salvo == null || salvo.nome == null || salvo.tipoPrincipal == null
+                    || salvo.quantidades == null || salvo.acessos == null) {
+                throw new IllegalArgumentException("Dados de província incompletos.");
+            }
+            Provincia nome = Provincia.valueOf(salvo.nome);
+            TipoTributo tipo = TipoTributo.valueOf(salvo.tipoPrincipal);
+            for (Integer acesso : salvo.acessos) {
+                if (acesso == null || mapa.getPonto(acesso) == null) {
+                    throw new IllegalArgumentException("Parada de acesso de província inexistente.");
+                }
+            }
+            EnumMap<TipoTributo, Integer> quantidades =
+                    new EnumMap<TipoTributo, Integer>(TipoTributo.class);
+            for (TipoTributo opcao : TipoTributo.values()) {
+                quantidades.put(opcao, 0);
+            }
+            for (Map.Entry<String, Integer> quantidade : salvo.quantidades.entrySet()) {
+                quantidades.put(TipoTributo.valueOf(quantidade.getKey()), quantidade.getValue());
+            }
+            if (this.reservas.put(nome, ReservaProvincia.restaurar(
+                    tipo, quantidades, new HashSet<Integer>(salvo.acessos))) != null) {
+                throw new IllegalArgumentException("Província duplicada no save.");
+            }
+        }
+        for (Map.Entry<String, List<String>> entrada : dados.mapa.vizinhasKhan.entrySet()) {
+            if (entrada.getValue() == null || entrada.getValue().size() != 2) {
+                throw new IllegalArgumentException("Vizinhança do Khan inválida.");
+            }
+            Provincia origem = Provincia.valueOf(entrada.getKey());
+            Provincia primeira = Provincia.valueOf(entrada.getValue().get(0));
+            Provincia segunda = Provincia.valueOf(entrada.getValue().get(1));
+            if (origem == primeira || origem == segunda || primeira == segunda
+                    || this.vizinhasDoKhan.put(origem,
+                    new Provincia[] {primeira, segunda}) != null) {
+                throw new IllegalArgumentException("Vizinhança do Khan inválida.");
+            }
+        }
+        for (Map.Entry<String, String> entrada : dados.tabuleiro.cidadesConquistadas.entrySet()) {
+            NomeCidade.valueOf(entrada.getKey());
+            Cor cor = Cor.valueOf(entrada.getValue());
+            boolean jogadorExiste = false;
+            for (Jogador jogador : this.participantes) {
+                if (jogador.getCor() == cor) {
+                    jogadorExiste = true;
+                    break;
+                }
+            }
+            if (cor == Cor.BRANCO || !jogadorExiste) {
+                throw new IllegalArgumentException("Conquistador de cidade inválido.");
+            }
+            this.cidadesConquistadas.put(entrada.getKey(), cor);
+        }
+        if (!estadoValidoParaSave()) {
+            throw new IllegalArgumentException("O estado reconstruído da partida é inválido.");
+        }
+        if (!partidaEncerrada) {
+            registrarParadaAtualNoTurno();
+        }
+    }
+
+    private static SavePartidaData.Meta copiarMeta(SavePartidaData.Meta original) {
+        SavePartidaData.Meta copia = new SavePartidaData.Meta();
+        if (original != null) {
+            copia.formato = original.formato;
+            copia.versao = original.versao;
+            copia.tipo = original.tipo;
+            copia.descricao = original.descricao;
+        }
+        return copia;
+    }
+
+    private static MapaDados restaurarMapa(SavePartidaData.Mapa dados) {
+        if (dados.paradas == null || dados.conexoes == null
+                || dados.acessosCidades == null || dados.vizinhasKhan == null) {
+            throw new IllegalArgumentException("Mapa incompleto no save.");
+        }
+        MapaDados mapa = new MapaDados();
+        Set<Integer> ids = new HashSet<Integer>();
+        for (SavePartidaData.Ponto ponto : dados.paradas) {
+            if (ponto == null || !ids.add(ponto.id)) {
+                throw new IllegalArgumentException("Parada duplicada ou inválida no mapa.");
+            }
+            if (ponto.id == 0) {
+                if (ponto.dupla || !mapa.mover(0, ponto.x, ponto.y)) {
+                    throw new IllegalArgumentException("Karakorum inválido no mapa.");
+                }
+            } else if (!mapa.adicionar(ponto.id, ponto.x, ponto.y, ponto.dupla)) {
+                throw new IllegalArgumentException("Coordenadas de parada inválidas.");
+            }
+            double raio = ponto.raio == null
+                    ? MapaDados.raioPadrao(ponto.id, ponto.dupla) : ponto.raio;
+            if (!mapa.alterarRaio(ponto.id, raio)) {
+                throw new IllegalArgumentException("Raio de parada inválido.");
+            }
+        }
+        if (!ids.contains(0)) {
+            throw new IllegalArgumentException("O mapa não contém Karakorum.");
+        }
+        for (SavePartidaData.Ligacao ligacao : dados.conexoes) {
+            if (ligacao == null || !mapa.conectar(ligacao.origem, ligacao.destino)) {
+                throw new IllegalArgumentException("Conexão inválida no mapa.");
+            }
+        }
+        return mapa;
+    }
+
+    private static List<Cidade> restaurarCidades(List<SavePartidaData.Cidade> cidades) {
+        if (cidades == null) {
+            throw new IllegalArgumentException("Baralho de cidades incompleto.");
+        }
+        List<Cidade> restauradas = new ArrayList<Cidade>();
+        for (SavePartidaData.Cidade cidade : cidades) {
+            if (cidade == null || cidade.nome == null || cidade.regiao == null) {
+                throw new IllegalArgumentException("Carta de cidade inválida.");
+            }
+            restauradas.add(new Cidade(NomeCidade.valueOf(cidade.nome),
+                    Regiao.valueOf(cidade.regiao), cidade.tesouros, cidade.conquistada));
+        }
+        return restauradas;
+    }
+
+    private static List<Melhoria> restaurarMelhorias(
+            List<SavePartidaData.Melhoria> melhorias) {
+        if (melhorias == null) {
+            throw new IllegalArgumentException("Pilha de melhorias incompleta.");
+        }
+        List<Melhoria> restauradas = new ArrayList<Melhoria>();
+        for (SavePartidaData.Melhoria melhoria : melhorias) {
+            restauradas.add(restaurarMelhoria(melhoria));
+        }
+        return restauradas;
+    }
+
+    private static List<Melhoria> restaurarMelhoriasComNulos(
+            List<SavePartidaData.Melhoria> melhorias) {
+        List<Melhoria> restauradas = new ArrayList<Melhoria>();
+        for (SavePartidaData.Melhoria melhoria : melhorias) {
+            restauradas.add(melhoria == null ? null : restaurarMelhoria(melhoria));
+        }
+        return restauradas;
+    }
+
+    private static Melhoria restaurarMelhoria(SavePartidaData.Melhoria melhoria) {
+        if (melhoria == null || melhoria.codigo == null) {
+            throw new IllegalArgumentException("Código de melhoria ausente.");
+        }
+        return MercadoMelhorias.criarPorCodigo(melhoria.codigo, melhoria.coluna);
+    }
+
+    private static SavePartidaData.Melhoria criarDadosMelhoria(Melhoria melhoria) {
+        if (melhoria == null || melhoria.getCodigo() == null) {
+            throw new IllegalArgumentException("Melhoria sem código não pode ser salva.");
+        }
+        SavePartidaData.Melhoria dados = new SavePartidaData.Melhoria();
+        dados.codigo = melhoria.getCodigo();
+        dados.coluna = melhoria.getColuna();
+        return dados;
+    }
+
+    private static SavePartidaData.Cidade criarDadosCidade(Cidade cidade) {
+        SavePartidaData.Cidade dados = new SavePartidaData.Cidade();
+        dados.nome = cidade.getNomeCidade().name();
+        dados.regiao = cidade.getRegiao().name();
+        dados.tesouros = cidade.getQuantidadeTesouros();
+        dados.conquistada = cidade.isConquistada();
+        return dados;
+    }
+
+    private MapaDados copiarMapa(MapaDados origem) {
+        MapaDados copia = new MapaDados();
+        for (MapaDados.Ponto ponto : origem.getPontos().values()) {
+            if (ponto.getId() == 0) {
+                copia.mover(0, ponto.getX(), ponto.getY());
+            } else {
+                copia.adicionar(ponto.getId(), ponto.getX(), ponto.getY(), ponto.isDupla());
+            }
+            copia.alterarRaio(ponto.getId(), ponto.getRaio());
+        }
+        for (MapaDados.Ligacao ligacao : origem.getLigacoes()) {
+            copia.conectar(ligacao.getOrigem(), ligacao.getDestino());
+        }
+        return copia;
+    }
+
+    public MapaDados getMapaDadosSave() {
+        return mapaDados == null ? null : copiarMapa(mapaDados);
+    }
+
+    public void definirMapaDadosSave(MapaDados mapa) {
+        if (mapa == null) {
+            throw new IllegalArgumentException("Mapa obrigatório");
+        }
+        mapaDados = copiarMapa(mapa);
+    }
 
     /** Construtor padrao usado pelos testes de integracao do Model. */
     public InterfacePartida() {
@@ -122,6 +563,7 @@ public class InterfacePartida implements ObservadoPartida {
                 return false;
             }
         }
+        mapaDados = copiarMapa(mapa);
         registrarParadaAtualNoTurno();
         notificarObservadores();
         return true;
@@ -391,6 +833,15 @@ public class InterfacePartida implements ObservadoPartida {
 
     public int consultarPontuacaoKhan() {
         return pontuacaoKhan;
+    }
+
+    public List<String> consultarNomesVencedores() {
+        List<String> nomes = new ArrayList<String>();
+        for (Jogador jogador : jogo.jogadoresComMaisVotos()) {
+            nomes.add(jogador.getNome());
+        }
+        Collections.sort(nomes, String.CASE_INSENSITIVE_ORDER);
+        return Collections.unmodifiableList(nomes);
     }
 
     /** A ficha branca avanca sempre que qualquer jogador ganha votos. */
