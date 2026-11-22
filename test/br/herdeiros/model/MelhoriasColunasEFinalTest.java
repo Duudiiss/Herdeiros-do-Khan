@@ -97,6 +97,24 @@ public class MelhoriasColunasEFinalTest {
         assertEquals(5, partida.consultarPontuacaoKhan());
     }
 
+    @Test(timeout = 2000)
+    public void testeConsultaNomesDeVencedoresEEmpates() {
+        InterfacePartida partida = new InterfacePartida(
+                new String[] {"Batu", "Ayla"},
+                new Cor[] {Cor.AZUL, Cor.VERMELHO});
+        assertEquals(java.util.Arrays.asList("Ayla", "Batu"),
+                partida.consultarNomesVencedores());
+
+        assertTrue(partida.registrarVotosConquistados(3));
+        assertEquals(java.util.Collections.singletonList("Batu"),
+                partida.consultarNomesVencedores());
+
+        assertTrue(partida.tentarAvancarJogador());
+        assertTrue(partida.registrarVotosConquistados(3));
+        assertEquals(java.util.Arrays.asList("Ayla", "Batu"),
+                partida.consultarNomesVencedores());
+    }
+
     /** A marca final dispara as duas passagens de rodada previstas no manual. */
     @Test(timeout = 2000)
     public void testeKhanDisparaFimSemEncerrarImediatamente() {

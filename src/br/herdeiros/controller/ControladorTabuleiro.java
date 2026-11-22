@@ -108,7 +108,14 @@ public class ControladorTabuleiro extends MouseAdapter {
             indicadorVez.setOpaque(true);
         }
         if (partida.isPartidaEncerrada()) {
-            escrever("FIM DE JOGO: a ficha neutra do Khan chegou ao limite e a rodada final terminou.");
+            java.util.List<String> vencedores = partida.consultarNomesVencedores();
+            if (vencedores.size() == 1) {
+                escrever("FIM DE JOGO! Vencedor: " + vencedores.get(0)
+                        + ". A rodada final terminou.");
+            } else {
+                escrever("FIM DE JOGO! Empate entre: " + String.join(", ", vencedores)
+                        + ". A rodada final terminou.");
+            }
             return;
         }
         if (partida.isFimDisparado()) {

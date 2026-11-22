@@ -835,6 +835,15 @@ public class InterfacePartida implements ObservadoPartida, Serializable {
         return pontuacaoKhan;
     }
 
+    public List<String> consultarNomesVencedores() {
+        List<String> nomes = new ArrayList<String>();
+        for (Jogador jogador : jogo.jogadoresComMaisVotos()) {
+            nomes.add(jogador.getNome());
+        }
+        Collections.sort(nomes, String.CASE_INSENSITIVE_ORDER);
+        return Collections.unmodifiableList(nomes);
+    }
+
     /** A ficha branca avanca sempre que qualquer jogador ganha votos. */
     public boolean registrarVotosConquistados(int quantidade) {
         if (quantidade <= 0 || partidaEncerrada) {
